@@ -75,6 +75,9 @@ export function DataTable<T extends object>({
   const [searchValue, setSearchValue] = React.useState("");
   const [showFilters, setShowFilters] = React.useState(false);
 
+  // Ensure data is always an array
+  const safeData = Array.isArray(data) ? data : [];
+
   const totalPages = Math.ceil(totalItems / pageSize);
   const startItem = (currentPage - 1) * pageSize + 1;
   const endItem = Math.min(currentPage * pageSize, totalItems);
@@ -166,7 +169,7 @@ export function DataTable<T extends object>({
                   </div>
                 </TableCell>
               </TableRow>
-            ) : data.length === 0 ? (
+            ) : safeData.length === 0 ? (
               <TableRow>
                 <TableCell
                   colSpan={columns.length}
@@ -176,7 +179,7 @@ export function DataTable<T extends object>({
                 </TableCell>
               </TableRow>
             ) : (
-              data.map((row, index) => (
+              safeData.map((row, index) => (
                 <TableRow key={index} className="group">
                   {columns.map((column) => (
                     <TableCell key={column.key} className={column.className}>

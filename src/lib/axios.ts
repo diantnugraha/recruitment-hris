@@ -1,6 +1,6 @@
 import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
 
-const baseURL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api";
+const baseURL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
 export const api = axios.create({
   baseURL,
@@ -34,8 +34,9 @@ api.interceptors.response.use(
   },
   (error: AxiosError) => {
     if (error.response?.status === 401) {
-      // Handle unauthorized access
-      if (typeof window !== "undefined") {
+      // Handle unauthorized access - but not for auth endpoints
+      const isAuthEndpoint = error.config?.url?.startsWith("/auth/");
+      if (typeof window !== "undefined" && !isAuthEndpoint) {
         localStorage.removeItem("auth_token");
         window.location.href = "/login";
       }

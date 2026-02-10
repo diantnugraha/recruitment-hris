@@ -1,3 +1,38 @@
+// Auth Types
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+  role: "admin" | "hr" | "manager" | "employee";
+  avatar?: string;
+  employeeId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface LoginResponse {
+  success: boolean;
+  data?: {
+    user: User;
+    token: string;
+    refreshToken?: string;
+    expiresIn: number;
+  };
+  message?: string;
+}
+
+export interface AuthState {
+  user: User | null;
+  token: string | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+}
+
 // Employee Types
 export interface Employee {
   id: string;
@@ -33,10 +68,8 @@ export interface EmployeeWithRelations extends Employee {
 export interface Organization {
   id: string;
   name: string;
-  code: string;
+  cluster: string;
   description?: string;
-  parentId?: string;
-  level: number;
   createdAt: string;
   updatedAt: string;
 }

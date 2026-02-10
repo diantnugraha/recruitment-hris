@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   Users,
@@ -15,9 +15,7 @@ import {
   Building,
   Award,
   Briefcase,
-  Settings,
-  HelpCircle,
-  LogOut,
+  Wallet,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/stores/app-store";
@@ -42,45 +40,69 @@ interface NavItem {
   children?: NavItem[];
 }
 
-const navigation: NavItem[] = [
+interface NavSection {
+  title: string;
+  items: NavItem[];
+}
+
+const navigation: NavSection[] = [
   {
-    title: "Dashboard",
-    href: "/dashboard",
-    icon: LayoutDashboard,
-  },
-  {
-    title: "Employees",
-    href: "/employees",
-    icon: Users,
-  },
-  {
-    title: "Organization",
-    icon: Building2,
-    children: [
-      { title: "OBS Structure", href: "/organization/obs", icon: Network },
-      { title: "Divisions", href: "/organization/divisions", icon: Layers },
-      { title: "Departments", href: "/organization/departments", icon: Building },
-      { title: "Job Levels", href: "/organization/job-levels", icon: Award },
-      { title: "Job Titles", href: "/organization/job-titles", icon: Briefcase },
+    title: "Main",
+    items: [
+      {
+        title: "Dashboard",
+        href: "/dashboard",
+        icon: LayoutDashboard,
+      },
     ],
   },
   {
-    title: "Recruitment",
-    href: "/recruitment",
-    icon: UserPlus,
+    title: "People",
+    items: [
+      {
+        title: "Employees",
+        href: "/employees",
+        icon: Users,
+      },
+      {
+        title: "Employee Budget",
+        href: "/employee-budget",
+        icon: Wallet,
+      },
+    ],
   },
-];
-
-const bottomNavigation: NavItem[] = [
-  { title: "Settings", href: "/settings", icon: Settings },
-  { title: "Help", href: "/help", icon: HelpCircle },
+  {
+    title: "Organization",
+    items: [
+      {
+        title: "Structure",
+        icon: Building2,
+        children: [
+          { title: "OBS Structure", href: "/organization/obs", icon: Network },
+          { title: "Divisions", href: "/organization/divisions", icon: Layers },
+          { title: "Departments", href: "/organization/departments", icon: Building },
+          { title: "Job Levels", href: "/organization/job-levels", icon: Award },
+          { title: "Job Titles", href: "/organization/job-titles", icon: Briefcase },
+        ],
+      },
+    ],
+  },
+  {
+    title: "Talent",
+    items: [
+      {
+        title: "Recruitment",
+        href: "/recruitment",
+        icon: UserPlus,
+      },
+    ],
+  },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
-  const router = useRouter();
   const { sidebarCollapsed, toggleSidebarCollapse } = useAppStore();
-  const [openMenus, setOpenMenus] = React.useState<string[]>(["Organization"]);
+  const [openMenus, setOpenMenus] = React.useState<string[]>(["Structure"]);
 
   const toggleMenu = (title: string) => {
     setOpenMenus((prev) =>
@@ -100,222 +122,154 @@ export function Sidebar() {
     return isActive(item.href);
   };
 
-  const handleSignOut = () => {
-    router.push("/login");
-  };
-
   return (
     <TooltipProvider delayDuration={0}>
       <aside
         className={cn(
-          "fixed left-0 top-0 z-40 flex h-screen flex-col border-r bg-sidebar-background transition-all duration-500 ease-out",
-          sidebarCollapsed ? "w-16" : "w-64"
+          "fixed left-0 top-0 z-40 flex h-screen flex-col bg-white border-r border-gray-200 transition-all duration-300",
+          sidebarCollapsed ? "w-16" : "w-60"
         )}
       >
         {/* Logo */}
-        <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4">
+        <div className={cn(
+          "flex h-16 items-center border-b border-gray-100",
+          sidebarCollapsed ? "justify-center px-2" : "justify-between px-4"
+        )}>
           <Link href="/dashboard" className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent transition-transform duration-300 hover:scale-105">
-              <span className="text-lg font-bold text-accent-foreground">Q</span>
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent">
+              <span className="text-base font-semibold text-white">Q</span>
             </div>
             {!sidebarCollapsed && (
-              <div className="flex flex-col">
-                <span className="text-base font-semibold tracking-tight">QuoHRIS</span>
-                <span className="text-[10px] uppercase tracking-widest text-muted-foreground">
-                  HR Platform
-                </span>
-              </div>
+              <span className="text-base font-semibold text-gray-900">QuoHRIS</span>
             )}
           </Link>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleSidebarCollapse}
-            className="h-7 w-7 text-muted-foreground hover:text-foreground"
-          >
-            <ChevronLeft
-              className={cn(
-                "h-4 w-4 transition-transform duration-300",
-                sidebarCollapsed && "rotate-180"
-              )}
-            />
-          </Button>
+          {!sidebarCollapsed && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleSidebarCollapse}
+              className="h-8 w-8 text-gray-400 hover:text-gray-600"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+          )}
         </div>
 
+        {/* Expand button when collapsed */}
+        {sidebarCollapsed && (
+          <div className="flex justify-center py-3 border-b border-gray-100">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleSidebarCollapse}
+              className="h-8 w-8 text-gray-400 hover:text-gray-600"
+            >
+              <ChevronLeft className="h-4 w-4 rotate-180" />
+            </Button>
+          </div>
+        )}
+
         {/* Navigation */}
-        <ScrollArea className="flex-1 px-3 py-4">
-          <nav className="flex flex-col gap-1">
-            {navigation.map((item, index) => (
-              <div
-                key={item.title}
-                className="animate-fade-in"
-                style={{ animationDelay: `${index * 50}ms` }}
-              >
-                {item.children ? (
-                  <Collapsible
-                    open={!sidebarCollapsed && openMenus.includes(item.title)}
-                    onOpenChange={() => toggleMenu(item.title)}
-                  >
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <CollapsibleTrigger asChild>
-                          <button
-                            className={cn(
-                              "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-all duration-200",
-                              isParentActive(item)
-                                ? "bg-accent/10 font-medium text-accent"
-                                : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-                            )}
-                          >
-                            <item.icon className="h-[18px] w-[18px] shrink-0" />
-                            {!sidebarCollapsed && (
-                              <>
-                                <span className="flex-1 text-left">{item.title}</span>
-                                <ChevronDown
-                                  className={cn(
-                                    "h-3.5 w-3.5 transition-transform duration-300",
-                                    openMenus.includes(item.title) && "rotate-180"
-                                  )}
-                                />
-                              </>
-                            )}
-                          </button>
-                        </CollapsibleTrigger>
-                      </TooltipTrigger>
-                      {sidebarCollapsed && (
-                        <TooltipContent side="right" className="font-medium">
-                          {item.title}
-                        </TooltipContent>
-                      )}
-                    </Tooltip>
-                    <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
-                      <div className="ml-5 mt-1 flex flex-col gap-0.5 border-l border-border pl-3">
-                        {item.children.map((child) => (
-                          <Link
-                            key={child.title}
-                            href={child.href || "#"}
-                            className={cn(
-                              "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] transition-all duration-200",
-                              isActive(child.href)
-                                ? "font-medium text-accent"
-                                : "text-muted-foreground hover:text-foreground"
-                            )}
-                          >
-                            <child.icon className="h-3.5 w-3.5 shrink-0" />
-                            <span>{child.title}</span>
-                          </Link>
-                        ))}
-                      </div>
-                    </CollapsibleContent>
-                  </Collapsible>
-                ) : (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Link
-                        href={item.href || "#"}
-                        className={cn(
-                          "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-all duration-200",
-                          isActive(item.href)
-                            ? "bg-accent font-medium text-accent-foreground"
-                            : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-                        )}
-                      >
-                        <item.icon className="h-[18px] w-[18px] shrink-0" />
-                        {!sidebarCollapsed && <span>{item.title}</span>}
-                      </Link>
-                    </TooltipTrigger>
-                    {sidebarCollapsed && (
-                      <TooltipContent side="right" className="font-medium">
-                        {item.title}
-                      </TooltipContent>
-                    )}
-                  </Tooltip>
+        <ScrollArea className="flex-1 py-4">
+          <nav className={cn(
+            "flex flex-col gap-4",
+            sidebarCollapsed ? "px-2" : "px-3"
+          )}>
+            {navigation.map((section) => (
+              <div key={section.title} className="flex flex-col gap-1">
+                {/* Section Title */}
+                {!sidebarCollapsed && (
+                  <span className="px-3 pb-1 text-xs font-medium uppercase tracking-wider text-gray-400">
+                    {section.title}
+                  </span>
                 )}
+
+                {section.items.map((item) => (
+                  <div key={item.title}>
+                    {item.children ? (
+                      <Collapsible
+                        open={!sidebarCollapsed && openMenus.includes(item.title)}
+                        onOpenChange={() => toggleMenu(item.title)}
+                      >
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <CollapsibleTrigger asChild>
+                              <button
+                                className={cn(
+                                  "flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+                                  sidebarCollapsed && "justify-center px-0",
+                                  isParentActive(item)
+                                    ? "text-accent font-medium"
+                                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                                )}
+                              >
+                                <item.icon className="h-5 w-5 shrink-0" />
+                                {!sidebarCollapsed && (
+                                  <>
+                                    <span className="flex-1 text-left">{item.title}</span>
+                                    <ChevronDown
+                                      className={cn(
+                                        "h-4 w-4 text-gray-400 transition-transform duration-200",
+                                        openMenus.includes(item.title) && "rotate-180"
+                                      )}
+                                    />
+                                  </>
+                                )}
+                              </button>
+                            </CollapsibleTrigger>
+                          </TooltipTrigger>
+                          {sidebarCollapsed && (
+                            <TooltipContent side="right">{item.title}</TooltipContent>
+                          )}
+                        </Tooltip>
+
+                        <CollapsibleContent>
+                          <div className="ml-5 mt-1 flex flex-col gap-0.5 border-l border-gray-200 pl-3">
+                            {item.children.map((child) => (
+                              <Link
+                                key={child.title}
+                                href={child.href || "#"}
+                                className={cn(
+                                  "flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition-colors",
+                                  isActive(child.href)
+                                    ? "text-accent font-medium"
+                                    : "text-gray-500 hover:text-gray-900"
+                                )}
+                              >
+                                <span>{child.title}</span>
+                              </Link>
+                            ))}
+                          </div>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    ) : (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Link
+                            href={item.href || "#"}
+                            className={cn(
+                              "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+                              sidebarCollapsed && "justify-center px-0",
+                              isActive(item.href)
+                                ? "bg-accent text-white font-medium"
+                                : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                            )}
+                          >
+                            <item.icon className="h-5 w-5 shrink-0" />
+                            {!sidebarCollapsed && <span>{item.title}</span>}
+                          </Link>
+                        </TooltipTrigger>
+                        {sidebarCollapsed && (
+                          <TooltipContent side="right">{item.title}</TooltipContent>
+                        )}
+                      </Tooltip>
+                    )}
+                  </div>
+                ))}
               </div>
             ))}
           </nav>
         </ScrollArea>
-
-        {/* Bottom */}
-        <div className="border-t border-sidebar-border px-3 py-4">
-          <nav className="flex flex-col gap-1">
-            {bottomNavigation.map((item) => (
-              <Tooltip key={item.title}>
-                <TooltipTrigger asChild>
-                  <Link
-                    href={item.href || "#"}
-                    className={cn(
-                      "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all duration-200",
-                      isActive(item.href)
-                        ? "bg-secondary font-medium text-foreground"
-                        : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-                    )}
-                  >
-                    <item.icon className="h-[18px] w-[18px] shrink-0" />
-                    {!sidebarCollapsed && <span>{item.title}</span>}
-                  </Link>
-                </TooltipTrigger>
-                {sidebarCollapsed && (
-                  <TooltipContent side="right" className="font-medium">
-                    {item.title}
-                  </TooltipContent>
-                )}
-              </Tooltip>
-            ))}
-          </nav>
-
-          {/* User */}
-          <div className="mt-4 border-t border-sidebar-border pt-4">
-            <div
-              className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2",
-                sidebarCollapsed && "justify-center px-0"
-              )}
-            >
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent/10 text-sm font-semibold text-accent">
-                AD
-              </div>
-              {!sidebarCollapsed && (
-                <>
-                  <div className="flex flex-1 flex-col overflow-hidden">
-                    <span className="truncate text-sm font-medium">Admin</span>
-                    <span className="truncate text-xs text-muted-foreground">
-                      admin@quohris.com
-                    </span>
-                  </div>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={handleSignOut}
-                        className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
-                      >
-                        <LogOut className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Sign out</TooltipContent>
-                  </Tooltip>
-                </>
-              )}
-            </div>
-            {sidebarCollapsed && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={handleSignOut}
-                    className="mt-2 h-8 w-8 w-full text-muted-foreground hover:text-destructive"
-                  >
-                    <LogOut className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="right">Sign out</TooltipContent>
-              </Tooltip>
-            )}
-          </div>
-        </div>
       </aside>
     </TooltipProvider>
   );

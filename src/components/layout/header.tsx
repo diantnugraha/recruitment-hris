@@ -13,8 +13,17 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAppStore } from "@/stores/app-store";
+import { useAuthStore } from "@/stores/auth-store";
 import { cn } from "@/lib/utils";
 
 interface HeaderProps {
@@ -25,16 +34,31 @@ interface HeaderProps {
 export function Header({ title, subtitle }: HeaderProps) {
   const router = useRouter();
   const { sidebarCollapsed, toggleSidebar } = useAppStore();
+  const { user, logout, isLoading } = useAuthStore();
+  const [showLogoutDialog, setShowLogoutDialog] = React.useState(false);
 
-  const handleSignOut = () => {
+  const handleSignOut = async () => {
+    await logout();
+    setShowLogoutDialog(false);
     router.push("/login");
+  };
+
+  const getUserInitials = () => {
+    if (user?.name) {
+      const names = user.name.split(" ");
+      if (names.length >= 2) {
+        return `${names[0][0]}${names[1][0]}`.toUpperCase();
+      }
+      return user.name.substring(0, 2).toUpperCase();
+    }
+    return "U";
   };
 
   return (
     <header
       className={cn(
-        "sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-background/95 px-6 backdrop-blur-sm transition-all duration-500",
-        sidebarCollapsed ? "ml-16" : "ml-64"
+        "sticky top-0 z-30 flex h-16 items-center justify-between bg-white border-b border-gray-200 px-6 transition-all duration-300",
+        sidebarCollapsed ? "ml-16" : "ml-60"
       )}
     >
       <div className="flex items-center gap-4">
@@ -44,25 +68,25 @@ export function Header({ title, subtitle }: HeaderProps) {
           className="h-9 w-9 lg:hidden"
           onClick={toggleSidebar}
         >
-          <Menu className="h-4 w-4" />
+          <Menu className="h-5 w-5" />
         </Button>
         <div>
           {title && (
-            <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
+            <h1 className="text-lg font-semibold text-gray-900">{title}</h1>
           )}
           {subtitle && (
-            <p className="text-sm text-muted-foreground">{subtitle}</p>
+            <p className="text-sm text-gray-500">{subtitle}</p>
           )}
         </div>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2">
         {/* Search */}
         <div className="relative hidden md:block">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <Input
             placeholder="Search..."
-            className="h-9 w-64 bg-secondary/50 pl-9 text-sm transition-all duration-200 focus:w-72 focus:bg-secondary"
+            className="h-9 w-60 pl-9 text-sm border-gray-200 bg-gray-50 focus:bg-white"
           />
         </div>
 
@@ -70,37 +94,24 @@ export function Header({ title, subtitle }: HeaderProps) {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="relative h-9 w-9">
-              <Bell className="h-4 w-4" />
-              <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-accent ring-2 ring-background" />
+              <Bell className="h-5 w-5 text-gray-500" />
+              <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-accent" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-80">
-            <DropdownMenuLabel className="flex items-center justify-between">
-              <span>Notifications</span>
-              <span className="text-xs font-normal text-accent">3 new</span>
-            </DropdownMenuLabel>
+          <DropdownMenuContent align="end" className="w-72">
+            <DropdownMenuLabel>Notifications</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="flex flex-col items-start gap-1.5 p-3">
-              <div className="flex items-center gap-2">
-                <div className="h-1.5 w-1.5 rounded-full bg-accent" />
-                <span className="font-medium">New application received</span>
-              </div>
-              <span className="ml-3.5 text-xs text-muted-foreground">
-                John Doe applied for Senior Developer position
-              </span>
+            <DropdownMenuItem className="flex flex-col items-start gap-1 py-2">
+              <span className="font-medium text-sm">New application received</span>
+              <span className="text-xs text-gray-500">John Doe applied for Senior Developer</span>
             </DropdownMenuItem>
-            <DropdownMenuItem className="flex flex-col items-start gap-1.5 p-3">
-              <div className="flex items-center gap-2">
-                <div className="h-1.5 w-1.5 rounded-full bg-accent" />
-                <span className="font-medium">Interview scheduled</span>
-              </div>
-              <span className="ml-3.5 text-xs text-muted-foreground">
-                Tomorrow at 2:00 PM with Jane Smith
-              </span>
+            <DropdownMenuItem className="flex flex-col items-start gap-1 py-2">
+              <span className="font-medium text-sm">Interview scheduled</span>
+              <span className="text-xs text-gray-500">Tomorrow at 2:00 PM</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="justify-center text-sm text-muted-foreground">
-              View all notifications
+            <DropdownMenuItem className="justify-center text-sm text-gray-500">
+              View all
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -108,22 +119,22 @@ export function Header({ title, subtitle }: HeaderProps) {
         {/* User */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-9 gap-2 pl-2 pr-3">
-              <Avatar className="h-7 w-7 border border-border">
-                <AvatarFallback className="bg-accent/10 text-xs font-medium text-accent">
-                  AD
+            <Button variant="ghost" className="h-9 gap-2 px-2">
+              <Avatar className="h-7 w-7">
+                <AvatarFallback className="bg-accent text-xs text-white">
+                  {getUserInitials()}
                 </AvatarFallback>
               </Avatar>
-              <span className="hidden text-sm font-medium md:inline-block">Admin</span>
+              <span className="hidden text-sm font-medium md:inline-block">
+                {user?.name || "User"}
+              </span>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuContent align="end" className="w-52">
             <DropdownMenuLabel>
-              <div className="flex flex-col gap-1">
-                <span className="font-medium">Admin</span>
-                <span className="text-xs font-normal text-muted-foreground">
-                  admin@quohris.com
-                </span>
+              <div className="flex flex-col">
+                <span className="font-medium">{user?.name || "User"}</span>
+                <span className="text-xs text-gray-500">{user?.email || ""}</span>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
@@ -131,14 +142,42 @@ export function Header({ title, subtitle }: HeaderProps) {
             <DropdownMenuItem>Preferences</DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
-              onClick={handleSignOut}
-              className="text-destructive focus:text-destructive"
+              onClick={() => setShowLogoutDialog(true)}
+              className="text-red-600"
             >
               <LogOut className="mr-2 h-4 w-4" />
               Sign out
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+
+        {/* Logout Dialog */}
+        <Dialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
+          <DialogContent className="sm:max-w-[380px]">
+            <DialogHeader>
+              <DialogTitle>Sign out</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to sign out?
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setShowLogoutDialog(false)}
+                disabled={isLoading}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleSignOut}
+                disabled={isLoading}
+              >
+                {isLoading ? "Signing out..." : "Sign out"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </header>
   );
