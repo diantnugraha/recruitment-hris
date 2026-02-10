@@ -46,13 +46,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useOrganizationStore } from "@/stores/organization-store";
 import { divisionService, CreateDivisionRequest } from "@/services/division.service";
 import { obsService } from "@/services/obs.service";
@@ -63,14 +56,12 @@ interface FormData {
   name: string;
   code: string;
   description: string;
-  organizationId: string;
 }
 
 const initialFormData: FormData = {
   name: "",
   code: "",
   description: "",
-  organizationId: "",
 };
 
 export default function DivisionsPage() {
@@ -147,10 +138,6 @@ export default function DivisionsPage() {
     );
   }, [searchQuery, divisions]);
 
-  const getOrganizationName = (orgId: string) => {
-    return organizations.find((org) => org.id === orgId)?.name || "-";
-  };
-
   const handleAddClick = () => {
     setFormData(initialFormData);
     setIsAddDialogOpen(true);
@@ -162,7 +149,6 @@ export default function DivisionsPage() {
       name: div.name,
       code: div.code,
       description: div.description || "",
-      organizationId: div.organizationId,
     });
     setIsEditDialogOpen(true);
   };
@@ -179,7 +165,7 @@ export default function DivisionsPage() {
       name: formData.name,
       code: formData.code,
       description: formData.description || undefined,
-      organizationId: formData.organizationId,
+      organizationId: organizations[0]?.id || "",
     };
 
     const response = await divisionService.create(data);
@@ -204,7 +190,7 @@ export default function DivisionsPage() {
       name: formData.name,
       code: formData.code,
       description: formData.description || undefined,
-      organizationId: formData.organizationId,
+      organizationId: selectedDivision.organizationId,
     });
 
     if (response.success && response.data) {
@@ -242,14 +228,9 @@ export default function DivisionsPage() {
       key: "name",
       label: "Division",
       render: (_: unknown, row: Division) => (
-        <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-md bg-secondary">
-            <Layers className="h-4 w-4 text-muted-foreground" />
-          </div>
-          <div>
-            <p className="font-medium">{row.name}</p>
-            <p className="text-xs text-muted-foreground">{row.description}</p>
-          </div>
+        <div>
+          <p className="font-medium">{row.name}</p>
+          <p className="text-xs text-muted-foreground">{row.description}</p>
         </div>
       ),
     },
@@ -258,13 +239,6 @@ export default function DivisionsPage() {
       label: "Code",
       render: (_: unknown, row: Division) => (
         <Badge variant="outline">{row.code}</Badge>
-      ),
-    },
-    {
-      key: "organization",
-      label: "Organization",
-      render: (_: unknown, row: Division) => (
-        <span className="text-sm">{getOrganizationName(row.organizationId)}</span>
       ),
     },
     {
@@ -433,26 +407,6 @@ export default function DivisionsPage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="organization">Organization *</Label>
-                <Select
-                  value={formData.organizationId}
-                  onValueChange={(value) =>
-                    setFormData({ ...formData, organizationId: value })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select organization" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {organizations.map((org) => (
-                      <SelectItem key={org.id} value={org.id}>
-                        {org.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
                 <Label htmlFor="description">Description</Label>
                 <Textarea
                   id="description"
@@ -477,8 +431,7 @@ export default function DivisionsPage() {
                 disabled={
                   isSubmitting ||
                   !formData.name ||
-                  !formData.code ||
-                  !formData.organizationId
+                  !formData.code
                 }
               >
                 {isSubmitting ? (
@@ -523,26 +476,6 @@ export default function DivisionsPage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="edit-organization">Organization *</Label>
-                <Select
-                  value={formData.organizationId}
-                  onValueChange={(value) =>
-                    setFormData({ ...formData, organizationId: value })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select organization" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {organizations.map((org) => (
-                      <SelectItem key={org.id} value={org.id}>
-                        {org.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
                 <Label htmlFor="edit-description">Description</Label>
                 <Textarea
                   id="edit-description"
@@ -567,8 +500,7 @@ export default function DivisionsPage() {
                 disabled={
                   isSubmitting ||
                   !formData.name ||
-                  !formData.code ||
-                  !formData.organizationId
+                  !formData.code
                 }
               >
                 {isSubmitting ? (

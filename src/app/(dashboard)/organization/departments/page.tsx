@@ -248,13 +248,8 @@ export default function DepartmentsPage() {
       key: "name",
       label: "Department",
       render: (_: unknown, row: Department) => (
-        <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-md bg-secondary">
-            <Building className="h-4 w-4 text-muted-foreground" />
-          </div>
-          <div>
-            <p className="font-medium">{row.name}</p>
-          </div>
+        <div>
+          <p className="font-medium">{row.name}</p>
         </div>
       ),
     },
