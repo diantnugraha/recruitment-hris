@@ -3,20 +3,14 @@ import { JobLevel, ApiResponse } from "@/types";
 
 export interface CreateJobLevelRequest {
   name: string;
-  code: string;
-  level: number;
+  category: string;
   description?: string;
-  minSalary?: number;
-  maxSalary?: number;
 }
 
 export interface UpdateJobLevelRequest {
   name?: string;
-  code?: string;
-  level?: number;
+  category?: string;
   description?: string;
-  minSalary?: number;
-  maxSalary?: number;
 }
 
 export interface JobLevelPaginatedResponse {
@@ -96,7 +90,7 @@ export const jobLevelService = {
   async create(data: CreateJobLevelRequest): Promise<ApiResponse<JobLevel>> {
     try {
       const response = await post<ApiResponse<JobLevel>, CreateJobLevelRequest>(
-        "/v1/joblevel",
+        "/v1/job-level",
         data
       );
       return response;

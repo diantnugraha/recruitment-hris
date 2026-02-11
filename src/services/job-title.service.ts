@@ -136,7 +136,7 @@ export const jobTitleService = {
   async create(data: CreateJobTitleRequest): Promise<ApiResponse<JobTitle>> {
     try {
       const response = await post<ApiResponse<JobTitle>, CreateJobTitleRequest>(
-        "/v1/jobtitle",
+        "/v1/job-title",
         data
       );
       return response;

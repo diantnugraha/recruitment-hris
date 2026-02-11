@@ -10,6 +10,10 @@ import {
   Users,
   Loader2,
   AlertCircle,
+  Eye,
+  FileText,
+  CheckCircle2,
+  ClipboardList,
 } from "lucide-react";
 import { Header } from "@/components/layout/header";
 import { PageContainer } from "@/components/layout/page-container";
@@ -56,8 +60,10 @@ import { useOrganizationStore } from "@/stores/organization-store";
 import { jobTitleService, CreateJobTitleRequest } from "@/services/job-title.service";
 import { jobLevelService } from "@/services/job-level.service";
 import { departmentService } from "@/services/department.service";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 import { JobTitle } from "@/types";
-import { formatShortDate } from "@/lib/utils";
+import { formatShortDate, parseRichTextToArray, parseRichTextToString, splitTextToItems } from "@/lib/utils";
 
 interface FormData {
   name: string;
@@ -104,6 +110,7 @@ export default function JobTitlesPage() {
   const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
+  const [isViewDialogOpen, setIsViewDialogOpen] = React.useState(false);
   const [selectedJobTitle, setSelectedJobTitle] = React.useState<JobTitle | null>(null);
   const [formData, setFormData] = React.useState<FormData>(initialFormData);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -157,6 +164,13 @@ export default function JobTitlesPage() {
     );
   }, [searchQuery, jobTitles]);
 
+  // Paginated data for current page
+  const paginatedData = React.useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    return filteredData.slice(startIndex, endIndex);
+  }, [filteredData, currentPage, pageSize]);
+
   const getJobLevelName = (levelId: string) => {
     return jobLevels.find((level) => level.id === levelId)?.name || "-";
   };
@@ -171,16 +185,31 @@ export default function JobTitlesPage() {
     setIsAddDialogOpen(true);
   };
 
+  const handleViewClick = (title: JobTitle) => {
+    setSelectedJobTitle(title);
+    setIsViewDialogOpen(true);
+  };
+
   const handleEditClick = (title: JobTitle) => {
     setSelectedJobTitle(title);
+
+    // Get responsibilities - from field or parse from description
+    let responsibilities = parseRichTextToArray(title.responsibilities);
+    const descText = parseRichTextToString(title.description);
+
+    // If no responsibilities but has long description, use description as responsibilities
+    if (responsibilities.length === 0 && descText && descText.length > 50) {
+      responsibilities = splitTextToItems(descText);
+    }
+
     setFormData({
       name: title.name,
       code: title.code,
-      description: title.description || "",
+      description: responsibilities.length > 0 ? "" : descText, // Clear description if moved to responsibilities
       jobLevelId: title.jobLevelId,
       departmentId: title.departmentId || "",
-      responsibilities: title.responsibilities?.join("\n") || "",
-      requirements: title.requirements?.join("\n") || "",
+      responsibilities: responsibilities.join("\n"),
+      requirements: parseRichTextToArray(title.requirements).join("\n"),
     });
     setIsEditDialogOpen(true);
   };
@@ -273,12 +302,26 @@ export default function JobTitlesPage() {
     {
       key: "name",
       label: "Job Title",
-      render: (_: unknown, row: JobTitle) => (
-        <div>
-          <p className="font-medium">{row.name}</p>
-          <p className="text-xs text-muted-foreground">{row.description}</p>
-        </div>
-      ),
+      render: (_: unknown, row: JobTitle) => {
+        // Check if description is actually responsibilities (long text)
+        const descText = parseRichTextToString(row.description);
+        const hasResponsibilities = parseRichTextToArray(row.responsibilities).length > 0;
+        const descIsResponsibilities = !hasResponsibilities && descText && descText.length > 50;
+
+        // Only show description if it's not being used as responsibilities
+        const displayDesc = descIsResponsibilities ? null : descText;
+
+        return (
+          <div className="max-w-[250px]">
+            <p className="font-medium">{row.name}</p>
+            {displayDesc && (
+              <p className="text-xs text-muted-foreground line-clamp-1">
+                {displayDesc}
+              </p>
+            )}
+          </div>
+        );
+      },
     },
     {
       key: "code",
@@ -302,13 +345,42 @@ export default function JobTitlesPage() {
       ),
     },
     {
-      key: "createdAt",
-      label: "Created",
-      render: (_: unknown, row: JobTitle) => (
-        <span className="text-sm text-muted-foreground">
-          {formatShortDate(row.createdAt)}
-        </span>
-      ),
+      key: "details",
+      label: "Details",
+      render: (_: unknown, row: JobTitle) => {
+        // Get responsibilities - from field or parse from description
+        let responsibilities = parseRichTextToArray(row.responsibilities);
+        if (responsibilities.length === 0 && row.description) {
+          const descText = parseRichTextToString(row.description);
+          if (descText && descText.length > 50) {
+            responsibilities = splitTextToItems(descText);
+          }
+        }
+
+        const requirements = parseRichTextToArray(row.requirements);
+        const respCount = responsibilities.length;
+        const reqCount = requirements.length;
+
+        return (
+          <div className="flex items-center gap-2">
+            {respCount > 0 && (
+              <Badge variant="outline" className="gap-1 text-xs">
+                <ClipboardList className="h-3 w-3" />
+                {respCount}
+              </Badge>
+            )}
+            {reqCount > 0 && (
+              <Badge variant="outline" className="gap-1 text-xs">
+                <CheckCircle2 className="h-3 w-3" />
+                {reqCount}
+              </Badge>
+            )}
+            {respCount === 0 && reqCount === 0 && (
+              <span className="text-xs text-muted-foreground">-</span>
+            )}
+          </div>
+        );
+      },
     },
     {
       key: "actions",
@@ -322,6 +394,10 @@ export default function JobTitlesPage() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => handleViewClick(row)}>
+              <Eye className="mr-2 h-4 w-4" />
+              View Details
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={() => handleEditClick(row)}>
               <Pencil className="mr-2 h-4 w-4" />
               Edit
@@ -400,14 +476,17 @@ export default function JobTitlesPage() {
             </Card>
           ) : (
             <DataTable
-              data={filteredData || []}
+              data={paginatedData}
               columns={columns}
               searchable
               searchPlaceholder="Search job titles..."
-              onSearch={setSearchQuery}
+              onSearch={(value) => {
+                setSearchQuery(value);
+                setCurrentPage(1);
+              }}
               pagination
               pageSize={pageSize}
-              totalItems={filteredData?.length || 0}
+              totalItems={filteredData.length}
               currentPage={currentPage}
               onPageChange={setCurrentPage}
               onPageSizeChange={(size) => {
@@ -696,6 +775,158 @@ export default function JobTitlesPage() {
                 )}
               </Button>
             </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* View Details Dialog */}
+        <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
+          <DialogContent className="max-w-2xl max-h-[90vh] p-0 gap-0">
+            {/* Header */}
+            <div className="px-6 py-4 border-b bg-muted/30">
+              <div className="flex items-start justify-between">
+                <div className="space-y-1">
+                  <DialogTitle className="text-xl font-semibold">
+                    {selectedJobTitle?.name}
+                  </DialogTitle>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Badge variant="outline" className="font-mono text-xs">
+                      {selectedJobTitle?.code}
+                    </Badge>
+                    <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100">
+                      {getJobLevelName(selectedJobTitle?.jobLevelId || "")}
+                    </Badge>
+                    <Badge variant="secondary">
+                      {getDepartmentName(selectedJobTitle?.departmentId)}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Content */}
+            <ScrollArea className="max-h-[55vh]">
+              <div className="p-6 space-y-6">
+                {/* Responsibilities */}
+                {(() => {
+                  // Get responsibilities from field or parse from description
+                  let responsibilities = parseRichTextToArray(selectedJobTitle?.responsibilities);
+
+                  // If no responsibilities but has description, split description into items
+                  if (responsibilities.length === 0 && selectedJobTitle?.description) {
+                    const descText = parseRichTextToString(selectedJobTitle.description);
+                    if (descText && descText.length > 50) {
+                      responsibilities = splitTextToItems(descText);
+                    }
+                  }
+
+                  return (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-sm font-semibold flex items-center gap-2">
+                          <div className="h-6 w-6 rounded-md bg-blue-100 flex items-center justify-center">
+                            <ClipboardList className="h-3.5 w-3.5 text-blue-600" />
+                          </div>
+                          Responsibilities
+                        </h4>
+                        {responsibilities.length > 0 && (
+                          <span className="text-xs text-muted-foreground">
+                            {responsibilities.length} items
+                          </span>
+                        )}
+                      </div>
+                      {responsibilities.length > 0 ? (
+                        <div className="rounded-lg border bg-card">
+                          {responsibilities.map((item, index) => (
+                            <div
+                              key={index}
+                              className={`flex items-start gap-3 px-4 py-3 text-sm ${
+                                index !== responsibilities.length - 1 ? "border-b" : ""
+                              }`}
+                            >
+                              <span className="flex-shrink-0 h-5 w-5 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-medium">
+                                {index + 1}
+                              </span>
+                              <span className="text-muted-foreground leading-relaxed">{item}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="rounded-lg border border-dashed p-4 text-center">
+                          <p className="text-sm text-muted-foreground">
+                            No responsibilities defined
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
+                {/* Requirements */}
+                {(() => {
+                  const requirements = parseRichTextToArray(selectedJobTitle?.requirements);
+                  return (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-sm font-semibold flex items-center gap-2">
+                          <div className="h-6 w-6 rounded-md bg-green-100 flex items-center justify-center">
+                            <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
+                          </div>
+                          Requirements
+                        </h4>
+                        {requirements.length > 0 && (
+                          <span className="text-xs text-muted-foreground">
+                            {requirements.length} items
+                          </span>
+                        )}
+                      </div>
+                      {requirements.length > 0 ? (
+                        <div className="rounded-lg border bg-card">
+                          {requirements.map((item, index) => (
+                            <div
+                              key={index}
+                              className={`flex items-start gap-3 px-4 py-3 text-sm ${
+                                index !== requirements.length - 1 ? "border-b" : ""
+                              }`}
+                            >
+                              <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
+                              <span className="text-muted-foreground leading-relaxed">{item}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="rounded-lg border border-dashed p-4 text-center">
+                          <p className="text-sm text-muted-foreground">
+                            No requirements defined
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+            </ScrollArea>
+
+            {/* Footer */}
+            <div className="px-6 py-4 border-t bg-muted/30 flex items-center justify-between">
+              <p className="text-xs text-muted-foreground">
+                Created {formatShortDate(selectedJobTitle?.createdAt)}
+              </p>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => setIsViewDialogOpen(false)}>
+                  Close
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    setIsViewDialogOpen(false);
+                    if (selectedJobTitle) handleEditClick(selectedJobTitle);
+                  }}
+                >
+                  <Pencil className="mr-2 h-3.5 w-3.5" />
+                  Edit
+                </Button>
+              </div>
+            </div>
           </DialogContent>
         </Dialog>
 

@@ -7,7 +7,7 @@ import {
   Pencil,
   Trash2,
   Award,
-  TrendingUp,
+  Layers,
   Loader2,
   AlertCircle,
 } from "lucide-react";
@@ -42,30 +42,33 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useOrganizationStore } from "@/stores/organization-store";
 import { jobLevelService, CreateJobLevelRequest } from "@/services/job-level.service";
 import { JobLevel } from "@/types";
-import { formatCurrency, formatShortDate } from "@/lib/utils";
+import { formatShortDate } from "@/lib/utils";
+
+const JOB_LEVEL_CATEGORIES = ["Structural", "Functional"] as const;
 
 interface FormData {
   name: string;
-  code: string;
-  level: number;
+  category: string;
   description: string;
-  minSalary: string;
-  maxSalary: string;
 }
 
 const initialFormData: FormData = {
   name: "",
-  code: "",
-  level: 1,
+  category: "",
   description: "",
-  minSalary: "",
-  maxSalary: "",
 };
 
 export default function JobLevelsPage() {
@@ -122,9 +125,25 @@ export default function JobLevelsPage() {
     return levelArray.filter(
       (level) =>
         level.name.toLowerCase().includes(query) ||
-        level.code.toLowerCase().includes(query)
+        level.category.toLowerCase().includes(query)
     );
   }, [searchQuery, jobLevels]);
+
+  // Paginated data for current page
+  const paginatedData = React.useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    return filteredData.slice(startIndex, endIndex);
+  }, [filteredData, currentPage, pageSize]);
+
+  // Count by category
+  const categoryStats = React.useMemo(() => {
+    const levelArray = Array.isArray(jobLevels) ? jobLevels : [];
+    return {
+      structural: levelArray.filter((l) => l.category === "Structural").length,
+      functional: levelArray.filter((l) => l.category === "Functional").length,
+    };
+  }, [jobLevels]);
 
   const handleAddClick = () => {
     setFormData(initialFormData);
@@ -135,11 +154,8 @@ export default function JobLevelsPage() {
     setSelectedJobLevel(level);
     setFormData({
       name: level.name,
-      code: level.code,
-      level: level.level,
+      category: level.category,
       description: level.description || "",
-      minSalary: level.minSalary?.toString() || "",
-      maxSalary: level.maxSalary?.toString() || "",
     });
     setIsEditDialogOpen(true);
   };
@@ -154,11 +170,8 @@ export default function JobLevelsPage() {
 
     const data: CreateJobLevelRequest = {
       name: formData.name,
-      code: formData.code,
-      level: formData.level,
+      category: formData.category,
       description: formData.description || undefined,
-      minSalary: formData.minSalary ? parseFloat(formData.minSalary) : undefined,
-      maxSalary: formData.maxSalary ? parseFloat(formData.maxSalary) : undefined,
     };
 
     const response = await jobLevelService.create(data);
@@ -181,11 +194,8 @@ export default function JobLevelsPage() {
 
     const response = await jobLevelService.update(selectedJobLevel.id, {
       name: formData.name,
-      code: formData.code,
-      level: formData.level,
+      category: formData.category,
       description: formData.description || undefined,
-      minSalary: formData.minSalary ? parseFloat(formData.minSalary) : undefined,
-      maxSalary: formData.maxSalary ? parseFloat(formData.maxSalary) : undefined,
     });
 
     if (response.success && response.data) {
@@ -221,35 +231,21 @@ export default function JobLevelsPage() {
   const columns = [
     {
       key: "name",
-      label: "Level",
+      label: "Name",
       render: (_: unknown, row: JobLevel) => (
         <div>
-          <div className="flex items-center gap-2">
-            <p className="font-medium">{row.name}</p>
-            <Badge variant="secondary" className="text-xs">
-              L{row.level}
-            </Badge>
-          </div>
-          <p className="text-xs text-muted-foreground">{row.description}</p>
+          <p className="font-medium">{row.name}</p>
+          <p className="text-xs text-muted-foreground line-clamp-1">{row.description}</p>
         </div>
       ),
     },
     {
-      key: "code",
-      label: "Code",
+      key: "category",
+      label: "Category",
       render: (_: unknown, row: JobLevel) => (
-        <Badge variant="outline">{row.code}</Badge>
-      ),
-    },
-    {
-      key: "salaryRange",
-      label: "Salary Range",
-      render: (_: unknown, row: JobLevel) => (
-        <div className="text-sm">
-          <span>{row.minSalary ? formatCurrency(row.minSalary) : "-"}</span>
-          <span className="text-muted-foreground"> - </span>
-          <span>{row.maxSalary ? formatCurrency(row.maxSalary) : "-"}</span>
-        </div>
+        <Badge variant={row.category === "Structural" ? "default" : "secondary"}>
+          {row.category}
+        </Badge>
       ),
     },
     {
@@ -313,7 +309,7 @@ export default function JobLevelsPage() {
           )}
 
           {/* Stats */}
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-3">
             <Card>
               <CardContent className="flex items-center gap-4 p-5">
                 <div className="flex h-10 w-10 items-center justify-center rounded-md bg-secondary">
@@ -329,14 +325,27 @@ export default function JobLevelsPage() {
             </Card>
             <Card>
               <CardContent className="flex items-center gap-4 p-5">
-                <div className="flex h-10 w-10 items-center justify-center rounded-md bg-secondary">
-                  <TrendingUp className="h-5 w-5 text-muted-foreground" />
+                <div className="flex h-10 w-10 items-center justify-center rounded-md bg-blue-100">
+                  <Layers className="h-5 w-5 text-blue-600" />
                 </div>
                 <div>
                   <p className="text-2xl font-semibold">
-                    {isLoading ? "-" : (jobLevels?.length || 0)}
+                    {isLoading ? "-" : categoryStats.structural}
                   </p>
-                  <p className="text-sm text-muted-foreground">Career Paths</p>
+                  <p className="text-sm text-muted-foreground">Structural</p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="flex items-center gap-4 p-5">
+                <div className="flex h-10 w-10 items-center justify-center rounded-md bg-green-100">
+                  <Layers className="h-5 w-5 text-green-600" />
+                </div>
+                <div>
+                  <p className="text-2xl font-semibold">
+                    {isLoading ? "-" : categoryStats.functional}
+                  </p>
+                  <p className="text-sm text-muted-foreground">Functional</p>
                 </div>
               </CardContent>
             </Card>
@@ -351,14 +360,17 @@ export default function JobLevelsPage() {
             </Card>
           ) : (
             <DataTable
-              data={filteredData || []}
+              data={paginatedData}
               columns={columns}
               searchable
               searchPlaceholder="Search job levels..."
-              onSearch={setSearchQuery}
+              onSearch={(value) => {
+                setSearchQuery(value);
+                setCurrentPage(1);
+              }}
               pagination
               pageSize={pageSize}
-              totalItems={filteredData?.length || 0}
+              totalItems={filteredData.length}
               currentPage={currentPage}
               onPageChange={setCurrentPage}
               onPageSizeChange={(size) => {
@@ -386,58 +398,32 @@ export default function JobLevelsPage() {
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="name">Name *</Label>
-                  <Input
-                    id="name"
-                    placeholder="Enter level name"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="code">Code *</Label>
-                  <Input
-                    id="code"
-                    placeholder="Enter level code"
-                    value={formData.code}
-                    onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                  />
-                </div>
-              </div>
               <div className="space-y-1.5">
-                <Label htmlFor="level">Level Number *</Label>
+                <Label htmlFor="name">Name *</Label>
                 <Input
-                  id="level"
-                  type="number"
-                  min="1"
-                  placeholder="Enter level number"
-                  value={formData.level}
-                  onChange={(e) => setFormData({ ...formData, level: parseInt(e.target.value) || 1 })}
+                  id="name"
+                  placeholder="Enter level name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 />
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="minSalary">Min Salary</Label>
-                  <Input
-                    id="minSalary"
-                    type="number"
-                    placeholder="Minimum salary"
-                    value={formData.minSalary}
-                    onChange={(e) => setFormData({ ...formData, minSalary: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="maxSalary">Max Salary</Label>
-                  <Input
-                    id="maxSalary"
-                    type="number"
-                    placeholder="Maximum salary"
-                    value={formData.maxSalary}
-                    onChange={(e) => setFormData({ ...formData, maxSalary: e.target.value })}
-                  />
-                </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="category">Category *</Label>
+                <Select
+                  value={formData.category}
+                  onValueChange={(value) => setFormData({ ...formData, category: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {JOB_LEVEL_CATEGORIES.map((cat) => (
+                      <SelectItem key={cat} value={cat}>
+                        {cat}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="description">Description</Label>
@@ -462,7 +448,7 @@ export default function JobLevelsPage() {
                 disabled={
                   isSubmitting ||
                   !formData.name ||
-                  !formData.code
+                  !formData.category
                 }
               >
                 {isSubmitting ? (
@@ -488,58 +474,32 @@ export default function JobLevelsPage() {
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="edit-name">Name *</Label>
-                  <Input
-                    id="edit-name"
-                    placeholder="Enter level name"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="edit-code">Code *</Label>
-                  <Input
-                    id="edit-code"
-                    placeholder="Enter level code"
-                    value={formData.code}
-                    onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                  />
-                </div>
-              </div>
               <div className="space-y-1.5">
-                <Label htmlFor="edit-level">Level Number *</Label>
+                <Label htmlFor="edit-name">Name *</Label>
                 <Input
-                  id="edit-level"
-                  type="number"
-                  min="1"
-                  placeholder="Enter level number"
-                  value={formData.level}
-                  onChange={(e) => setFormData({ ...formData, level: parseInt(e.target.value) || 1 })}
+                  id="edit-name"
+                  placeholder="Enter level name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 />
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="edit-minSalary">Min Salary</Label>
-                  <Input
-                    id="edit-minSalary"
-                    type="number"
-                    placeholder="Minimum salary"
-                    value={formData.minSalary}
-                    onChange={(e) => setFormData({ ...formData, minSalary: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="edit-maxSalary">Max Salary</Label>
-                  <Input
-                    id="edit-maxSalary"
-                    type="number"
-                    placeholder="Maximum salary"
-                    value={formData.maxSalary}
-                    onChange={(e) => setFormData({ ...formData, maxSalary: e.target.value })}
-                  />
-                </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-category">Category *</Label>
+                <Select
+                  value={formData.category}
+                  onValueChange={(value) => setFormData({ ...formData, category: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {JOB_LEVEL_CATEGORIES.map((cat) => (
+                      <SelectItem key={cat} value={cat}>
+                        {cat}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="edit-description">Description</Label>
@@ -564,7 +524,7 @@ export default function JobLevelsPage() {
                 disabled={
                   isSubmitting ||
                   !formData.name ||
-                  !formData.code
+                  !formData.category
                 }
               >
                 {isSubmitting ? (

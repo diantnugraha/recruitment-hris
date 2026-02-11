@@ -99,11 +99,8 @@ export interface Department {
 export interface JobLevel {
   id: string;
   name: string;
-  code: string;
-  level: number;
+  category: string;
   description?: string;
-  minSalary?: number;
-  maxSalary?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -115,8 +112,9 @@ export interface JobTitle {
   description?: string;
   jobLevelId: string;
   departmentId?: string;
-  responsibilities?: string[];
-  requirements?: string[];
+  // Can be string[] or rich text format (Slate.js nodes)
+  responsibilities?: unknown;
+  requirements?: unknown;
   createdAt: string;
   updatedAt: string;
 }
