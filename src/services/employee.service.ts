@@ -73,10 +73,12 @@ export interface EmployeePaginatedResponse {
 interface ApiEmployee {
   id: string | number;
   employee_id?: string;
+  employee_nik?: string | null;
   first_name?: string;
   last_name?: string;
   email?: string;
   phone?: string;
+  employee_contact?: string; // employee_list.employee_contact
   date_of_birth?: string;
   gender?: "male" | "female";
   address?: string;
@@ -116,12 +118,14 @@ interface ApiEmployee {
 // Map API response to frontend format
 function mapEmployee(emp: ApiEmployee): EmployeeWithRelations {
   return {
-    id: String(emp.id),
-    employeeId: emp.employee_id || emp.employeeId || String(emp.id),
+    id: String(emp.employee_id ?? emp.id),
+    employeeId: emp.employee_nik || emp.employeeId || String(emp.employee_id ?? emp.id),
+    employeeNik: emp.employee_nik ?? null,
     firstName: emp.first_name || emp.firstName || "",
     lastName: emp.last_name || emp.lastName || "",
     email: emp.email || "",
     phone: emp.phone || "",
+    employeeContact: emp.employee_contact ?? null,
     dateOfBirth: emp.date_of_birth || emp.dateOfBirth || "",
     gender: emp.gender || "male",
     address: emp.address || "",
@@ -194,10 +198,10 @@ export const employeeService = {
     limit: number = 100
   ): Promise<ApiResponse<EmployeePaginatedResponse>> {
     try {
+      // Add include parameter to load relations
       const response = await get<unknown>(
-        `/v1/employee?page=${page}&limit=${limit}`
+        `/v1/employee?page=${page}&limit=${limit}&include=department,division,jobTitle,jobLevel,manager`
       );
-      console.log("Raw Employee API Response:", response);
 
       const res = response as {
         success?: boolean;
@@ -206,7 +210,7 @@ export const employeeService = {
       };
 
       // API returns: { success: true, data: [...], pagination: {...} }
-      if (res.success && res.data) {
+      if (res.success && res.data && Array.isArray(res.data)) {
         const mappedData = res.data.map(mapEmployee);
         return {
           success: true,
@@ -222,7 +226,24 @@ export const employeeService = {
         };
       }
 
-      // Handle direct array response
+      // Handle direct data array without success wrapper (e.g., { data: [...], pagination: {...} })
+      if (res.data && Array.isArray(res.data)) {
+        const mappedData = res.data.map(mapEmployee);
+        return {
+          success: true,
+          data: {
+            data: mappedData,
+            pagination: res.pagination || {
+              page: 1,
+              limit: mappedData.length,
+              total: mappedData.length,
+              totalPages: 1,
+            },
+          },
+        };
+      }
+
+      // Handle direct array response (no wrapper at all)
       if (Array.isArray(response)) {
         const mappedData = (response as ApiEmployee[]).map(mapEmployee);
         return {
@@ -250,9 +271,13 @@ export const employeeService = {
   },
 
   // Get single employee by ID
-  async getById(id: string): Promise<ApiResponse<EmployeeWithRelations>> {
+  async getById(id: string | number): Promise<ApiResponse<EmployeeWithRelations>> {
     try {
-      const response = await get<unknown>(`/v1/employee/${id}`);
+      const numericId = Number(id);
+      if (!Number.isInteger(numericId) || numericId <= 0) {
+        return { success: false, message: "Invalid employee ID" };
+      }
+      const response = await get<unknown>(`/v1/employee/${numericId}`);
       const res = response as {
         success?: boolean;
         data?: ApiEmployee;
@@ -394,12 +419,16 @@ export const employeeService = {
 
   // Update employee
   async update(
-    id: string,
+    id: string | number,
     data: UpdateEmployeeRequest
   ): Promise<ApiResponse<EmployeeWithRelations>> {
     try {
+      const numericId = Number(id);
+      if (!Number.isInteger(numericId) || numericId <= 0) {
+        return { success: false, message: "Invalid employee ID" };
+      }
       const response = await put<unknown, UpdateEmployeeRequest>(
-        `/v1/employee/${id}`,
+        `/v1/employee/${numericId}`,
         data
       );
       const res = response as {
@@ -432,9 +461,13 @@ export const employeeService = {
   },
 
   // Delete employee (soft delete)
-  async delete(id: string): Promise<ApiResponse<void>> {
+  async delete(id: string | number): Promise<ApiResponse<void>> {
     try {
-      const response = await del<unknown>(`/v1/employee/${id}`);
+      const numericId = Number(id);
+      if (!Number.isInteger(numericId) || numericId <= 0) {
+        return { success: false, message: "Invalid employee ID" };
+      }
+      const response = await del<unknown>(`/v1/employee/${numericId}`);
       const res = response as { success?: boolean };
 
       if (res.success !== undefined) {

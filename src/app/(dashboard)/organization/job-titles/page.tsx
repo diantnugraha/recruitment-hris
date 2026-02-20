@@ -1,9 +1,9 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import {
   Plus,
-  MoreHorizontal,
   Pencil,
   Trash2,
   Briefcase,
@@ -11,7 +11,6 @@ import {
   Loader2,
   AlertCircle,
   Eye,
-  FileText,
   CheckCircle2,
   ClipboardList,
 } from "lucide-react";
@@ -126,11 +125,10 @@ export default function JobTitlesPage() {
     setLoading(true);
     setError(null);
 
-    const response = await jobTitleService.getAll(1, 100);
-    console.log("Job Title API Response:", response);
+    const response = await jobTitleService.fetchAll();
 
     if (response.success && response.data) {
-      setJobTitles(response.data.data || []);
+      setJobTitles(response.data);
     } else {
       setError(response.message || "Failed to fetch job titles");
       setJobTitles([]);
@@ -140,16 +138,16 @@ export default function JobTitlesPage() {
   };
 
   const fetchJobLevels = async () => {
-    const response = await jobLevelService.getAll(1, 100);
+    const response = await jobLevelService.fetchAll();
     if (response.success && response.data) {
-      setJobLevels(response.data.data || []);
+      setJobLevels(response.data);
     }
   };
 
   const fetchDepartments = async () => {
-    const response = await departmentService.getAll(1, 100);
+    const response = await departmentService.fetchAll();
     if (response.success && response.data) {
-      setDepartments(response.data.data || []);
+      setDepartments(response.data);
     }
   };
 
@@ -159,8 +157,8 @@ export default function JobTitlesPage() {
     const query = searchQuery.toLowerCase();
     return titleArray.filter(
       (title) =>
-        title.name.toLowerCase().includes(query) ||
-        title.code.toLowerCase().includes(query)
+        title.name?.toLowerCase().includes(query) ||
+        title.code?.toLowerCase().includes(query)
     );
   }, [searchQuery, jobTitles]);
 
@@ -171,13 +169,14 @@ export default function JobTitlesPage() {
     return filteredData.slice(startIndex, endIndex);
   }, [filteredData, currentPage, pageSize]);
 
-  const getJobLevelName = (levelId: string) => {
-    return jobLevels.find((level) => level.id === levelId)?.name || "-";
+  const getJobLevelName = (row: JobTitle) => {
+    return row.jobLevel?.name || jobLevels.find((level) => level.id === row.jobLevelId)?.name || "-";
   };
 
-  const getDepartmentName = (deptId?: string) => {
-    if (!deptId) return "All Departments";
-    return departments.find((dept) => dept.id === deptId)?.name || "-";
+  const getDepartmentName = (row: JobTitle) => {
+    if (row.department?.name) return row.department.name;
+    if (!row.departmentId) return "All Departments";
+    return departments.find((dept) => dept.id === row.departmentId)?.name || "-";
   };
 
   const handleAddClick = () => {
@@ -302,46 +301,22 @@ export default function JobTitlesPage() {
     {
       key: "name",
       label: "Job Title",
-      render: (_: unknown, row: JobTitle) => {
-        // Check if description is actually responsibilities (long text)
-        const descText = parseRichTextToString(row.description);
-        const hasResponsibilities = parseRichTextToArray(row.responsibilities).length > 0;
-        const descIsResponsibilities = !hasResponsibilities && descText && descText.length > 50;
-
-        // Only show description if it's not being used as responsibilities
-        const displayDesc = descIsResponsibilities ? null : descText;
-
-        return (
-          <div className="max-w-[250px]">
-            <p className="font-medium">{row.name}</p>
-            {displayDesc && (
-              <p className="text-xs text-muted-foreground line-clamp-1">
-                {displayDesc}
-              </p>
-            )}
-          </div>
-        );
-      },
-    },
-    {
-      key: "code",
-      label: "Code",
       render: (_: unknown, row: JobTitle) => (
-        <Badge variant="outline">{row.code}</Badge>
+        <p className="font-medium">{row.name}</p>
       ),
     },
     {
       key: "level",
       label: "Level",
       render: (_: unknown, row: JobTitle) => (
-        <Badge variant="secondary">{getJobLevelName(row.jobLevelId)}</Badge>
+        <Badge variant="secondary">{getJobLevelName(row)}</Badge>
       ),
     },
     {
       key: "department",
       label: "Department",
       render: (_: unknown, row: JobTitle) => (
-        <span className="text-sm">{getDepartmentName(row.departmentId)}</span>
+        <span className="text-sm">{getDepartmentName(row)}</span>
       ),
     },
     {
@@ -387,31 +362,11 @@ export default function JobTitlesPage() {
       label: "",
       className: "w-[50px]",
       render: (_: unknown, row: JobTitle) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8">
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => handleViewClick(row)}>
-              <Eye className="mr-2 h-4 w-4" />
-              View Details
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleEditClick(row)}>
-              <Pencil className="mr-2 h-4 w-4" />
-              Edit
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              className="text-destructive"
-              onClick={() => handleDeleteClick(row)}
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Delete
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <Link href={`/organization/job-titles/${row.id}`}>
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-accent">
+            <Eye className="h-4 w-4" />
+          </Button>
+        </Link>
       ),
     },
   ];
@@ -792,12 +747,16 @@ export default function JobTitlesPage() {
                     <Badge variant="outline" className="font-mono text-xs">
                       {selectedJobTitle?.code}
                     </Badge>
-                    <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100">
-                      {getJobLevelName(selectedJobTitle?.jobLevelId || "")}
-                    </Badge>
-                    <Badge variant="secondary">
-                      {getDepartmentName(selectedJobTitle?.departmentId)}
-                    </Badge>
+                    {selectedJobTitle && (
+                      <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100">
+                        {getJobLevelName(selectedJobTitle)}
+                      </Badge>
+                    )}
+                    {selectedJobTitle && (
+                      <Badge variant="secondary">
+                        {getDepartmentName(selectedJobTitle)}
+                      </Badge>
+                    )}
                   </div>
                 </div>
               </div>

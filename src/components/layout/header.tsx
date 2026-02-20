@@ -58,7 +58,7 @@ export function Header({ title, subtitle }: HeaderProps) {
     <header
       className={cn(
         "sticky top-0 z-30 flex h-16 items-center justify-between bg-white border-b border-gray-200 px-6 transition-all duration-300",
-        sidebarCollapsed ? "ml-16" : "ml-60"
+        sidebarCollapsed ? "ml-16" : "ml-64"
       )}
     >
       <div className="flex items-center gap-4">

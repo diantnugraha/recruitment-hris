@@ -37,10 +37,12 @@ export interface AuthState {
 export interface Employee {
   id: string;
   employeeId: string;
+  employeeNik?: string | null;
   firstName: string;
   lastName: string;
   email: string;
   phone: string;
+  employeeContact?: string | null;
   dateOfBirth: string;
   gender: "male" | "female";
   address: string;
@@ -112,6 +114,9 @@ export interface JobTitle {
   description?: string;
   jobLevelId: string;
   departmentId?: string;
+  // Relations (populated by API)
+  jobLevel?: JobLevel;
+  department?: Department;
   // Can be string[] or rich text format (Slate.js nodes)
   responsibilities?: unknown;
   requirements?: unknown;

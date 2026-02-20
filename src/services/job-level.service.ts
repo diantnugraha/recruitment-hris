@@ -69,6 +69,31 @@ export const jobLevelService = {
     }
   },
 
+  // Fetch all job levels by auto-paginating (API max limit is 100)
+  async fetchAll(): Promise<ApiResponse<JobLevel[]>> {
+    try {
+      const allData: JobLevel[] = [];
+      let page = 1;
+      let totalPages = 1;
+
+      do {
+        const res = await this.getAll(page, 100);
+        if (res.success && res.data) {
+          allData.push(...res.data.data);
+          totalPages = res.data.pagination.totalPages;
+        } else {
+          return { success: false, message: res.message || "Failed to fetch job levels" };
+        }
+        page++;
+      } while (page <= totalPages);
+
+      return { success: true, data: allData };
+    } catch (error: unknown) {
+      console.error("Job Level fetchAll Error:", error);
+      return { success: false, message: "Failed to fetch job levels" };
+    }
+  },
+
   // Get single job level by ID
   async getById(id: string): Promise<ApiResponse<JobLevel>> {
     try {

@@ -1,9 +1,10 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import {
   Plus,
-  MoreHorizontal,
+  Eye,
   Pencil,
   Trash2,
   Award,
@@ -262,27 +263,11 @@ export default function JobLevelsPage() {
       label: "",
       className: "w-[50px]",
       render: (_: unknown, row: JobLevel) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8">
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => handleEditClick(row)}>
-              <Pencil className="mr-2 h-4 w-4" />
-              Edit
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              className="text-destructive"
-              onClick={() => handleDeleteClick(row)}
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Delete
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <Link href={`/organization/job-levels/${row.id}`}>
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-accent">
+            <Eye className="h-4 w-4" />
+          </Button>
+        </Link>
       ),
     },
   ];

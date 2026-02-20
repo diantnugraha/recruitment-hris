@@ -6,9 +6,8 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   Users,
-  Building2,
   UserPlus,
-  ChevronDown,
+  ChevronRight,
   ChevronLeft,
   Network,
   Layers,
@@ -27,17 +26,11 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
 
 interface NavItem {
   title: string;
-  href?: string;
+  href: string;
   icon: React.ComponentType<{ className?: string }>;
-  children?: NavItem[];
 }
 
 interface NavSection {
@@ -57,10 +50,25 @@ const navigation: NavSection[] = [
     ],
   },
   {
-    title: "People",
+    title: "Organization",
+    items: [
+      { title: "OBS", href: "/organization/obs", icon: Network },
+      { title: "Division", href: "/organization/divisions", icon: Layers },
+      { title: "Department", href: "/organization/departments", icon: Building },
+    ],
+  },
+  {
+    title: "Position",
+    items: [
+      { title: "Job Level", href: "/organization/job-levels", icon: Award },
+      { title: "Job Title", href: "/organization/job-titles", icon: Briefcase },
+    ],
+  },
+  {
+    title: "Employee",
     items: [
       {
-        title: "Employees",
+        title: "Employee List",
         href: "/employees",
         icon: Users,
       },
@@ -72,23 +80,7 @@ const navigation: NavSection[] = [
     ],
   },
   {
-    title: "Organization",
-    items: [
-      {
-        title: "Structure",
-        icon: Building2,
-        children: [
-          { title: "OBS Structure", href: "/organization/obs", icon: Network },
-          { title: "Divisions", href: "/organization/divisions", icon: Layers },
-          { title: "Departments", href: "/organization/departments", icon: Building },
-          { title: "Job Levels", href: "/organization/job-levels", icon: Award },
-          { title: "Job Titles", href: "/organization/job-titles", icon: Briefcase },
-        ],
-      },
-    ],
-  },
-  {
-    title: "Talent",
+    title: "Recruitment",
     items: [
       {
         title: "Recruitment",
@@ -102,45 +94,35 @@ const navigation: NavSection[] = [
 export function Sidebar() {
   const pathname = usePathname();
   const { sidebarCollapsed, toggleSidebarCollapse } = useAppStore();
-  const [openMenus, setOpenMenus] = React.useState<string[]>(["Structure"]);
 
-  const toggleMenu = (title: string) => {
-    setOpenMenus((prev) =>
-      prev.includes(title) ? prev.filter((item) => item !== title) : [...prev, title]
-    );
-  };
-
-  const isActive = (href?: string) => {
-    if (!href) return false;
+  const isActive = (href: string) => {
     return pathname === href || pathname.startsWith(href + "/");
-  };
-
-  const isParentActive = (item: NavItem) => {
-    if (item.children) {
-      return item.children.some((child) => isActive(child.href));
-    }
-    return isActive(item.href);
   };
 
   return (
     <TooltipProvider delayDuration={0}>
       <aside
         className={cn(
-          "fixed left-0 top-0 z-40 flex h-screen flex-col bg-white border-r border-gray-200 transition-all duration-300",
-          sidebarCollapsed ? "w-16" : "w-60"
+          "fixed left-0 top-0 z-40 flex h-screen flex-col bg-white border-r border-gray-100 transition-all duration-300",
+          sidebarCollapsed ? "w-16" : "w-64"
         )}
       >
-        {/* Logo */}
-        <div className={cn(
-          "flex h-16 items-center border-b border-gray-100",
-          sidebarCollapsed ? "justify-center px-2" : "justify-between px-4"
-        )}>
+        {/* Header */}
+        <div
+          className={cn(
+            "flex items-center border-b border-gray-100",
+            sidebarCollapsed ? "justify-center px-2 h-16" : "justify-between px-5 h-16"
+          )}
+        >
           <Link href="/dashboard" className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent">
-              <span className="text-base font-semibold text-white">Q</span>
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent">
+              <Users className="h-5 w-5 text-white" />
             </div>
             {!sidebarCollapsed && (
-              <span className="text-base font-semibold text-gray-900">QuoHRIS</span>
+              <div className="flex flex-col">
+                <span className="text-sm font-bold text-gray-900">HRIS System</span>
+                <span className="text-xs text-gray-400">Human Resource</span>
+              </div>
             )}
           </Link>
           {!sidebarCollapsed && (
@@ -170,101 +152,57 @@ export function Sidebar() {
         )}
 
         {/* Navigation */}
-        <ScrollArea className="flex-1 py-4">
-          <nav className={cn(
-            "flex flex-col gap-4",
-            sidebarCollapsed ? "px-2" : "px-3"
-          )}>
+        <ScrollArea className="flex-1 py-5">
+          <nav
+            className={cn(
+              "flex flex-col gap-6",
+              sidebarCollapsed ? "px-2" : "px-4"
+            )}
+          >
             {navigation.map((section) => (
               <div key={section.title} className="flex flex-col gap-1">
                 {/* Section Title */}
                 {!sidebarCollapsed && (
-                  <span className="px-3 pb-1 text-xs font-medium uppercase tracking-wider text-gray-400">
+                  <span className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-widest text-accent">
                     {section.title}
                   </span>
                 )}
 
                 {section.items.map((item) => (
-                  <div key={item.title}>
-                    {item.children ? (
-                      <Collapsible
-                        open={!sidebarCollapsed && openMenus.includes(item.title)}
-                        onOpenChange={() => toggleMenu(item.title)}
-                      >
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <CollapsibleTrigger asChild>
-                              <button
-                                className={cn(
-                                  "flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
-                                  sidebarCollapsed && "justify-center px-0",
-                                  isParentActive(item)
-                                    ? "text-accent font-medium"
-                                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
-                                )}
-                              >
-                                <item.icon className="h-5 w-5 shrink-0" />
-                                {!sidebarCollapsed && (
-                                  <>
-                                    <span className="flex-1 text-left">{item.title}</span>
-                                    <ChevronDown
-                                      className={cn(
-                                        "h-4 w-4 text-gray-400 transition-transform duration-200",
-                                        openMenus.includes(item.title) && "rotate-180"
-                                      )}
-                                    />
-                                  </>
-                                )}
-                              </button>
-                            </CollapsibleTrigger>
-                          </TooltipTrigger>
-                          {sidebarCollapsed && (
-                            <TooltipContent side="right">{item.title}</TooltipContent>
-                          )}
-                        </Tooltip>
-
-                        <CollapsibleContent>
-                          <div className="ml-5 mt-1 flex flex-col gap-0.5 border-l border-gray-200 pl-3">
-                            {item.children.map((child) => (
-                              <Link
-                                key={child.title}
-                                href={child.href || "#"}
-                                className={cn(
-                                  "flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition-colors",
-                                  isActive(child.href)
-                                    ? "text-accent font-medium"
-                                    : "text-gray-500 hover:text-gray-900"
-                                )}
-                              >
-                                <span>{child.title}</span>
-                              </Link>
-                            ))}
-                          </div>
-                        </CollapsibleContent>
-                      </Collapsible>
-                    ) : (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Link
-                            href={item.href || "#"}
-                            className={cn(
-                              "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
-                              sidebarCollapsed && "justify-center px-0",
-                              isActive(item.href)
-                                ? "bg-accent text-white font-medium"
-                                : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
-                            )}
-                          >
-                            <item.icon className="h-5 w-5 shrink-0" />
-                            {!sidebarCollapsed && <span>{item.title}</span>}
-                          </Link>
-                        </TooltipTrigger>
-                        {sidebarCollapsed && (
-                          <TooltipContent side="right">{item.title}</TooltipContent>
+                  <Tooltip key={item.title}>
+                    <TooltipTrigger asChild>
+                      <Link
+                        href={item.href}
+                        className={cn(
+                          "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-all duration-200",
+                          sidebarCollapsed && "justify-center px-0",
+                          isActive(item.href)
+                            ? "bg-accent/10 text-accent font-medium"
+                            : "text-gray-500 hover:text-gray-900 hover:bg-gray-50"
                         )}
-                      </Tooltip>
+                      >
+                        <item.icon
+                          className={cn(
+                            "h-5 w-5 shrink-0 transition-colors",
+                            isActive(item.href)
+                              ? "text-accent"
+                              : "text-gray-400 group-hover:text-gray-600"
+                          )}
+                        />
+                        {!sidebarCollapsed && (
+                          <>
+                            <span className="flex-1">{item.title}</span>
+                            {isActive(item.href) && (
+                              <ChevronRight className="h-4 w-4 text-accent" />
+                            )}
+                          </>
+                        )}
+                      </Link>
+                    </TooltipTrigger>
+                    {sidebarCollapsed && (
+                      <TooltipContent side="right">{item.title}</TooltipContent>
                     )}
-                  </div>
+                  </Tooltip>
                 ))}
               </div>
             ))}

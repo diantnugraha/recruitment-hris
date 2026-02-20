@@ -1,10 +1,11 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   Plus,
   Download,
-  MoreHorizontal,
   Eye,
   Pencil,
   Trash2,
@@ -82,6 +83,15 @@ const statusConfig: Record<
   terminated: { label: "Terminated", variant: "outline" },
 };
 
+function getStatusConfig(status: string) {
+  return (
+    statusConfig[status] ?? {
+      label: status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
+      variant: "secondary" as const,
+    }
+  );
+}
+
 // Initial form data (camelCase for frontend)
 const initialFormData: EmployeeFormData = {
   employeeId: "",
@@ -102,6 +112,8 @@ const initialFormData: EmployeeFormData = {
 };
 
 export default function EmployeesPage() {
+  const router = useRouter();
+
   // Store
   const {
     employees,
@@ -124,7 +136,6 @@ export default function EmployeesPage() {
   const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
-  const [isViewDialogOpen, setIsViewDialogOpen] = React.useState(false);
   const [selectedEmployee, setSelectedEmployee] =
     React.useState<EmployeeWithRelations | null>(null);
   const [formData, setFormData] =
@@ -137,20 +148,51 @@ export default function EmployeesPage() {
   const [jobLevels, setJobLevels] = React.useState<JobLevel[]>([]);
   const [jobTitles, setJobTitles] = React.useState<JobTitle[]>([]);
 
-  // Fetch employees
+  // Fetch all employees (multi-page, max 100 per request sesuai validasi backend)
   const fetchEmployees = React.useCallback(async () => {
+    const PAGE_LIMIT = 100;
+
     setLoading(true);
     setError(null);
 
-    const response = await employeeService.getAll(1, 100);
+    // Step 1: Fetch halaman pertama untuk mendapat total & totalPages
+    const firstPage = await employeeService.getAll(1, PAGE_LIMIT);
 
-    if (response.success && response.data) {
-      setEmployees(response.data.data || []);
-    } else {
-      setError(response.message || "Failed to fetch employees");
+    if (!firstPage.success || !firstPage.data) {
+      setError(firstPage.message || "Failed to fetch employees");
       setEmployees([]);
+      setLoading(false);
+      return;
     }
 
+    const { data: firstPageData, pagination } = firstPage.data;
+    const totalPages = pagination?.totalPages ?? 1;
+
+    // Step 2: Jika hanya 1 halaman, selesai
+    if (totalPages <= 1) {
+      setEmployees(firstPageData);
+      setLoading(false);
+      return;
+    }
+
+    // Step 3: Fetch sisa halaman secara parallel (limit tetap 100)
+    const remainingPages = Array.from(
+      { length: totalPages - 1 },
+      (_, i) => i + 2
+    );
+
+    const remainingResponses = await Promise.all(
+      remainingPages.map((page) => employeeService.getAll(page, PAGE_LIMIT))
+    );
+
+    const allEmployees = [
+      ...firstPageData,
+      ...remainingResponses.flatMap((res) =>
+        res.success && res.data ? res.data.data : []
+      ),
+    ];
+
+    setEmployees(allEmployees);
     setLoading(false);
   }, [setEmployees, setLoading, setError]);
 
@@ -320,8 +362,7 @@ export default function EmployeesPage() {
   };
 
   const handleViewClick = (employee: EmployeeWithRelations) => {
-    setSelectedEmployee(employee);
-    setIsViewDialogOpen(true);
+    router.push(`/employees/${employee.id}`);
   };
 
   // Form field change handler
@@ -346,7 +387,7 @@ export default function EmployeesPage() {
               {row.firstName || ""} {row.lastName || ""}
             </p>
             <p className="font-mono text-xs text-muted-foreground">
-              {row.employeeId || row.id}
+              {row.employeeNik || "—"}
             </p>
           </div>
         </div>
@@ -386,7 +427,7 @@ export default function EmployeesPage() {
       key: "status",
       label: "Status",
       render: (_: unknown, row: EmployeeWithRelations) => {
-        const config = statusConfig[row.status] || statusConfig.inactive;
+        const config = getStatusConfig(row.status);
         return <Badge variant={config.variant}>{config.label}</Badge>;
       },
     },
@@ -395,31 +436,11 @@ export default function EmployeesPage() {
       label: "",
       className: "w-10",
       render: (_: unknown, row: EmployeeWithRelations) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8">
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => handleViewClick(row)}>
-              <Eye className="mr-2 h-4 w-4" />
-              View Profile
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleEditClick(row)}>
-              <Pencil className="mr-2 h-4 w-4" />
-              Edit
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              className="text-destructive focus:text-destructive"
-              onClick={() => handleDeleteClick(row)}
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Remove
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <Link href={`/employees/${row.id}`}>
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-accent">
+            <Eye className="h-4 w-4" />
+          </Button>
+        </Link>
       ),
     },
   ];
@@ -835,126 +856,6 @@ export default function EmployeesPage() {
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               )}
               Save Changes
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* View Dialog */}
-      <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-semibold">
-              Employee Profile
-            </DialogTitle>
-          </DialogHeader>
-          {selectedEmployee && (
-            <div className="space-y-4 py-4">
-              <div className="flex items-center gap-4">
-                <Avatar className="h-16 w-16 border border-border">
-                  <AvatarFallback className="bg-accent/10 text-lg font-semibold text-accent">
-                    {getInitials(
-                      `${selectedEmployee.firstName || ""} ${selectedEmployee.lastName || ""}`
-                    )}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <h3 className="text-lg font-semibold">
-                    {selectedEmployee.firstName || ""} {selectedEmployee.lastName || ""}
-                  </h3>
-                  <p className="font-mono text-sm text-muted-foreground">
-                    {selectedEmployee.employeeId || selectedEmployee.id}
-                  </p>
-                  <Badge
-                    variant={
-                      statusConfig[selectedEmployee.status]?.variant || "outline"
-                    }
-                    className="mt-1"
-                  >
-                    {statusConfig[selectedEmployee.status]?.label ||
-                      selectedEmployee.status}
-                  </Badge>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <p className="text-muted-foreground">Email</p>
-                  <p className="font-medium">{selectedEmployee.email || "—"}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Phone</p>
-                  <p className="font-medium">{selectedEmployee.phone || "—"}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Gender</p>
-                  <p className="font-medium capitalize">
-                    {selectedEmployee.gender || "—"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Date of Birth</p>
-                  <p className="font-medium">
-                    {selectedEmployee.dateOfBirth ? formatShortDate(selectedEmployee.dateOfBirth) : "—"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Division</p>
-                  <p className="font-medium">
-                    {selectedEmployee.division?.name || "—"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Department</p>
-                  <p className="font-medium">
-                    {selectedEmployee.department?.name || "—"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Job Level</p>
-                  <p className="font-medium">
-                    {selectedEmployee.jobLevel?.name || "—"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Job Title</p>
-                  <p className="font-medium">
-                    {selectedEmployee.jobTitle?.name || "—"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Hire Date</p>
-                  <p className="font-medium">
-                    {selectedEmployee.hireDate ? formatShortDate(selectedEmployee.hireDate) : "—"}
-                  </p>
-                </div>
-                <div className="col-span-2">
-                  <p className="text-muted-foreground">Address</p>
-                  <p className="font-medium">{selectedEmployee.address || "—"}</p>
-                </div>
-              </div>
-            </div>
-          )}
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setIsViewDialogOpen(false);
-                setSelectedEmployee(null);
-              }}
-            >
-              Close
-            </Button>
-            <Button
-              onClick={() => {
-                setIsViewDialogOpen(false);
-                if (selectedEmployee) {
-                  handleEditClick(selectedEmployee);
-                }
-              }}
-            >
-              <Pencil className="mr-2 h-4 w-4" />
-              Edit
             </Button>
           </DialogFooter>
         </DialogContent>

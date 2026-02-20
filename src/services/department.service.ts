@@ -74,6 +74,31 @@ export const departmentService = {
     }
   },
 
+  // Fetch all departments by auto-paginating (API max limit is 100)
+  async fetchAll(): Promise<ApiResponse<Department[]>> {
+    try {
+      const allData: Department[] = [];
+      let page = 1;
+      let totalPages = 1;
+
+      do {
+        const res = await this.getAll(page, 100);
+        if (res.success && res.data) {
+          allData.push(...res.data.data);
+          totalPages = res.data.pagination.totalPages;
+        } else {
+          return { success: false, message: res.message || "Failed to fetch departments" };
+        }
+        page++;
+      } while (page <= totalPages);
+
+      return { success: true, data: allData };
+    } catch (error: unknown) {
+      console.error("Department fetchAll Error:", error);
+      return { success: false, message: "Failed to fetch departments" };
+    }
+  },
+
   // Get departments with pagination
   async getPaginated(
     page: number = 1,

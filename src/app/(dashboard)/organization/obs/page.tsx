@@ -1,9 +1,10 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import {
   Plus,
-  MoreHorizontal,
+  Eye,
   Pencil,
   Trash2,
   Building2,
@@ -54,9 +55,12 @@ interface OrgCardProps {
   onDelete: (org: Organization) => void;
 }
 
-function OrgCard({ org, onEdit, onDelete }: OrgCardProps) {
+function OrgCard({ org }: OrgCardProps) {
   return (
-    <div className="group relative flex items-center gap-4 rounded-lg border bg-card p-4 transition-colors hover:bg-secondary/50">
+    <Link
+      href={`/organization/obs/${org.id}`}
+      className="group relative flex items-center gap-4 rounded-lg border bg-card p-4 transition-colors hover:bg-secondary/50"
+    >
       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-secondary">
         <Building2 className="h-5 w-5 text-muted-foreground" />
       </div>
@@ -64,32 +68,10 @@ function OrgCard({ org, onEdit, onDelete }: OrgCardProps) {
         <h3 className="font-medium">{org.name}</h3>
         <p className="text-sm text-muted-foreground">{org.description || "No description"}</p>
       </div>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="shrink-0 h-8 w-8 opacity-0 group-hover:opacity-100"
-          >
-            <MoreHorizontal className="h-4 w-4" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={() => onEdit(org)}>
-            <Pencil className="mr-2 h-4 w-4" />
-            Edit
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            className="text-destructive"
-            onClick={() => onDelete(org)}
-          >
-            <Trash2 className="mr-2 h-4 w-4" />
-            Delete
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
+      <div className="shrink-0 text-muted-foreground group-hover:text-accent transition-colors">
+        <Eye className="h-4 w-4" />
+      </div>
+    </Link>
   );
 }
 

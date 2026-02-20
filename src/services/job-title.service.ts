@@ -77,6 +77,31 @@ export const jobTitleService = {
     }
   },
 
+  // Fetch all job titles by auto-paginating (API max limit is 100)
+  async fetchAll(): Promise<ApiResponse<JobTitle[]>> {
+    try {
+      const allData: JobTitle[] = [];
+      let page = 1;
+      let totalPages = 1;
+
+      do {
+        const res = await this.getAll(page, 100);
+        if (res.success && res.data) {
+          allData.push(...res.data.data);
+          totalPages = res.data.pagination.totalPages;
+        } else {
+          return { success: false, message: res.message || "Failed to fetch job titles" };
+        }
+        page++;
+      } while (page <= totalPages);
+
+      return { success: true, data: allData };
+    } catch (error: unknown) {
+      console.error("Job Title fetchAll Error:", error);
+      return { success: false, message: "Failed to fetch job titles" };
+    }
+  },
+
   // Get single job title by ID
   async getById(id: string): Promise<ApiResponse<JobTitle>> {
     try {
