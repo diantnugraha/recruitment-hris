@@ -1,5 +1,5 @@
 import { get, post, put, del } from "@/lib/axios";
-import { Division, ApiResponse, PaginatedResponse } from "@/types";
+import { Division, ApiResponse } from "@/types";
 
 export interface CreateDivisionRequest {
   name: string;
@@ -38,12 +38,15 @@ export const divisionService = {
   async getAll(page: number = 1, limit: number = 100): Promise<ApiResponse<DivisionPaginatedResponse>> {
     try {
       const response = await get<unknown>(`/v1/division?page=${page}&limit=${limit}`);
-      console.log("Raw Division API Response:", response);
 
-      const res = response as { success?: boolean; data?: Division[]; pagination?: DivisionPaginatedResponse["pagination"] };
+      const res = response as {
+        success?: boolean;
+        data?: Division[];
+        pagination?: DivisionPaginatedResponse["pagination"];
+      };
 
       // API returns: { success: true, data: [...], pagination: {...} }
-      if (res.success && res.data) {
+      if (res.data && Array.isArray(res.data)) {
         return {
           success: true,
           data: {
@@ -79,27 +82,28 @@ export const divisionService = {
     }
   },
 
-  // Get divisions with pagination
-  async getPaginated(
-    page: number = 1,
-    pageSize: number = 10
-  ): Promise<ApiResponse<PaginatedResponse<Division>>> {
+  // Fetch all divisions by auto-paginating
+  async fetchAll(): Promise<ApiResponse<Division[]>> {
     try {
-      const response = await get<ApiResponse<PaginatedResponse<Division>>>(
-        `/v1/division?page=${page}&pageSize=${pageSize}`
-      );
-      return response;
+      const allData: Division[] = [];
+      let page = 1;
+      let totalPages = 1;
+
+      do {
+        const res = await this.getAll(page, 100);
+        if (res.success && res.data) {
+          allData.push(...res.data.data);
+          totalPages = res.data.pagination.totalPages;
+        } else {
+          return { success: false, message: res.message || "Failed to fetch divisions" };
+        }
+        page++;
+      } while (page <= totalPages);
+
+      return { success: true, data: allData };
     } catch (error: unknown) {
-      const err = error as {
-        response?: { data?: ApiResponse<PaginatedResponse<Division>> };
-      };
-      if (err.response?.data) {
-        return err.response.data;
-      }
-      return {
-        success: false,
-        message: "Failed to fetch divisions",
-      };
+      console.error("Division fetchAll Error:", error);
+      return { success: false, message: "Failed to fetch divisions" };
     }
   },
 
@@ -135,6 +139,23 @@ export const divisionService = {
       return {
         success: false,
         message: "Failed to fetch divisions",
+      };
+    }
+  },
+
+  // Get division statistics
+  async getStats(): Promise<ApiResponse<DivisionStats>> {
+    try {
+      const response = await get<ApiResponse<DivisionStats>>("/v1/division/stats");
+      return response;
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: ApiResponse<DivisionStats> } };
+      if (err.response?.data) {
+        return err.response.data;
+      }
+      return {
+        success: false,
+        message: "Failed to fetch division stats",
       };
     }
   },

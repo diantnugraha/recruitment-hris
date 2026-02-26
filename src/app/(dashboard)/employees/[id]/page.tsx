@@ -23,6 +23,7 @@ import {
 import employeeService from "@/services/employee.service";
 import { EmployeeWithRelations } from "@/types";
 import { formatShortDate, getInitials } from "@/lib/utils";
+import { showToast } from "@/lib/utils/toast-messages";
 
 // Status configuration
 const statusConfig: Record<
@@ -30,9 +31,14 @@ const statusConfig: Record<
   { label: string; variant: "default" | "secondary" | "outline" | "success" }
 > = {
   active: { label: "Active", variant: "success" },
+  permanent: { label: "Permanent", variant: "success" },
+  contract: { label: "Contract", variant: "default" },
+  probation: { label: "Probation", variant: "secondary" },
+  outsource: { label: "Outsource", variant: "secondary" },
   on_leave: { label: "On Leave", variant: "secondary" },
   inactive: { label: "Inactive", variant: "outline" },
   terminated: { label: "Terminated", variant: "outline" },
+  exit: { label: "Exit", variant: "outline" },
 };
 
 function getStatusConfig(status: string) {
@@ -44,7 +50,6 @@ function getStatusConfig(status: string) {
   );
 }
 
-// Detail field component — label on top, value below
 function DetailField({ label, value }: { label: string; value: string }) {
   return (
     <div className="space-y-1">
@@ -54,6 +59,11 @@ function DetailField({ label, value }: { label: string; value: string }) {
       <p className="text-sm font-medium">{value || "—"}</p>
     </div>
   );
+}
+
+function formatDateField(date?: string | null): string {
+  if (!date) return "";
+  return formatShortDate(date);
 }
 
 export default function EmployeeDetailPage() {
@@ -88,9 +98,10 @@ export default function EmployeeDetailPage() {
     setIsDeleting(true);
     const res = await employeeService.delete(employee.id);
     if (res.success) {
+      showToast.deleted("Employee");
       router.push("/employees");
     } else {
-      setError(res.message || "Failed to delete employee");
+      showToast.deleteError("employee", res.message);
       setIsDeleting(false);
       setIsDeleteDialogOpen(false);
     }
@@ -133,6 +144,10 @@ export default function EmployeeDetailPage() {
   const jobTitleName = employee.jobTitle?.name || "";
   const departmentName = employee.department?.name || "";
   const subtitle = [jobTitleName, departmentName].filter(Boolean).join(" · ");
+
+  const maritalStatusLabel = employee.maritalStatus
+    ? employee.maritalStatus.charAt(0).toUpperCase() + employee.maritalStatus.slice(1)
+    : "";
 
   return (
     <>
@@ -189,12 +204,13 @@ export default function EmployeeDetailPage() {
                     )}
                     <p className="mt-0.5 text-xs text-muted-foreground">
                       {employee.employeeNik || employee.employeeId || "—"}
+                      {employee.nickname && ` · "${employee.nickname}"`}
                     </p>
                   </div>
                 </div>
               </div>
 
-              {/* Dashed separator */}
+              {/* Separator */}
               <div className="border-t border-dashed" />
 
               {/* Personal Information */}
@@ -202,17 +218,20 @@ export default function EmployeeDetailPage() {
                 <h2 className="text-sm font-semibold uppercase tracking-wide mb-4">
                   Personal Information
                 </h2>
-                <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+                <div className="grid grid-cols-2 gap-x-8 gap-y-4 lg:grid-cols-3">
                   <DetailField label="NIK" value={employee.employeeNik || employee.employeeId || ""} />
                   <DetailField label="Email" value={employee.email} />
                   <DetailField label="Phone" value={employee.employeeContact || employee.phone || ""} />
+                  <DetailField label="Date of Birth" value={formatDateField(employee.dateOfBirth)} />
+                  <DetailField label="Gender" value={employee.gender === "male" ? "Male" : "Female"} />
+                  <DetailField label="Marital Status" value={maritalStatusLabel} />
+                  <DetailField label="Religion" value={employee.religion || ""} />
+                  <DetailField label="Ethnicity" value={employee.ethnicity || ""} />
                   <DetailField label="Address" value={employee.address} />
-                  <DetailField label="Date of Birth" value={employee.dateOfBirth ? formatShortDate(employee.dateOfBirth) : ""} />
-                  <DetailField label="Join Date" value={employee.hireDate ? formatShortDate(employee.hireDate) : ""} />
                 </div>
               </div>
 
-              {/* Dashed separator */}
+              {/* Separator */}
               <div className="border-t border-dashed" />
 
               {/* Position Information */}
@@ -220,14 +239,72 @@ export default function EmployeeDetailPage() {
                 <h2 className="text-sm font-semibold uppercase tracking-wide mb-4">
                   Position Information
                 </h2>
-                <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+                <div className="grid grid-cols-2 gap-x-8 gap-y-4 lg:grid-cols-3">
                   <DetailField label="Job Title" value={employee.jobTitle?.name || ""} />
                   <DetailField label="Department" value={employee.department?.name || ""} />
                   <DetailField label="Division" value={employee.division?.name || ""} />
                   <DetailField label="Job Level" value={employee.jobLevel?.name || ""} />
+                  <DetailField label="Employee Type" value={employee.employeeType || ""} />
+                  <DetailField label="Business Unit" value={employee.businessUnit || ""} />
+                  <DetailField label="Location" value={employee.location || ""} />
+                  <DetailField label="FTE" value={employee.fte != null ? String(employee.fte) : ""} />
+                  <DetailField label="Certificate" value={employee.certificate || ""} />
                 </div>
               </div>
 
+              {/* Separator */}
+              <div className="border-t border-dashed" />
+
+              {/* Dates */}
+              <div>
+                <h2 className="text-sm font-semibold uppercase tracking-wide mb-4">
+                  Employment Dates
+                </h2>
+                <div className="grid grid-cols-2 gap-x-8 gap-y-4 lg:grid-cols-3">
+                  <DetailField label="Join Date" value={formatDateField(employee.hireDate)} />
+                  <DetailField label="Permanent Date" value={formatDateField(employee.permanentDate)} />
+                  <DetailField label="Contract Start" value={formatDateField(employee.contractDate)} />
+                  <DetailField label="Contract End" value={formatDateField(employee.contractEndDate)} />
+                  <DetailField label="Probation Start" value={formatDateField(employee.probationDate)} />
+                  <DetailField label="Probation End" value={formatDateField(employee.probationEndDate)} />
+                  {employee.exitDate && (
+                    <>
+                      <DetailField label="Exit Date" value={formatDateField(employee.exitDate)} />
+                      <DetailField label="Exit Reason" value={employee.exitReason || ""} />
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Separator */}
+              <div className="border-t border-dashed" />
+
+              {/* Family Information */}
+              <div>
+                <h2 className="text-sm font-semibold uppercase tracking-wide mb-4">
+                  Family Information
+                </h2>
+                <div className="grid grid-cols-2 gap-x-8 gap-y-4 lg:grid-cols-3">
+                  <DetailField label="Father's Name" value={employee.fatherName || ""} />
+                  <DetailField label="Mother's Name" value={employee.motherName || ""} />
+                  <DetailField label="Spouse Name" value={employee.spouseName || ""} />
+                </div>
+              </div>
+
+              {/* Separator */}
+              <div className="border-t border-dashed" />
+
+              {/* Emergency Contact */}
+              <div>
+                <h2 className="text-sm font-semibold uppercase tracking-wide mb-4">
+                  Emergency Contact
+                </h2>
+                <div className="grid grid-cols-2 gap-x-8 gap-y-4 lg:grid-cols-3">
+                  <DetailField label="Contact Name" value={employee.emergencyContactName || ""} />
+                  <DetailField label="Relationship" value={employee.emergencyContactRelation || ""} />
+                  <DetailField label="Phone Number" value={employee.emergencyContactPhone || ""} />
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -251,7 +328,14 @@ export default function EmployeeDetailPage() {
               disabled={isDeleting}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {isDeleting ? "Deleting..." : "Delete"}
+              {isDeleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete"
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

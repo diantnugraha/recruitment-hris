@@ -1,24 +1,29 @@
 import { get, post, put, del } from "@/lib/axios";
 import { JobTitle, ApiResponse } from "@/types";
 
+// Request body matches backend schema (snake_case)
 export interface CreateJobTitleRequest {
   name: string;
-  code: string;
+  job_level_id: number;
+  division_id?: number;
+  direct_report_id?: number;
+  type?: "Administration" | "Technical";
   description?: string;
-  jobLevelId: string;
-  departmentId?: string;
-  responsibilities?: string[];
-  requirements?: string[];
+  purpose?: string;
+  requirement?: string;
+  department_sync?: number[];
 }
 
 export interface UpdateJobTitleRequest {
   name?: string;
-  code?: string;
+  job_level_id?: number;
+  division_id?: number;
+  direct_report_id?: number;
+  type?: "Administration" | "Technical";
   description?: string;
-  jobLevelId?: string;
-  departmentId?: string;
-  responsibilities?: string[];
-  requirements?: string[];
+  purpose?: string;
+  requirement?: string;
+  department_sync?: number[];
 }
 
 export interface JobTitlePaginatedResponse {
@@ -36,7 +41,6 @@ export const jobTitleService = {
   async getAll(page: number = 1, limit: number = 100): Promise<ApiResponse<JobTitlePaginatedResponse>> {
     try {
       const response = await get<unknown>(`/v1/job-title?page=${page}&limit=${limit}`);
-      console.log("Raw Job Title API Response:", response);
 
       const res = response as { success?: boolean; data?: JobTitle[]; pagination?: JobTitlePaginatedResponse["pagination"] };
 
@@ -120,10 +124,10 @@ export const jobTitleService = {
   },
 
   // Get job titles by job level ID
-  async getByJobLevelId(jobLevelId: string): Promise<ApiResponse<JobTitle[]>> {
+  async getByJobLevelId(jobLevelId: number): Promise<ApiResponse<JobTitle[]>> {
     try {
       const response = await get<ApiResponse<JobTitle[]>>(
-        `/v1/job-title?jobLevelId=${jobLevelId}`
+        `/v1/job-title?job_level_id=${jobLevelId}`
       );
       return response;
     } catch (error: unknown) {
@@ -139,10 +143,10 @@ export const jobTitleService = {
   },
 
   // Get job titles by department ID
-  async getByDepartmentId(departmentId: string): Promise<ApiResponse<JobTitle[]>> {
+  async getByDepartmentId(departmentId: number): Promise<ApiResponse<JobTitle[]>> {
     try {
       const response = await get<ApiResponse<JobTitle[]>>(
-        `/v1/job-title?departmentId=${departmentId}`
+        `/v1/job-title?department_id=${departmentId}`
       );
       return response;
     } catch (error: unknown) {

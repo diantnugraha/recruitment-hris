@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
 import "./globals.css";
 
+import { Toaster } from "@/components/ui/sonner";
+
 const poppins = Poppins({
   subsets: ["latin"],
   variable: "--font-sans",
@@ -22,6 +24,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`${poppins.variable} font-sans antialiased`}>
         {children}
+        <Toaster position="top-right" richColors closeButton />
       </body>
     </html>
   );

@@ -34,26 +34,71 @@ export interface AuthState {
 }
 
 // Employee Types
+export type EmployeeStatus =
+  | "active"
+  | "inactive"
+  | "on_leave"
+  | "terminated"
+  | "permanent"
+  | "contract"
+  | "probation"
+  | "outsource"
+  | "exit";
+
+export type EmployeeGender = "male" | "female";
+
+export type MaritalStatus = "single" | "married" | "divorced" | "widowed";
+
 export interface Employee {
   id: string;
   employeeId: string;
   employeeNik?: string | null;
   firstName: string;
   lastName: string;
+  nickname?: string;
   email: string;
   phone: string;
   employeeContact?: string | null;
   dateOfBirth: string;
-  gender: "male" | "female";
+  gender: EmployeeGender;
   address: string;
   hireDate: string;
-  status: "active" | "inactive" | "on_leave" | "terminated";
+  status: EmployeeStatus;
   departmentId: string;
   divisionId: string;
   jobTitleId: string;
   jobLevelId: string;
   managerId?: string;
+  superiorId?: string;
   photo?: string;
+  // Employment details
+  employeeType?: string;
+  businessUnit?: string;
+  extension?: string;
+  location?: string;
+  fte?: number;
+  // Contract & probation dates
+  permanentDate?: string;
+  contractDate?: string;
+  contractEndDate?: string;
+  probationDate?: string;
+  probationEndDate?: string;
+  // Family info
+  motherName?: string;
+  fatherName?: string;
+  spouseName?: string;
+  maritalStatus?: MaritalStatus;
+  // Emergency contact
+  emergencyContactName?: string;
+  emergencyContactRelation?: string;
+  emergencyContactPhone?: string;
+  // Exit info
+  exitReason?: string;
+  exitDate?: string;
+  // Additional
+  religion?: string;
+  ethnicity?: string;
+  certificate?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -91,9 +136,13 @@ export interface Department {
   id: string;
   name: string;
   code: string;
+  category: "Profit Center" | "Non Profit Center";
   description?: string;
-  divisionId: string;
+  obsId: string;
+  divisionId?: string;
   headId?: string;
+  obs?: Organization;
+  division?: Division;
   createdAt: string;
   updatedAt: string;
 }
@@ -103,19 +152,44 @@ export interface JobLevel {
   name: string;
   category: string;
   description?: string;
+  order?: number;
+  canCreateJobTitle: boolean;
+  canCreateKpi: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface DepartmentJobTitle {
+  department: {
+    id: number;
+    name: string;
+    code: string;
+    obs?: {
+      id: number;
+      name: string;
+      cluster: string | null;
+    };
+  };
 }
 
 export interface JobTitle {
   id: string;
   name: string;
-  code: string;
+  code?: string;
   description?: string;
+  purpose?: string;
+  requirement?: string;
   jobLevelId: string;
-  departmentId?: string;
+  divisionId?: number;
+  directReportId?: string;
+  type?: "Administration" | "Technical";
   // Relations (populated by API)
   jobLevel?: JobLevel;
+  division?: { id: number; name: string; code: string | null };
+  directReport?: { id: string; name: string; jobLevel: JobLevel } | null;
+  departments?: DepartmentJobTitle[];
+  // Legacy fields (kept for backward compatibility)
+  departmentId?: string;
   department?: Department;
   // Can be string[] or rich text format (Slate.js nodes)
   responsibilities?: unknown;

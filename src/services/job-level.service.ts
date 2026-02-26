@@ -5,12 +5,18 @@ export interface CreateJobLevelRequest {
   name: string;
   category: string;
   description?: string;
+  order?: number;
+  canCreateJobTitle?: boolean;
+  canCreateKpi?: boolean;
 }
 
 export interface UpdateJobLevelRequest {
   name?: string;
   category?: string;
   description?: string;
+  order?: number;
+  canCreateJobTitle?: boolean;
+  canCreateKpi?: boolean;
 }
 
 export interface JobLevelPaginatedResponse {
@@ -28,7 +34,6 @@ export const jobLevelService = {
   async getAll(page: number = 1, limit: number = 100): Promise<ApiResponse<JobLevelPaginatedResponse>> {
     try {
       const response = await get<unknown>(`/v1/job-level?page=${page}&limit=${limit}`);
-      console.log("Raw Job Level API Response:", response);
 
       const res = response as { success?: boolean; data?: JobLevel[]; pagination?: JobLevelPaginatedResponse["pagination"] };
 
@@ -61,7 +66,6 @@ export const jobLevelService = {
 
       return { success: false, message: "Unexpected response format" };
     } catch (error: unknown) {
-      console.error("Job Level API Error:", error);
       return {
         success: false,
         message: "Failed to fetch job levels",
@@ -89,7 +93,6 @@ export const jobLevelService = {
 
       return { success: true, data: allData };
     } catch (error: unknown) {
-      console.error("Job Level fetchAll Error:", error);
       return { success: false, message: "Failed to fetch job levels" };
     }
   },

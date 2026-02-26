@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
 import {
   Plus,
   Eye,
@@ -10,22 +9,16 @@ import {
   Layers,
   Users,
   Loader2,
-  AlertCircle,
+  MoreHorizontal,
   Building2,
 } from "lucide-react";
+
 import { Header } from "@/components/layout/header";
 import { PageContainer } from "@/components/layout/page-container";
 import { DataTable } from "@/components/shared/data-table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   Dialog,
   DialogContent,
@@ -44,14 +37,23 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+
 import { useOrganizationStore } from "@/stores/organization-store";
-import { divisionService, CreateDivisionRequest } from "@/services/division.service";
+import { divisionService, CreateDivisionRequest, DivisionStats } from "@/services/division.service";
 import { obsService } from "@/services/obs.service";
+import { showToast } from "@/lib/utils/toast-messages";
 import { Division } from "@/types";
-import { formatShortDate } from "@/lib/utils";
+
 
 interface FormData {
   name: string;
@@ -76,15 +78,21 @@ export default function DivisionsPage() {
     setOrganizations,
     isLoading,
     setLoading,
-    error,
-    setError,
   } = useOrganizationStore();
+
+  const [stats, setStats] = React.useState<DivisionStats>({
+    totalDivisions: 0,
+    totalDepartments: 0,
+    totalEmployees: 0,
+  });
 
   const [currentPage, setCurrentPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(10);
+  const [totalItems, setTotalItems] = React.useState(0);
   const [searchQuery, setSearchQuery] = React.useState("");
 
   // Dialog states
+  const [isDetailDialogOpen, setIsDetailDialogOpen] = React.useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
@@ -92,27 +100,27 @@ export default function DivisionsPage() {
   const [formData, setFormData] = React.useState<FormData>(initialFormData);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
-  // Stats
-  const [totalEmployees] = React.useState(0);
-  const [totalDepartments] = React.useState(0);
-
-  // Fetch data on mount
+  // Fetch data on mount and when pagination changes
   React.useEffect(() => {
-    fetchDivisions();
+    fetchDivisions(currentPage, pageSize);
+  }, [currentPage, pageSize]);
+
+  React.useEffect(() => {
     fetchOrganizations();
+    fetchStats();
   }, []);
 
-  const fetchDivisions = async () => {
+  const fetchDivisions = async (page: number, limit: number) => {
     setLoading(true);
-    setError(null);
 
-    const response = await divisionService.getAll(1, 100);
-    console.log("Division API Response:", response);
+    const response = await divisionService.getAll(page, limit);
 
     if (response.success && response.data) {
-      setDivisions(response.data.data || []);
+      const divData = response.data.data || [];
+      setDivisions(divData);
+      setTotalItems(response.data.pagination?.total || divData.length);
     } else {
-      setError(response.message || "Failed to fetch divisions");
+      showToast.fetchError("divisions", response.message);
       setDivisions([]);
     }
 
@@ -120,14 +128,21 @@ export default function DivisionsPage() {
   };
 
   const fetchOrganizations = async () => {
-    const response = await obsService.getAll();
+    const response = await obsService.fetchAll();
     if (response.success && response.data) {
-      // OBS returns array directly
       const orgData = Array.isArray(response.data) ? response.data : [];
       setOrganizations(orgData);
     }
   };
 
+  const fetchStats = async () => {
+    const response = await divisionService.getStats();
+    if (response.success && response.data) {
+      setStats(response.data);
+    }
+  };
+
+  // Client-side search on current page data
   const filteredData = React.useMemo(() => {
     const divArray = Array.isArray(divisions) ? divisions : [];
     if (!searchQuery) return divArray;
@@ -135,9 +150,15 @@ export default function DivisionsPage() {
     return divArray.filter(
       (div) =>
         div.name.toLowerCase().includes(query) ||
-        div.code.toLowerCase().includes(query)
+        div.code.toLowerCase().includes(query) ||
+        (div.description && div.description.toLowerCase().includes(query))
     );
   }, [searchQuery, divisions]);
+
+  const handleDetailClick = (div: Division) => {
+    setSelectedDivision(div);
+    setIsDetailDialogOpen(true);
+  };
 
   const handleAddClick = () => {
     setFormData(initialFormData);
@@ -175,8 +196,11 @@ export default function DivisionsPage() {
       addDivision(response.data);
       setIsAddDialogOpen(false);
       setFormData(initialFormData);
+      setTotalItems((prev) => prev + 1);
+      fetchStats();
+      showToast.created("Division");
     } else {
-      setError(response.message || "Failed to create division");
+      showToast.createError("division", response.message);
     }
 
     setIsSubmitting(false);
@@ -199,8 +223,9 @@ export default function DivisionsPage() {
       setIsEditDialogOpen(false);
       setSelectedDivision(null);
       setFormData(initialFormData);
+      showToast.updated("Division");
     } else {
-      setError(response.message || "Failed to update division");
+      showToast.updateError("division", response.message);
     }
 
     setIsSubmitting(false);
@@ -217,8 +242,11 @@ export default function DivisionsPage() {
       deleteDivision(selectedDivision.id);
       setIsDeleteDialogOpen(false);
       setSelectedDivision(null);
+      setTotalItems((prev) => prev - 1);
+      fetchStats();
+      showToast.deleted("Division");
     } else {
-      setError(response.message || "Failed to delete division");
+      showToast.deleteError("division", response.message);
     }
 
     setIsSubmitting(false);
@@ -231,7 +259,9 @@ export default function DivisionsPage() {
       render: (_: unknown, row: Division) => (
         <div>
           <p className="font-medium">{row.name}</p>
-          <p className="text-xs text-muted-foreground">{row.description}</p>
+          <p className="text-xs text-muted-foreground line-clamp-1">
+            {row.description || "-"}
+          </p>
         </div>
       ),
     },
@@ -243,24 +273,35 @@ export default function DivisionsPage() {
       ),
     },
     {
-      key: "createdAt",
-      label: "Created",
-      render: (_: unknown, row: Division) => (
-        <span className="text-sm text-muted-foreground">
-          {formatShortDate(row.createdAt)}
-        </span>
-      ),
-    },
-    {
       key: "actions",
       label: "",
       className: "w-[50px]",
       render: (_: unknown, row: Division) => (
-        <Link href={`/organization/divisions/${row.id}`}>
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-accent">
-            <Eye className="h-4 w-4" />
-          </Button>
-        </Link>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => handleDetailClick(row)}>
+              <Eye className="mr-2 h-4 w-4" />
+              Detail
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleEditClick(row)}>
+              <Pencil className="mr-2 h-4 w-4" />
+              Edit
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="text-destructive focus:text-destructive"
+              onClick={() => handleDeleteClick(row)}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       ),
     },
   ];
@@ -270,22 +311,6 @@ export default function DivisionsPage() {
       <Header title="Divisions" />
       <PageContainer>
         <div className="space-y-6">
-          {/* Error Banner */}
-          {error && (
-            <div className="flex items-center gap-2 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
-              <AlertCircle className="h-4 w-4 flex-shrink-0" />
-              <span>{error}</span>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="ml-auto h-6 px-2 text-xs"
-                onClick={() => setError(null)}
-              >
-                Dismiss
-              </Button>
-            </div>
-          )}
-
           {/* Stats */}
           <div className="grid gap-4 sm:grid-cols-3">
             <Card>
@@ -295,7 +320,7 @@ export default function DivisionsPage() {
                 </div>
                 <div>
                   <p className="text-2xl font-semibold">
-                    {isLoading ? "-" : (divisions?.length || 0)}
+                    {isLoading ? "-" : stats.totalDivisions || totalItems}
                   </p>
                   <p className="text-sm text-muted-foreground">Total Divisions</p>
                 </div>
@@ -308,7 +333,7 @@ export default function DivisionsPage() {
                 </div>
                 <div>
                   <p className="text-2xl font-semibold">
-                    {isLoading ? "-" : totalEmployees}
+                    {isLoading ? "-" : stats.totalEmployees}
                   </p>
                   <p className="text-sm text-muted-foreground">Total Employees</p>
                 </div>
@@ -321,7 +346,7 @@ export default function DivisionsPage() {
                 </div>
                 <div>
                   <p className="text-2xl font-semibold">
-                    {isLoading ? "-" : totalDepartments}
+                    {isLoading ? "-" : stats.totalDepartments}
                   </p>
                   <p className="text-sm text-muted-foreground">Total Departments</p>
                 </div>
@@ -341,11 +366,14 @@ export default function DivisionsPage() {
               data={filteredData || []}
               columns={columns}
               searchable
-              searchPlaceholder="Search divisions..."
-              onSearch={setSearchQuery}
+              searchPlaceholder="Search by name, code, or description..."
+              onSearch={(value) => {
+                setSearchQuery(value);
+                setCurrentPage(1);
+              }}
               pagination
               pageSize={pageSize}
-              totalItems={filteredData?.length || 0}
+              totalItems={totalItems}
               currentPage={currentPage}
               onPageChange={setCurrentPage}
               onPageSizeChange={(size) => {
@@ -354,7 +382,7 @@ export default function DivisionsPage() {
               }}
               emptyMessage="No divisions found"
               actions={
-                <Button size="sm" onClick={handleAddClick}>
+                <Button onClick={handleAddClick}>
                   <Plus className="mr-2 h-4 w-4" />
                   Add Division
                 </Button>
@@ -413,11 +441,7 @@ export default function DivisionsPage() {
               </Button>
               <Button
                 onClick={handleCreate}
-                disabled={
-                  isSubmitting ||
-                  !formData.name ||
-                  !formData.code
-                }
+                disabled={isSubmitting || !formData.name || !formData.code}
               >
                 {isSubmitting ? (
                   <>
@@ -482,11 +506,7 @@ export default function DivisionsPage() {
               </Button>
               <Button
                 onClick={handleUpdate}
-                disabled={
-                  isSubmitting ||
-                  !formData.name ||
-                  !formData.code
-                }
+                disabled={isSubmitting || !formData.name || !formData.code}
               >
                 {isSubmitting ? (
                   <>
@@ -496,6 +516,40 @@ export default function DivisionsPage() {
                 ) : (
                   "Save Changes"
                 )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Detail Dialog */}
+        <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Division Detail</DialogTitle>
+              <DialogDescription>
+                Viewing division information.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="space-y-1.5">
+                <Label>Name</Label>
+                <Input value={selectedDivision?.name || ""} disabled />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Code</Label>
+                <Input value={selectedDivision?.code || ""} disabled />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Description</Label>
+                <Textarea value={selectedDivision?.description || "-"} disabled />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setIsDetailDialogOpen(false)}
+              >
+                Close
               </Button>
             </DialogFooter>
           </DialogContent>

@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
 import {
   Plus,
   Eye,
@@ -10,8 +9,10 @@ import {
   Building,
   Users,
   Loader2,
-  AlertCircle,
+  MoreHorizontal,
+  Layers,
 } from "lucide-react";
+
 import { Header } from "@/components/layout/header";
 import { PageContainer } from "@/components/layout/page-container";
 import { DataTable } from "@/components/shared/data-table";
@@ -53,23 +54,35 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+
 import { useOrganizationStore } from "@/stores/organization-store";
-import { departmentService, CreateDepartmentRequest } from "@/services/department.service";
+import {
+  departmentService,
+  CreateDepartmentRequest,
+  DepartmentStats,
+} from "@/services/department.service";
 import { divisionService } from "@/services/division.service";
+import { obsService } from "@/services/obs.service";
+import { showToast } from "@/lib/utils/toast-messages";
 import { Department } from "@/types";
-import { formatShortDate } from "@/lib/utils";
+
+const DEPARTMENT_CATEGORIES = ["Profit Center", "Non Profit Center"] as const;
 
 interface FormData {
   name: string;
   code: string;
+  category: "Profit Center" | "Non Profit Center";
   description: string;
+  obsId: string;
   divisionId: string;
 }
 
 const initialFormData: FormData = {
   name: "",
   code: "",
+  category: "Profit Center",
   description: "",
+  obsId: "",
   divisionId: "",
 };
 
@@ -82,11 +95,16 @@ export default function DepartmentsPage() {
     deleteDepartment,
     divisions,
     setDivisions,
+    organizations,
+    setOrganizations,
     isLoading,
     setLoading,
-    error,
-    setError,
   } = useOrganizationStore();
+
+  const [stats, setStats] = React.useState<DepartmentStats>({
+    totalDepartments: 0,
+    totalEmployees: 0,
+  });
 
   const [currentPage, setCurrentPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(10);
@@ -94,10 +112,12 @@ export default function DepartmentsPage() {
   const [searchQuery, setSearchQuery] = React.useState("");
 
   // Dialog states
+  const [isDetailDialogOpen, setIsDetailDialogOpen] = React.useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
-  const [selectedDepartment, setSelectedDepartment] = React.useState<Department | null>(null);
+  const [selectedDepartment, setSelectedDepartment] =
+    React.useState<Department | null>(null);
   const [formData, setFormData] = React.useState<FormData>(initialFormData);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
@@ -108,26 +128,21 @@ export default function DepartmentsPage() {
 
   React.useEffect(() => {
     fetchDivisions();
+    fetchOrganizations();
+    fetchStats();
   }, []);
 
   const fetchDepartments = async (page: number, limit: number) => {
     setLoading(true);
-    setError(null);
 
     const response = await departmentService.getAll(page, limit);
-    console.log("Department Page - Response:", response);
-    console.log("Department Page - Success:", response.success);
-    console.log("Department Page - Data:", response.data);
 
     if (response.success && response.data) {
       const deptData = response.data.data || [];
-      console.log("Department Page - Setting departments:", deptData);
-      console.log("Department Page - Departments length:", deptData.length);
       setDepartments(deptData);
       setTotalItems(response.data.pagination?.total || deptData.length);
     } else {
-      console.log("Department Page - Failed:", response.message);
-      setError(response.message || "Failed to fetch departments");
+      showToast.fetchError("departments", response.message);
       setDepartments([]);
     }
 
@@ -135,14 +150,29 @@ export default function DepartmentsPage() {
   };
 
   const fetchDivisions = async () => {
-    const response = await divisionService.getAll(1, 100);
+    const response = await divisionService.fetchAll();
     if (response.success && response.data) {
-      const divData = Array.isArray(response.data.data) ? response.data.data : [];
+      const divData = Array.isArray(response.data) ? response.data : [];
       setDivisions(divData);
     }
   };
 
-  // Filter for search (client-side search on current page data)
+  const fetchOrganizations = async () => {
+    const response = await obsService.fetchAll();
+    if (response.success && response.data) {
+      const orgData = Array.isArray(response.data) ? response.data : [];
+      setOrganizations(orgData);
+    }
+  };
+
+  const fetchStats = async () => {
+    const response = await departmentService.getStats();
+    if (response.success && response.data) {
+      setStats(response.data);
+    }
+  };
+
+  // Client-side search on current page data
   const filteredData = React.useMemo(() => {
     const deptArray = Array.isArray(departments) ? departments : [];
     if (!searchQuery) return deptArray;
@@ -150,12 +180,20 @@ export default function DepartmentsPage() {
     return deptArray.filter(
       (dept) =>
         dept.name.toLowerCase().includes(query) ||
-        dept.code.toLowerCase().includes(query)
+        dept.code.toLowerCase().includes(query) ||
+        (dept.description && dept.description.toLowerCase().includes(query)) ||
+        dept.category.toLowerCase().includes(query)
     );
   }, [searchQuery, departments]);
 
-  const getDivisionName = (divId: string) => {
+  const getDivisionName = (divId?: string) => {
+    if (!divId) return "-";
     return divisions.find((div) => div.id === divId)?.name || "-";
+  };
+
+  const handleDetailClick = (dept: Department) => {
+    setSelectedDepartment(dept);
+    setIsDetailDialogOpen(true);
   };
 
   const handleAddClick = () => {
@@ -168,8 +206,10 @@ export default function DepartmentsPage() {
     setFormData({
       name: dept.name,
       code: dept.code,
+      category: dept.category,
       description: dept.description || "",
-      divisionId: dept.divisionId,
+      obsId: dept.obsId,
+      divisionId: dept.divisionId || "",
     });
     setIsEditDialogOpen(true);
   };
@@ -185,8 +225,10 @@ export default function DepartmentsPage() {
     const data: CreateDepartmentRequest = {
       name: formData.name,
       code: formData.code,
+      category: formData.category,
       description: formData.description || undefined,
-      divisionId: formData.divisionId,
+      obsId: formData.obsId,
+      divisionId: formData.divisionId || undefined,
     };
 
     const response = await departmentService.create(data);
@@ -195,8 +237,11 @@ export default function DepartmentsPage() {
       addDepartment(response.data);
       setIsAddDialogOpen(false);
       setFormData(initialFormData);
+      setTotalItems((prev) => prev + 1);
+      fetchStats();
+      showToast.created("Department");
     } else {
-      setError(response.message || "Failed to create department");
+      showToast.createError("department", response.message);
     }
 
     setIsSubmitting(false);
@@ -210,8 +255,10 @@ export default function DepartmentsPage() {
     const response = await departmentService.update(selectedDepartment.id, {
       name: formData.name,
       code: formData.code,
+      category: formData.category,
       description: formData.description || undefined,
-      divisionId: formData.divisionId,
+      obsId: formData.obsId,
+      divisionId: formData.divisionId || undefined,
     });
 
     if (response.success && response.data) {
@@ -219,8 +266,9 @@ export default function DepartmentsPage() {
       setIsEditDialogOpen(false);
       setSelectedDepartment(null);
       setFormData(initialFormData);
+      showToast.updated("Department");
     } else {
-      setError(response.message || "Failed to update department");
+      showToast.updateError("department", response.message);
     }
 
     setIsSubmitting(false);
@@ -237,23 +285,17 @@ export default function DepartmentsPage() {
       deleteDepartment(selectedDepartment.id);
       setIsDeleteDialogOpen(false);
       setSelectedDepartment(null);
+      setTotalItems((prev) => prev - 1);
+      fetchStats();
+      showToast.deleted("Department");
     } else {
-      setError(response.message || "Failed to delete department");
+      showToast.deleteError("department", response.message);
     }
 
     setIsSubmitting(false);
   };
 
   const columns = [
-    {
-      key: "name",
-      label: "Department",
-      render: (_: unknown, row: Department) => (
-        <div>
-          <p className="font-medium">{row.name}</p>
-        </div>
-      ),
-    },
     {
       key: "code",
       label: "Code",
@@ -262,10 +304,23 @@ export default function DepartmentsPage() {
       ),
     },
     {
+      key: "name",
+      label: "Department",
+      render: (_: unknown, row: Department) => (
+        <p className="font-medium">{row.name}</p>
+      ),
+    },
+    {
       key: "category",
       label: "Category",
-      render: (_: unknown, row: Department & { category?: string }) => (
-        <span className="text-sm">{row.category || "-"}</span>
+      render: (_: unknown, row: Department) => (
+        <Badge
+          variant={
+            row.category === "Profit Center" ? "default" : "secondary"
+          }
+        >
+          {row.category}
+        </Badge>
       ),
     },
     {
@@ -276,24 +331,39 @@ export default function DepartmentsPage() {
       ),
     },
     {
-      key: "createdAt",
-      label: "Created",
-      render: (_: unknown, row: Department) => (
-        <span className="text-sm text-muted-foreground">
-          {formatShortDate(row.createdAt)}
-        </span>
-      ),
-    },
-    {
       key: "actions",
       label: "",
       className: "w-[50px]",
       render: (_: unknown, row: Department) => (
-        <Link href={`/organization/departments/${row.id}`}>
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-accent">
-            <Eye className="h-4 w-4" />
-          </Button>
-        </Link>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-muted-foreground"
+            >
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => handleDetailClick(row)}>
+              <Eye className="mr-2 h-4 w-4" />
+              Detail
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleEditClick(row)}>
+              <Pencil className="mr-2 h-4 w-4" />
+              Edit
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="text-destructive focus:text-destructive"
+              onClick={() => handleDeleteClick(row)}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       ),
     },
   ];
@@ -303,24 +373,8 @@ export default function DepartmentsPage() {
       <Header title="Departments" />
       <PageContainer>
         <div className="space-y-6">
-          {/* Error Banner */}
-          {error && (
-            <div className="flex items-center gap-2 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
-              <AlertCircle className="h-4 w-4 flex-shrink-0" />
-              <span>{error}</span>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="ml-auto h-6 px-2 text-xs"
-                onClick={() => setError(null)}
-              >
-                Dismiss
-              </Button>
-            </div>
-          )}
-
           {/* Stats */}
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-3">
             <Card>
               <CardContent className="flex items-center gap-4 p-5">
                 <div className="flex h-10 w-10 items-center justify-center rounded-md bg-secondary">
@@ -328,9 +382,13 @@ export default function DepartmentsPage() {
                 </div>
                 <div>
                   <p className="text-2xl font-semibold">
-                    {isLoading ? "-" : (departments?.length || 0)}
+                    {isLoading
+                      ? "-"
+                      : stats.totalDepartments || totalItems}
                   </p>
-                  <p className="text-sm text-muted-foreground">Total Departments</p>
+                  <p className="text-sm text-muted-foreground">
+                    Total Departments
+                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -341,9 +399,26 @@ export default function DepartmentsPage() {
                 </div>
                 <div>
                   <p className="text-2xl font-semibold">
-                    {isLoading ? "-" : (divisions?.length || 0)}
+                    {isLoading ? "-" : stats.totalEmployees}
                   </p>
-                  <p className="text-sm text-muted-foreground">Total Divisions</p>
+                  <p className="text-sm text-muted-foreground">
+                    Total Employees
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="flex items-center gap-4 p-5">
+                <div className="flex h-10 w-10 items-center justify-center rounded-md bg-secondary">
+                  <Layers className="h-5 w-5 text-muted-foreground" />
+                </div>
+                <div>
+                  <p className="text-2xl font-semibold">
+                    {isLoading ? "-" : divisions.length}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Total Divisions
+                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -361,8 +436,11 @@ export default function DepartmentsPage() {
               data={filteredData || []}
               columns={columns}
               searchable
-              searchPlaceholder="Search departments..."
-              onSearch={setSearchQuery}
+              searchPlaceholder="Search by name, code, or category..."
+              onSearch={(value) => {
+                setSearchQuery(value);
+                setCurrentPage(1);
+              }}
               pagination
               pageSize={pageSize}
               totalItems={totalItems}
@@ -374,7 +452,7 @@ export default function DepartmentsPage() {
               }}
               emptyMessage="No departments found"
               actions={
-                <Button size="sm" onClick={handleAddClick}>
+                <Button onClick={handleAddClick}>
                   <Plus className="mr-2 h-4 w-4" />
                   Add Department
                 </Button>
@@ -399,7 +477,9 @@ export default function DepartmentsPage() {
                   id="name"
                   placeholder="Enter department name"
                   value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, name: e.target.value })
+                  }
                 />
               </div>
               <div className="space-y-1.5">
@@ -408,11 +488,56 @@ export default function DepartmentsPage() {
                   id="code"
                   placeholder="Enter department code"
                   value={formData.code}
-                  onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, code: e.target.value })
+                  }
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="division">Division *</Label>
+                <Label htmlFor="category">Category *</Label>
+                <Select
+                  value={formData.category}
+                  onValueChange={(value) =>
+                    setFormData({
+                      ...formData,
+                      category: value as FormData["category"],
+                    })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DEPARTMENT_CATEGORIES.map((cat) => (
+                      <SelectItem key={cat} value={cat}>
+                        {cat}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="obs">OBS *</Label>
+                <Select
+                  value={formData.obsId}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, obsId: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select OBS" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {organizations.map((org) => (
+                      <SelectItem key={org.id} value={org.id}>
+                        {org.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="division">Division</Label>
                 <Select
                   value={formData.divisionId}
                   onValueChange={(value) =>
@@ -420,7 +545,7 @@ export default function DepartmentsPage() {
                   }
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select division" />
+                    <SelectValue placeholder="Select division (optional)" />
                   </SelectTrigger>
                   <SelectContent>
                     {divisions.map((div) => (
@@ -457,7 +582,8 @@ export default function DepartmentsPage() {
                   isSubmitting ||
                   !formData.name ||
                   !formData.code ||
-                  !formData.divisionId
+                  !formData.obsId ||
+                  !formData.category
                 }
               >
                 {isSubmitting ? (
@@ -489,7 +615,9 @@ export default function DepartmentsPage() {
                   id="edit-name"
                   placeholder="Enter department name"
                   value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, name: e.target.value })
+                  }
                 />
               </div>
               <div className="space-y-1.5">
@@ -498,11 +626,56 @@ export default function DepartmentsPage() {
                   id="edit-code"
                   placeholder="Enter department code"
                   value={formData.code}
-                  onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, code: e.target.value })
+                  }
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="edit-division">Division *</Label>
+                <Label htmlFor="edit-category">Category *</Label>
+                <Select
+                  value={formData.category}
+                  onValueChange={(value) =>
+                    setFormData({
+                      ...formData,
+                      category: value as FormData["category"],
+                    })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DEPARTMENT_CATEGORIES.map((cat) => (
+                      <SelectItem key={cat} value={cat}>
+                        {cat}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-obs">OBS *</Label>
+                <Select
+                  value={formData.obsId}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, obsId: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select OBS" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {organizations.map((org) => (
+                      <SelectItem key={org.id} value={org.id}>
+                        {org.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-division">Division</Label>
                 <Select
                   value={formData.divisionId}
                   onValueChange={(value) =>
@@ -510,7 +683,7 @@ export default function DepartmentsPage() {
                   }
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select division" />
+                    <SelectValue placeholder="Select division (optional)" />
                   </SelectTrigger>
                   <SelectContent>
                     {divisions.map((div) => (
@@ -547,7 +720,8 @@ export default function DepartmentsPage() {
                   isSubmitting ||
                   !formData.name ||
                   !formData.code ||
-                  !formData.divisionId
+                  !formData.obsId ||
+                  !formData.category
                 }
               >
                 {isSubmitting ? (
@@ -563,18 +737,82 @@ export default function DepartmentsPage() {
           </DialogContent>
         </Dialog>
 
+        {/* Detail Dialog */}
+        <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Department Detail</DialogTitle>
+              <DialogDescription>
+                Viewing department information.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="space-y-1.5">
+                <Label>Name</Label>
+                <Input value={selectedDepartment?.name || ""} disabled />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Code</Label>
+                <Input value={selectedDepartment?.code || ""} disabled />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Category</Label>
+                <Input value={selectedDepartment?.category || ""} disabled />
+              </div>
+              <div className="space-y-1.5">
+                <Label>OBS</Label>
+                <Input
+                  value={
+                    organizations.find(
+                      (org) => org.id === selectedDepartment?.obsId
+                    )?.name || "-"
+                  }
+                  disabled
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Division</Label>
+                <Input
+                  value={getDivisionName(selectedDepartment?.divisionId)}
+                  disabled
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Description</Label>
+                <Textarea
+                  value={selectedDepartment?.description || "-"}
+                  disabled
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setIsDetailDialogOpen(false)}
+              >
+                Close
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         {/* Delete Confirmation Dialog */}
-        <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialog
+          open={isDeleteDialogOpen}
+          onOpenChange={setIsDeleteDialogOpen}
+        >
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Delete Department</AlertDialogTitle>
               <AlertDialogDescription>
-                Are you sure you want to delete &quot;{selectedDepartment?.name}&quot;? This
-                action cannot be undone.
+                Are you sure you want to delete &quot;
+                {selectedDepartment?.name}&quot;? This action cannot be undone.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel disabled={isSubmitting}>Cancel</AlertDialogCancel>
+              <AlertDialogCancel disabled={isSubmitting}>
+                Cancel
+              </AlertDialogCancel>
               <AlertDialogAction
                 onClick={handleDelete}
                 disabled={isSubmitting}

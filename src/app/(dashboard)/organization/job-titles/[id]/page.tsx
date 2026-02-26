@@ -4,11 +4,14 @@ import * as React from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   ArrowLeft,
+  Pencil,
   Trash2,
   Loader2,
   Briefcase,
   ClipboardList,
   CheckCircle2,
+  Building2,
+  FileText,
 } from "lucide-react";
 
 import { Header } from "@/components/layout/header";
@@ -29,14 +32,10 @@ import {
 
 import { jobTitleService } from "@/services/job-title.service";
 import { jobLevelService } from "@/services/job-level.service";
-import { departmentService } from "@/services/department.service";
-import { JobTitle, JobLevel, Department } from "@/types";
-import {
-  formatShortDate,
-  parseRichTextToArray,
-  parseRichTextToString,
-  splitTextToItems,
-} from "@/lib/utils";
+import { SlateRenderer, hasSlateContent } from "@/components/shared/slate-renderer";
+import { showToast } from "@/lib/utils/toast-messages";
+import { JobTitle, JobLevel } from "@/types";
+import { formatShortDate } from "@/lib/utils";
 
 // Detail field component — label on top, value below
 function DetailField({ label, value }: { label: string; value: string }) {
@@ -57,7 +56,6 @@ export default function JobTitleDetailPage() {
 
   const [jobTitle, setJobTitle] = React.useState<JobTitle | null>(null);
   const [allJobLevels, setAllJobLevels] = React.useState<JobLevel[]>([]);
-  const [allDepartments, setAllDepartments] = React.useState<Department[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
@@ -67,10 +65,9 @@ export default function JobTitleDetailPage() {
     setIsLoading(true);
     setError(null);
 
-    const [titleRes, levelRes, deptRes] = await Promise.all([
+    const [titleRes, levelRes] = await Promise.all([
       jobTitleService.getById(id),
       jobLevelService.fetchAll(),
-      departmentService.fetchAll(),
     ]);
 
     if (titleRes.success && titleRes.data) {
@@ -81,9 +78,6 @@ export default function JobTitleDetailPage() {
 
     if (levelRes.success && levelRes.data) {
       setAllJobLevels(levelRes.data);
-    }
-    if (deptRes.success && deptRes.data) {
-      setAllDepartments(deptRes.data);
     }
 
     setIsLoading(false);
@@ -98,9 +92,10 @@ export default function JobTitleDetailPage() {
     setIsDeleting(true);
     const res = await jobTitleService.delete(jobTitle.id);
     if (res.success) {
+      showToast.deleted("Job Title");
       router.push("/organization/job-titles");
     } else {
-      setError(res.message || "Failed to delete job title");
+      showToast.deleteError("job title", res.message);
       setIsDeleting(false);
       setIsDeleteDialogOpen(false);
     }
@@ -137,29 +132,21 @@ export default function JobTitleDetailPage() {
     );
   }
 
-  // Resolve relations: use embedded relation first, then lookup from fetched lists
+  // Resolve job level name
   const jobLevelName =
     jobTitle.jobLevel?.name ||
     allJobLevels.find((l) => l.id === jobTitle.jobLevelId)?.name ||
     "—";
-  const departmentName =
-    jobTitle.department?.name ||
-    allDepartments.find((d) => d.id === jobTitle.departmentId)?.name ||
-    "—";
 
-  const descText = parseRichTextToString(jobTitle.description);
+  // Get department names from many-to-many relation
+  const departmentNames =
+    jobTitle.departments && jobTitle.departments.length > 0
+      ? jobTitle.departments.map((d) => d.department.name)
+      : [];
 
-  // Get responsibilities — from field or parse from description
-  let responsibilities = parseRichTextToArray(jobTitle.responsibilities);
-  if (responsibilities.length === 0 && descText && descText.length > 50) {
-    responsibilities = splitTextToItems(descText);
-  }
-
-  const requirements = parseRichTextToArray(jobTitle.requirements);
-
-  // Only show description if it's not being used as responsibilities
-  const showDescription =
-    descText && !(responsibilities.length > 0 && !jobTitle.responsibilities);
+  // Resolve division and direct report
+  const divisionName = jobTitle.division?.name || "—";
+  const directReportName = jobTitle.directReport?.name || "—";
 
   return (
     <>
@@ -176,6 +163,15 @@ export default function JobTitleDetailPage() {
               Back to Job Titles
             </button>
             <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                onClick={() => router.push(`/organization/job-titles/${id}/edit`)}
+              >
+                <Pencil className="h-4 w-4" />
+                Edit
+              </Button>
               <Button
                 variant="outline"
                 size="sm"
@@ -198,19 +194,28 @@ export default function JobTitleDetailPage() {
                     <Briefcase className="h-7 w-7" />
                   </div>
                   <div>
-                    <div className="flex items-center gap-2.5">
-                      <h1 className="text-lg font-bold">{jobTitle.name}</h1>
-                      <Badge variant="outline" className="font-mono">
-                        {jobTitle.code}
-                      </Badge>
-                    </div>
+                    <h1 className="text-lg font-bold">{jobTitle.name}</h1>
                     <div className="mt-1 flex items-center gap-2 flex-wrap">
                       <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100">
                         {jobLevelName}
                       </Badge>
-                      <Badge variant="secondary">
-                        {departmentName}
-                      </Badge>
+                      {jobTitle.type && (
+                        <Badge
+                          variant="outline"
+                          className={
+                            jobTitle.type === "Technical"
+                              ? "border-purple-200 bg-purple-50 text-purple-700"
+                              : "border-amber-200 bg-amber-50 text-amber-700"
+                          }
+                        >
+                          {jobTitle.type}
+                        </Badge>
+                      )}
+                      {departmentNames.map((name) => (
+                        <Badge key={name} variant="secondary">
+                          {name}
+                        </Badge>
+                      ))}
                     </div>
                   </div>
                 </div>
@@ -226,104 +231,86 @@ export default function JobTitleDetailPage() {
                 </h2>
                 <div className="grid grid-cols-2 gap-x-8 gap-y-4">
                   <DetailField label="Job Title" value={jobTitle.name} />
-                  <DetailField label="Code" value={jobTitle.code} />
                   <DetailField label="Job Level" value={jobLevelName} />
-                  <DetailField label="Department" value={departmentName} />
-                  {showDescription && (
-                    <div className="col-span-2">
-                      <DetailField label="Description" value={descText} />
+                  <DetailField label="Type" value={jobTitle.type || "—"} />
+                  <DetailField label="Division" value={divisionName} />
+                  <DetailField label="Direct Report Line" value={directReportName} />
+                  <div />
+                  <div className="col-span-2">
+                    <div className="space-y-1">
+                      <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                        Departments
+                      </p>
+                      {departmentNames.length > 0 ? (
+                        <div className="flex flex-wrap gap-1.5 pt-0.5">
+                          {departmentNames.map((name) => (
+                            <Badge key={name} variant="outline" className="gap-1 text-xs">
+                              <Building2 className="h-3 w-3" />
+                              {name}
+                            </Badge>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm font-medium">—</p>
+                      )}
                     </div>
-                  )}
+                  </div>
                   <DetailField label="Created" value={formatShortDate(jobTitle.createdAt)} />
                   <DetailField label="Last Updated" value={formatShortDate(jobTitle.updatedAt)} />
                 </div>
               </div>
 
-              {/* Dashed separator */}
+              {/* General Job Purpose */}
               <div className="border-t border-dashed" />
-
-              {/* Responsibilities */}
               <div>
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-sm font-semibold uppercase tracking-wide flex items-center gap-2">
-                    <div className="h-6 w-6 rounded-md bg-blue-100 flex items-center justify-center">
-                      <ClipboardList className="h-3.5 w-3.5 text-blue-600" />
-                    </div>
-                    Responsibilities
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="h-6 w-6 rounded-md bg-blue-100 flex items-center justify-center">
+                    <ClipboardList className="h-3.5 w-3.5 text-blue-600" />
+                  </div>
+                  <h2 className="text-sm font-semibold uppercase tracking-wide">
+                    General Job Purpose
                   </h2>
-                  {responsibilities.length > 0 && (
-                    <span className="text-xs text-muted-foreground">
-                      {responsibilities.length} items
-                    </span>
-                  )}
                 </div>
-                {responsibilities.length > 0 ? (
-                  <div className="rounded-lg border bg-card">
-                    {responsibilities.map((item, index) => (
-                      <div
-                        key={index}
-                        className={`flex items-start gap-3 px-4 py-3 text-sm ${
-                          index !== responsibilities.length - 1 ? "border-b" : ""
-                        }`}
-                      >
-                        <span className="flex-shrink-0 h-5 w-5 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-medium">
-                          {index + 1}
-                        </span>
-                        <span className="text-muted-foreground leading-relaxed">
-                          {item}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+                {hasSlateContent(jobTitle.purpose) ? (
+                  <SlateRenderer value={jobTitle.purpose} />
                 ) : (
-                  <div className="rounded-lg border border-dashed p-4 text-center">
-                    <p className="text-sm text-muted-foreground">
-                      No responsibilities defined
-                    </p>
-                  </div>
+                  <p className="text-sm text-muted-foreground italic">No Data</p>
                 )}
               </div>
 
-              {/* Dashed separator */}
+              {/* Job Description */}
               <div className="border-t border-dashed" />
-
-              {/* Requirements */}
               <div>
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-sm font-semibold uppercase tracking-wide flex items-center gap-2">
-                    <div className="h-6 w-6 rounded-md bg-green-100 flex items-center justify-center">
-                      <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
-                    </div>
-                    Requirements
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="h-6 w-6 rounded-md bg-gray-100 flex items-center justify-center">
+                    <FileText className="h-3.5 w-3.5 text-gray-600" />
+                  </div>
+                  <h2 className="text-sm font-semibold uppercase tracking-wide">
+                    Job Description
                   </h2>
-                  {requirements.length > 0 && (
-                    <span className="text-xs text-muted-foreground">
-                      {requirements.length} items
-                    </span>
-                  )}
                 </div>
-                {requirements.length > 0 ? (
-                  <div className="rounded-lg border bg-card">
-                    {requirements.map((item, index) => (
-                      <div
-                        key={index}
-                        className={`flex items-start gap-3 px-4 py-3 text-sm ${
-                          index !== requirements.length - 1 ? "border-b" : ""
-                        }`}
-                      >
-                        <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
-                        <span className="text-muted-foreground leading-relaxed">
-                          {item}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+                {hasSlateContent(jobTitle.description) ? (
+                  <SlateRenderer value={jobTitle.description} />
                 ) : (
-                  <div className="rounded-lg border border-dashed p-4 text-center">
-                    <p className="text-sm text-muted-foreground">
-                      No requirements defined
-                    </p>
+                  <p className="text-sm text-muted-foreground italic">No Data</p>
+                )}
+              </div>
+
+              {/* Job Requirements */}
+              <div className="border-t border-dashed" />
+              <div>
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="h-6 w-6 rounded-md bg-green-100 flex items-center justify-center">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
                   </div>
+                  <h2 className="text-sm font-semibold uppercase tracking-wide">
+                    Job Requirements
+                  </h2>
+                </div>
+                {hasSlateContent(jobTitle.requirement) ? (
+                  <SlateRenderer value={jobTitle.requirement} />
+                ) : (
+                  <p className="text-sm text-muted-foreground italic">No Data</p>
                 )}
               </div>
             </CardContent>

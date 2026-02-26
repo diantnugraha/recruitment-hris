@@ -4,15 +4,19 @@ import { Department, ApiResponse, PaginatedResponse } from "@/types";
 export interface CreateDepartmentRequest {
   name: string;
   code: string;
+  category: "Profit Center" | "Non Profit Center";
   description?: string;
-  divisionId: string;
+  obsId: string;
+  divisionId?: string;
   headId?: string;
 }
 
 export interface UpdateDepartmentRequest {
   name?: string;
   code?: string;
+  category?: "Profit Center" | "Non Profit Center";
   description?: string;
+  obsId?: string;
   divisionId?: string;
   headId?: string;
 }
@@ -27,17 +31,20 @@ export interface DepartmentPaginatedResponse {
   };
 }
 
+export interface DepartmentStats {
+  totalDepartments: number;
+  totalEmployees: number;
+}
+
 export const departmentService = {
   // Get all departments with pagination
   async getAll(page: number = 1, limit: number = 100): Promise<ApiResponse<DepartmentPaginatedResponse>> {
     try {
       const response = await get<unknown>(`/v1/department?page=${page}&limit=${limit}`);
-      console.log("Raw Department API Response:", response);
 
       const res = response as { success?: boolean; data?: Department[]; pagination?: DepartmentPaginatedResponse["pagination"] };
 
       // API returns: { success: true, data: [...], pagination: {...} }
-      // OR: { data: [...], pagination: {...} }
       if (res.data && Array.isArray(res.data)) {
         return {
           success: true,
@@ -66,7 +73,6 @@ export const departmentService = {
 
       return { success: false, message: "Unexpected response format" };
     } catch (error: unknown) {
-      console.error("Department API Error:", error);
       return {
         success: false,
         message: "Failed to fetch departments",
@@ -94,7 +100,6 @@ export const departmentService = {
 
       return { success: true, data: allData };
     } catch (error: unknown) {
-      console.error("Department fetchAll Error:", error);
       return { success: false, message: "Failed to fetch departments" };
     }
   },
@@ -155,6 +160,23 @@ export const departmentService = {
       return {
         success: false,
         message: "Failed to fetch departments",
+      };
+    }
+  },
+
+  // Get department statistics
+  async getStats(): Promise<ApiResponse<DepartmentStats>> {
+    try {
+      const response = await get<ApiResponse<DepartmentStats>>("/v1/department/stats");
+      return response;
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: ApiResponse<DepartmentStats> } };
+      if (err.response?.data) {
+        return err.response.data;
+      }
+      return {
+        success: false,
+        message: "Failed to fetch department stats",
       };
     }
   },

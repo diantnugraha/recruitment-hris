@@ -1,5 +1,5 @@
 import { get, post, put, del } from "@/lib/axios";
-import { Organization, ApiResponse, PaginatedResponse } from "@/types";
+import { Organization, ApiResponse } from "@/types";
 
 export interface CreateOrganizationRequest {
   name: string;
@@ -19,28 +19,58 @@ export interface OrganizationStats {
   totalDepartments: number;
 }
 
-export const obsService = {
-  // Get all organizations (tree structure)
-  async getAll(): Promise<ApiResponse<Organization[]>> {
-    try {
-      const response = await get<unknown>("/v1/obs");
-      console.log("Raw OBS API Response:", response);
+export interface OrganizationPaginatedResponse {
+  data: Organization[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
 
-      const res = response as { success?: boolean; data?: Organization[]; pagination?: unknown };
+export const obsService = {
+  // Get all organizations with pagination
+  async getAll(page: number = 1, limit: number = 100): Promise<ApiResponse<OrganizationPaginatedResponse>> {
+    try {
+      const response = await get<unknown>(`/v1/obs?page=${page}&limit=${limit}`);
+
+      const res = response as {
+        success?: boolean;
+        data?: Organization[];
+        pagination?: OrganizationPaginatedResponse["pagination"];
+      };
 
       // API returns: { success: true, data: [...], pagination: {...} }
-      if (res.success && res.data && Array.isArray(res.data)) {
-        return { success: true, data: res.data };
+      if (res.data && Array.isArray(res.data)) {
+        return {
+          success: true,
+          data: {
+            data: res.data,
+            pagination: res.pagination || {
+              page: 1,
+              limit: res.data.length,
+              total: res.data.length,
+              totalPages: 1,
+            },
+          },
+        };
       }
 
       // Handle direct array response
       if (Array.isArray(response)) {
-        return { success: true, data: response as Organization[] };
-      }
-
-      // Handle { data: [...] } without success field
-      if (res.data && Array.isArray(res.data)) {
-        return { success: true, data: res.data };
+        return {
+          success: true,
+          data: {
+            data: response as Organization[],
+            pagination: {
+              page: 1,
+              limit: response.length,
+              total: response.length,
+              totalPages: 1,
+            },
+          },
+        };
       }
 
       return { success: false, message: "Unexpected response format" };
@@ -53,36 +83,35 @@ export const obsService = {
     }
   },
 
-  // Get organizations with pagination
-  async getPaginated(
-    page: number = 1,
-    pageSize: number = 10
-  ): Promise<ApiResponse<PaginatedResponse<Organization>>> {
+  // Fetch all organizations by auto-paginating
+  async fetchAll(): Promise<ApiResponse<Organization[]>> {
     try {
-      const response = await get<ApiResponse<PaginatedResponse<Organization>>>(
-        `/v1/obs?page=${page}&pageSize=${pageSize}`
-      );
-      return response;
+      const allData: Organization[] = [];
+      let page = 1;
+      let totalPages = 1;
+
+      do {
+        const res = await this.getAll(page, 100);
+        if (res.success && res.data) {
+          allData.push(...res.data.data);
+          totalPages = res.data.pagination.totalPages;
+        } else {
+          return { success: false, message: res.message || "Failed to fetch organizations" };
+        }
+        page++;
+      } while (page <= totalPages);
+
+      return { success: true, data: allData };
     } catch (error: unknown) {
-      const err = error as {
-        response?: { data?: ApiResponse<PaginatedResponse<Organization>> };
-      };
-      if (err.response?.data) {
-        return err.response.data;
-      }
-      return {
-        success: false,
-        message: "Failed to fetch organizations",
-      };
+      console.error("OBS fetchAll Error:", error);
+      return { success: false, message: "Failed to fetch organizations" };
     }
   },
 
   // Get single organization by ID
   async getById(id: string): Promise<ApiResponse<Organization>> {
     try {
-      const response = await get<ApiResponse<Organization>>(
-        `/v1/obs/${id}`
-      );
+      const response = await get<ApiResponse<Organization>>(`/v1/obs/${id}`);
       return response;
     } catch (error: unknown) {
       const err = error as { response?: { data?: ApiResponse<Organization> } };

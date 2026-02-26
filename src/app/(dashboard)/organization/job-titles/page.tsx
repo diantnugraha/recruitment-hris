@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Plus,
   Pencil,
@@ -11,9 +11,11 @@ import {
   Loader2,
   AlertCircle,
   Eye,
-  CheckCircle2,
-  ClipboardList,
+  ChevronsUpDown,
+  MoreHorizontal,
+  X,
 } from "lucide-react";
+
 import { Header } from "@/components/layout/header";
 import { PageContainer } from "@/components/layout/page-container";
 import { DataTable } from "@/components/shared/data-table";
@@ -55,46 +57,61 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useOrganizationStore } from "@/stores/organization-store";
 import { jobTitleService, CreateJobTitleRequest } from "@/services/job-title.service";
 import { jobLevelService } from "@/services/job-level.service";
 import { departmentService } from "@/services/department.service";
+import { divisionService } from "@/services/division.service";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
+import { showToast } from "@/lib/utils/toast-messages";
 import { JobTitle } from "@/types";
-import { formatShortDate, parseRichTextToArray, parseRichTextToString, splitTextToItems } from "@/lib/utils";
 
 interface FormData {
   name: string;
-  code: string;
   description: string;
+  purpose: string;
+  requirement: string;
   jobLevelId: string;
-  departmentId: string;
-  responsibilities: string;
-  requirements: string;
+  type: "Administration" | "Technical" | "";
+  divisionId: string;
+  directReportId: string;
+  departmentIds: string[];
 }
 
 const initialFormData: FormData = {
   name: "",
-  code: "",
   description: "",
+  purpose: "",
+  requirement: "",
   jobLevelId: "",
-  departmentId: "",
-  responsibilities: "",
-  requirements: "",
+  type: "",
+  divisionId: "",
+  directReportId: "",
+  departmentIds: [],
 };
 
+// Helper to get department names from job title's many-to-many relation
+function getDepartmentNames(row: JobTitle): string[] {
+  if (row.departments && row.departments.length > 0) {
+    return row.departments.map((d) => d.department.name);
+  }
+  return [];
+}
+
 export default function JobTitlesPage() {
+  const router = useRouter();
   const {
     jobTitles,
     setJobTitles,
     addJobTitle,
-    updateJobTitle,
     deleteJobTitle,
     jobLevels,
     setJobLevels,
     departments,
     setDepartments,
+    divisions,
+    setDivisions,
     isLoading,
     setLoading,
     error,
@@ -107,18 +124,32 @@ export default function JobTitlesPage() {
 
   // Dialog states
   const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false);
-  const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
-  const [isViewDialogOpen, setIsViewDialogOpen] = React.useState(false);
   const [selectedJobTitle, setSelectedJobTitle] = React.useState<JobTitle | null>(null);
   const [formData, setFormData] = React.useState<FormData>(initialFormData);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [isDeptDropdownOpen, setIsDeptDropdownOpen] = React.useState(false);
+  const deptDropdownRef = React.useRef<HTMLDivElement>(null);
+
+  // Close department dropdown when clicking outside
+  React.useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (deptDropdownRef.current && !deptDropdownRef.current.contains(event.target as Node)) {
+        setIsDeptDropdownOpen(false);
+      }
+    }
+    if (isDeptDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [isDeptDropdownOpen]);
 
   // Fetch data on mount
   React.useEffect(() => {
     fetchJobTitles();
     fetchJobLevels();
     fetchDepartments();
+    fetchDivisions();
   }, []);
 
   const fetchJobTitles = async () => {
@@ -151,14 +182,19 @@ export default function JobTitlesPage() {
     }
   };
 
+  const fetchDivisions = async () => {
+    const response = await divisionService.fetchAll();
+    if (response.success && response.data) {
+      setDivisions(response.data);
+    }
+  };
+
   const filteredData = React.useMemo(() => {
     const titleArray = Array.isArray(jobTitles) ? jobTitles : [];
     if (!searchQuery) return titleArray;
     const query = searchQuery.toLowerCase();
     return titleArray.filter(
-      (title) =>
-        title.name?.toLowerCase().includes(query) ||
-        title.code?.toLowerCase().includes(query)
+      (title) => title.name?.toLowerCase().includes(query)
     );
   }, [searchQuery, jobTitles]);
 
@@ -173,44 +209,9 @@ export default function JobTitlesPage() {
     return row.jobLevel?.name || jobLevels.find((level) => level.id === row.jobLevelId)?.name || "-";
   };
 
-  const getDepartmentName = (row: JobTitle) => {
-    if (row.department?.name) return row.department.name;
-    if (!row.departmentId) return "All Departments";
-    return departments.find((dept) => dept.id === row.departmentId)?.name || "-";
-  };
-
   const handleAddClick = () => {
     setFormData(initialFormData);
     setIsAddDialogOpen(true);
-  };
-
-  const handleViewClick = (title: JobTitle) => {
-    setSelectedJobTitle(title);
-    setIsViewDialogOpen(true);
-  };
-
-  const handleEditClick = (title: JobTitle) => {
-    setSelectedJobTitle(title);
-
-    // Get responsibilities - from field or parse from description
-    let responsibilities = parseRichTextToArray(title.responsibilities);
-    const descText = parseRichTextToString(title.description);
-
-    // If no responsibilities but has long description, use description as responsibilities
-    if (responsibilities.length === 0 && descText && descText.length > 50) {
-      responsibilities = splitTextToItems(descText);
-    }
-
-    setFormData({
-      name: title.name,
-      code: title.code,
-      description: responsibilities.length > 0 ? "" : descText, // Clear description if moved to responsibilities
-      jobLevelId: title.jobLevelId,
-      departmentId: title.departmentId || "",
-      responsibilities: responsibilities.join("\n"),
-      requirements: parseRichTextToArray(title.requirements).join("\n"),
-    });
-    setIsEditDialogOpen(true);
   };
 
   const handleDeleteClick = (title: JobTitle) => {
@@ -218,21 +219,28 @@ export default function JobTitlesPage() {
     setIsDeleteDialogOpen(true);
   };
 
+  const toggleDepartment = (deptId: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      departmentIds: prev.departmentIds.includes(deptId)
+        ? prev.departmentIds.filter((id) => id !== deptId)
+        : [...prev.departmentIds, deptId],
+    }));
+  };
+
   const handleCreate = async () => {
     setIsSubmitting(true);
 
     const data: CreateJobTitleRequest = {
       name: formData.name,
-      code: formData.code,
+      job_level_id: Number(formData.jobLevelId),
+      type: formData.type === "Administration" || formData.type === "Technical" ? formData.type : undefined,
+      division_id: formData.divisionId ? Number(formData.divisionId) : undefined,
+      direct_report_id: formData.directReportId ? Number(formData.directReportId) : undefined,
       description: formData.description || undefined,
-      jobLevelId: formData.jobLevelId,
-      departmentId: formData.departmentId || undefined,
-      responsibilities: formData.responsibilities
-        ? formData.responsibilities.split("\n").filter((r) => r.trim())
-        : undefined,
-      requirements: formData.requirements
-        ? formData.requirements.split("\n").filter((r) => r.trim())
-        : undefined,
+      purpose: formData.purpose || undefined,
+      requirement: formData.requirement || undefined,
+      department_sync: formData.departmentIds.map(Number),
     };
 
     const response = await jobTitleService.create(data);
@@ -241,39 +249,9 @@ export default function JobTitlesPage() {
       addJobTitle(response.data);
       setIsAddDialogOpen(false);
       setFormData(initialFormData);
+      showToast.created("Job Title");
     } else {
-      setError(response.message || "Failed to create job title");
-    }
-
-    setIsSubmitting(false);
-  };
-
-  const handleUpdate = async () => {
-    if (!selectedJobTitle) return;
-
-    setIsSubmitting(true);
-
-    const response = await jobTitleService.update(selectedJobTitle.id, {
-      name: formData.name,
-      code: formData.code,
-      description: formData.description || undefined,
-      jobLevelId: formData.jobLevelId,
-      departmentId: formData.departmentId || undefined,
-      responsibilities: formData.responsibilities
-        ? formData.responsibilities.split("\n").filter((r) => r.trim())
-        : undefined,
-      requirements: formData.requirements
-        ? formData.requirements.split("\n").filter((r) => r.trim())
-        : undefined,
-    });
-
-    if (response.success && response.data) {
-      updateJobTitle(selectedJobTitle.id, response.data);
-      setIsEditDialogOpen(false);
-      setSelectedJobTitle(null);
-      setFormData(initialFormData);
-    } else {
-      setError(response.message || "Failed to update job title");
+      showToast.createError("job title", response.message);
     }
 
     setIsSubmitting(false);
@@ -290,8 +268,9 @@ export default function JobTitlesPage() {
       deleteJobTitle(selectedJobTitle.id);
       setIsDeleteDialogOpen(false);
       setSelectedJobTitle(null);
+      showToast.deleted("Job Title");
     } else {
-      setError(response.message || "Failed to delete job title");
+      showToast.deleteError("job title", response.message);
     }
 
     setIsSubmitting(false);
@@ -315,61 +294,147 @@ export default function JobTitlesPage() {
     {
       key: "department",
       label: "Department",
-      render: (_: unknown, row: JobTitle) => (
-        <span className="text-sm">{getDepartmentName(row)}</span>
-      ),
-    },
-    {
-      key: "details",
-      label: "Details",
       render: (_: unknown, row: JobTitle) => {
-        // Get responsibilities - from field or parse from description
-        let responsibilities = parseRichTextToArray(row.responsibilities);
-        if (responsibilities.length === 0 && row.description) {
-          const descText = parseRichTextToString(row.description);
-          if (descText && descText.length > 50) {
-            responsibilities = splitTextToItems(descText);
-          }
-        }
-
-        const requirements = parseRichTextToArray(row.requirements);
-        const respCount = responsibilities.length;
-        const reqCount = requirements.length;
-
+        const names = getDepartmentNames(row);
+        if (names.length === 0) return <span className="text-sm text-muted-foreground">-</span>;
         return (
-          <div className="flex items-center gap-2">
-            {respCount > 0 && (
-              <Badge variant="outline" className="gap-1 text-xs">
-                <ClipboardList className="h-3 w-3" />
-                {respCount}
+          <div className="flex flex-wrap gap-1">
+            {names.map((name) => (
+              <Badge key={name} variant="outline" className="text-xs">
+                {name}
               </Badge>
-            )}
-            {reqCount > 0 && (
-              <Badge variant="outline" className="gap-1 text-xs">
-                <CheckCircle2 className="h-3 w-3" />
-                {reqCount}
-              </Badge>
-            )}
-            {respCount === 0 && reqCount === 0 && (
-              <span className="text-xs text-muted-foreground">-</span>
-            )}
+            ))}
           </div>
         );
       },
+    },
+    {
+      key: "type",
+      label: "Type",
+      render: (_: unknown, row: JobTitle) => (
+        row.type ? (
+          <Badge
+            variant="outline"
+            className={
+              row.type === "Technical"
+                ? "border-purple-200 bg-purple-50 text-purple-700"
+                : "border-amber-200 bg-amber-50 text-amber-700"
+            }
+          >
+            {row.type}
+          </Badge>
+        ) : (
+          <span className="text-sm text-muted-foreground">-</span>
+        )
+      ),
     },
     {
       key: "actions",
       label: "",
       className: "w-[50px]",
       render: (_: unknown, row: JobTitle) => (
-        <Link href={`/organization/job-titles/${row.id}`}>
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-accent">
-            <Eye className="h-4 w-4" />
-          </Button>
-        </Link>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-muted-foreground"
+            >
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => router.push(`/organization/job-titles/${row.id}`)}>
+              <Eye className="mr-2 h-4 w-4" />
+              Detail
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => router.push(`/organization/job-titles/${row.id}/edit`)}>
+              <Pencil className="mr-2 h-4 w-4" />
+              Edit
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="text-destructive focus:text-destructive"
+              onClick={() => handleDeleteClick(row)}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       ),
     },
   ];
+
+  // Reusable department multi-select component
+  const DepartmentMultiSelect = () => {
+    const selectedNames = formData.departmentIds
+      .map((id) => departments.find((d) => String(d.id) === id)?.name)
+      .filter(Boolean);
+
+    return (
+      <div className="space-y-1.5">
+        <Label>Department *</Label>
+        <div className="relative" ref={deptDropdownRef}>
+          <button
+            type="button"
+            onClick={() => setIsDeptDropdownOpen(!isDeptDropdownOpen)}
+            className="flex w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background focus:outline-none focus:ring-1 focus:ring-ring"
+          >
+            <span className={selectedNames.length === 0 ? "text-muted-foreground" : ""}>
+              {selectedNames.length === 0
+                ? "Select departments"
+                : `${selectedNames.length} selected`}
+            </span>
+            <ChevronsUpDown className="h-4 w-4 opacity-50" />
+          </button>
+
+          {isDeptDropdownOpen && (
+            <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover p-1 shadow-md">
+              <ScrollArea className="max-h-[200px]">
+                {departments.map((dept) => {
+                  const isChecked = formData.departmentIds.includes(String(dept.id));
+                  return (
+                    <label
+                      key={dept.id}
+                      className="flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent"
+                    >
+                      <Checkbox
+                        checked={isChecked}
+                        onCheckedChange={() => toggleDepartment(String(dept.id))}
+                      />
+                      {dept.name}
+                    </label>
+                  );
+                })}
+              </ScrollArea>
+            </div>
+          )}
+
+          {selectedNames.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-1">
+              {formData.departmentIds.map((id) => {
+                const dept = departments.find((d) => String(d.id) === id);
+                if (!dept) return null;
+                return (
+                  <Badge key={id} variant="secondary" className="gap-1 text-xs">
+                    {dept.name}
+                    <button
+                      type="button"
+                      onClick={() => toggleDepartment(id)}
+                      className="ml-0.5 rounded-full hover:bg-muted-foreground/20"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <>
@@ -469,68 +534,92 @@ export default function JobTitlesPage() {
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="name">Name *</Label>
-                  <Input
-                    id="name"
-                    placeholder="Enter job title"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="code">Code *</Label>
-                  <Input
-                    id="code"
-                    placeholder="Enter code"
-                    value={formData.code}
-                    onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                  />
-                </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="name">Name *</Label>
+                <Input
+                  id="name"
+                  placeholder="Enter job title"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                />
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="level">Job Level *</Label>
-                  <Select
-                    value={formData.jobLevelId}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, jobLevelId: value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select level" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {jobLevels.map((level) => (
-                        <SelectItem key={level.id} value={level.id}>
-                          {level.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="department">Department</Label>
-                  <Select
-                    value={formData.departmentId}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, departmentId: value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select department" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">All Departments</SelectItem>
-                      {departments.map((dept) => (
-                        <SelectItem key={dept.id} value={dept.id}>
-                          {dept.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="level">Job Level *</Label>
+                <Select
+                  value={formData.jobLevelId}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, jobLevelId: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select level" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {jobLevels.map((level) => (
+                      <SelectItem key={level.id} value={String(level.id)}>
+                        {level.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="type">Type *</Label>
+                <Select
+                  value={formData.type}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, type: value as "Administration" | "Technical" })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Administration">Administration</SelectItem>
+                    <SelectItem value="Technical">Technical</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="division">Division</Label>
+                <Select
+                  value={formData.divisionId}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, divisionId: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select division" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {divisions.map((div) => (
+                      <SelectItem key={div.id} value={String(div.id)}>
+                        {div.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <DepartmentMultiSelect />
+              <div className="space-y-1.5">
+                <Label htmlFor="directReport">Direct Report Line</Label>
+                <Select
+                  value={formData.directReportId}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, directReportId: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select direct report" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {jobTitles.map((jt) => (
+                      <SelectItem key={jt.id} value={String(jt.id)}>
+                        {jt.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="description">Description</Label>
@@ -544,24 +633,24 @@ export default function JobTitlesPage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="responsibilities">Responsibilities</Label>
+                <Label htmlFor="purpose">Purpose</Label>
                 <Textarea
-                  id="responsibilities"
-                  placeholder="Enter responsibilities (one per line)"
-                  value={formData.responsibilities}
+                  id="purpose"
+                  placeholder="Enter purpose of this job title"
+                  value={formData.purpose}
                   onChange={(e) =>
-                    setFormData({ ...formData, responsibilities: e.target.value })
+                    setFormData({ ...formData, purpose: e.target.value })
                   }
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="requirements">Requirements</Label>
+                <Label htmlFor="requirement">Requirement</Label>
                 <Textarea
-                  id="requirements"
-                  placeholder="Enter requirements (one per line)"
-                  value={formData.requirements}
+                  id="requirement"
+                  placeholder="Enter requirements"
+                  value={formData.requirement}
                   onChange={(e) =>
-                    setFormData({ ...formData, requirements: e.target.value })
+                    setFormData({ ...formData, requirement: e.target.value })
                   }
                 />
               </div>
@@ -579,8 +668,9 @@ export default function JobTitlesPage() {
                 disabled={
                   isSubmitting ||
                   !formData.name ||
-                  !formData.code ||
-                  !formData.jobLevelId
+                  !formData.jobLevelId ||
+                  !formData.type ||
+                  formData.departmentIds.length === 0
                 }
               >
                 {isSubmitting ? (
@@ -593,299 +683,6 @@ export default function JobTitlesPage() {
                 )}
               </Button>
             </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Edit Dialog */}
-        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-          <DialogContent className="max-w-lg">
-            <DialogHeader>
-              <DialogTitle>Edit Job Title</DialogTitle>
-              <DialogDescription>
-                Update the job title details.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="edit-name">Name *</Label>
-                  <Input
-                    id="edit-name"
-                    placeholder="Enter job title"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="edit-code">Code *</Label>
-                  <Input
-                    id="edit-code"
-                    placeholder="Enter code"
-                    value={formData.code}
-                    onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="edit-level">Job Level *</Label>
-                  <Select
-                    value={formData.jobLevelId}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, jobLevelId: value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select level" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {jobLevels.map((level) => (
-                        <SelectItem key={level.id} value={level.id}>
-                          {level.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="edit-department">Department</Label>
-                  <Select
-                    value={formData.departmentId}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, departmentId: value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select department" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">All Departments</SelectItem>
-                      {departments.map((dept) => (
-                        <SelectItem key={dept.id} value={dept.id}>
-                          {dept.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="edit-description">Description</Label>
-                <Textarea
-                  id="edit-description"
-                  placeholder="Enter description"
-                  value={formData.description}
-                  onChange={(e) =>
-                    setFormData({ ...formData, description: e.target.value })
-                  }
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="edit-responsibilities">Responsibilities</Label>
-                <Textarea
-                  id="edit-responsibilities"
-                  placeholder="Enter responsibilities (one per line)"
-                  value={formData.responsibilities}
-                  onChange={(e) =>
-                    setFormData({ ...formData, responsibilities: e.target.value })
-                  }
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="edit-requirements">Requirements</Label>
-                <Textarea
-                  id="edit-requirements"
-                  placeholder="Enter requirements (one per line)"
-                  value={formData.requirements}
-                  onChange={(e) =>
-                    setFormData({ ...formData, requirements: e.target.value })
-                  }
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => setIsEditDialogOpen(false)}
-                disabled={isSubmitting}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleUpdate}
-                disabled={
-                  isSubmitting ||
-                  !formData.name ||
-                  !formData.code ||
-                  !formData.jobLevelId
-                }
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  "Save Changes"
-                )}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* View Details Dialog */}
-        <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-          <DialogContent className="max-w-2xl max-h-[90vh] p-0 gap-0">
-            {/* Header */}
-            <div className="px-6 py-4 border-b bg-muted/30">
-              <div className="flex items-start justify-between">
-                <div className="space-y-1">
-                  <DialogTitle className="text-xl font-semibold">
-                    {selectedJobTitle?.name}
-                  </DialogTitle>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <Badge variant="outline" className="font-mono text-xs">
-                      {selectedJobTitle?.code}
-                    </Badge>
-                    {selectedJobTitle && (
-                      <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100">
-                        {getJobLevelName(selectedJobTitle)}
-                      </Badge>
-                    )}
-                    {selectedJobTitle && (
-                      <Badge variant="secondary">
-                        {getDepartmentName(selectedJobTitle)}
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Content */}
-            <ScrollArea className="max-h-[55vh]">
-              <div className="p-6 space-y-6">
-                {/* Responsibilities */}
-                {(() => {
-                  // Get responsibilities from field or parse from description
-                  let responsibilities = parseRichTextToArray(selectedJobTitle?.responsibilities);
-
-                  // If no responsibilities but has description, split description into items
-                  if (responsibilities.length === 0 && selectedJobTitle?.description) {
-                    const descText = parseRichTextToString(selectedJobTitle.description);
-                    if (descText && descText.length > 50) {
-                      responsibilities = splitTextToItems(descText);
-                    }
-                  }
-
-                  return (
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <h4 className="text-sm font-semibold flex items-center gap-2">
-                          <div className="h-6 w-6 rounded-md bg-blue-100 flex items-center justify-center">
-                            <ClipboardList className="h-3.5 w-3.5 text-blue-600" />
-                          </div>
-                          Responsibilities
-                        </h4>
-                        {responsibilities.length > 0 && (
-                          <span className="text-xs text-muted-foreground">
-                            {responsibilities.length} items
-                          </span>
-                        )}
-                      </div>
-                      {responsibilities.length > 0 ? (
-                        <div className="rounded-lg border bg-card">
-                          {responsibilities.map((item, index) => (
-                            <div
-                              key={index}
-                              className={`flex items-start gap-3 px-4 py-3 text-sm ${
-                                index !== responsibilities.length - 1 ? "border-b" : ""
-                              }`}
-                            >
-                              <span className="flex-shrink-0 h-5 w-5 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-medium">
-                                {index + 1}
-                              </span>
-                              <span className="text-muted-foreground leading-relaxed">{item}</span>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="rounded-lg border border-dashed p-4 text-center">
-                          <p className="text-sm text-muted-foreground">
-                            No responsibilities defined
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })()}
-
-                {/* Requirements */}
-                {(() => {
-                  const requirements = parseRichTextToArray(selectedJobTitle?.requirements);
-                  return (
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <h4 className="text-sm font-semibold flex items-center gap-2">
-                          <div className="h-6 w-6 rounded-md bg-green-100 flex items-center justify-center">
-                            <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
-                          </div>
-                          Requirements
-                        </h4>
-                        {requirements.length > 0 && (
-                          <span className="text-xs text-muted-foreground">
-                            {requirements.length} items
-                          </span>
-                        )}
-                      </div>
-                      {requirements.length > 0 ? (
-                        <div className="rounded-lg border bg-card">
-                          {requirements.map((item, index) => (
-                            <div
-                              key={index}
-                              className={`flex items-start gap-3 px-4 py-3 text-sm ${
-                                index !== requirements.length - 1 ? "border-b" : ""
-                              }`}
-                            >
-                              <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
-                              <span className="text-muted-foreground leading-relaxed">{item}</span>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="rounded-lg border border-dashed p-4 text-center">
-                          <p className="text-sm text-muted-foreground">
-                            No requirements defined
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })()}
-              </div>
-            </ScrollArea>
-
-            {/* Footer */}
-            <div className="px-6 py-4 border-t bg-muted/30 flex items-center justify-between">
-              <p className="text-xs text-muted-foreground">
-                Created {formatShortDate(selectedJobTitle?.createdAt)}
-              </p>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => setIsViewDialogOpen(false)}>
-                  Close
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    setIsViewDialogOpen(false);
-                    if (selectedJobTitle) handleEditClick(selectedJobTitle);
-                  }}
-                >
-                  <Pencil className="mr-2 h-3.5 w-3.5" />
-                  Edit
-                </Button>
-              </div>
-            </div>
           </DialogContent>
         </Dialog>
 

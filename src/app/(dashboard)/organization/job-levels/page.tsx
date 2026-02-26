@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
 import {
   Plus,
   Eye,
@@ -10,8 +9,9 @@ import {
   Award,
   Layers,
   Loader2,
-  AlertCircle,
+  MoreHorizontal,
 } from "lucide-react";
+
 import { Header } from "@/components/layout/header";
 import { PageContainer } from "@/components/layout/page-container";
 import { DataTable } from "@/components/shared/data-table";
@@ -53,10 +53,12 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+
 import { useOrganizationStore } from "@/stores/organization-store";
 import { jobLevelService, CreateJobLevelRequest } from "@/services/job-level.service";
+import { showToast } from "@/lib/utils/toast-messages";
 import { JobLevel } from "@/types";
-import { formatShortDate } from "@/lib/utils";
 
 const JOB_LEVEL_CATEGORIES = ["Structural", "Functional"] as const;
 
@@ -64,12 +66,18 @@ interface FormData {
   name: string;
   category: string;
   description: string;
+  order: string;
+  canCreateJobTitle: boolean;
+  canCreateKpi: boolean;
 }
 
 const initialFormData: FormData = {
   name: "",
   category: "",
   description: "",
+  order: "",
+  canCreateJobTitle: false,
+  canCreateKpi: false,
 };
 
 export default function JobLevelsPage() {
@@ -81,15 +89,15 @@ export default function JobLevelsPage() {
     deleteJobLevel,
     isLoading,
     setLoading,
-    error,
-    setError,
   } = useOrganizationStore();
 
   const [currentPage, setCurrentPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(10);
+  const [totalItems, setTotalItems] = React.useState(0);
   const [searchQuery, setSearchQuery] = React.useState("");
 
   // Dialog states
+  const [isDetailDialogOpen, setIsDetailDialogOpen] = React.useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
@@ -97,28 +105,29 @@ export default function JobLevelsPage() {
   const [formData, setFormData] = React.useState<FormData>(initialFormData);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
-  // Fetch data on mount
+  // Fetch data on mount and when pagination changes
   React.useEffect(() => {
-    fetchJobLevels();
-  }, []);
+    fetchJobLevels(currentPage, pageSize);
+  }, [currentPage, pageSize]);
 
-  const fetchJobLevels = async () => {
+  const fetchJobLevels = async (page: number, limit: number) => {
     setLoading(true);
-    setError(null);
 
-    const response = await jobLevelService.getAll(1, 100);
-    console.log("Job Level API Response:", response);
+    const response = await jobLevelService.getAll(page, limit);
 
     if (response.success && response.data) {
-      setJobLevels(response.data.data || []);
+      const levelData = response.data.data || [];
+      setJobLevels(levelData);
+      setTotalItems(response.data.pagination?.total || levelData.length);
     } else {
-      setError(response.message || "Failed to fetch job levels");
+      showToast.fetchError("job levels", response.message);
       setJobLevels([]);
     }
 
     setLoading(false);
   };
 
+  // Client-side search on current page data
   const filteredData = React.useMemo(() => {
     const levelArray = Array.isArray(jobLevels) ? jobLevels : [];
     if (!searchQuery) return levelArray;
@@ -126,16 +135,10 @@ export default function JobLevelsPage() {
     return levelArray.filter(
       (level) =>
         level.name.toLowerCase().includes(query) ||
-        level.category.toLowerCase().includes(query)
+        level.category.toLowerCase().includes(query) ||
+        (level.description && level.description.toLowerCase().includes(query))
     );
   }, [searchQuery, jobLevels]);
-
-  // Paginated data for current page
-  const paginatedData = React.useMemo(() => {
-    const startIndex = (currentPage - 1) * pageSize;
-    const endIndex = startIndex + pageSize;
-    return filteredData.slice(startIndex, endIndex);
-  }, [filteredData, currentPage, pageSize]);
 
   // Count by category
   const categoryStats = React.useMemo(() => {
@@ -145,6 +148,11 @@ export default function JobLevelsPage() {
       functional: levelArray.filter((l) => l.category === "Functional").length,
     };
   }, [jobLevels]);
+
+  const handleDetailClick = (level: JobLevel) => {
+    setSelectedJobLevel(level);
+    setIsDetailDialogOpen(true);
+  };
 
   const handleAddClick = () => {
     setFormData(initialFormData);
@@ -157,6 +165,9 @@ export default function JobLevelsPage() {
       name: level.name,
       category: level.category,
       description: level.description || "",
+      order: level.order != null ? String(level.order) : "",
+      canCreateJobTitle: level.canCreateJobTitle ?? false,
+      canCreateKpi: level.canCreateKpi ?? false,
     });
     setIsEditDialogOpen(true);
   };
@@ -173,6 +184,9 @@ export default function JobLevelsPage() {
       name: formData.name,
       category: formData.category,
       description: formData.description || undefined,
+      order: formData.order ? Number(formData.order) : undefined,
+      canCreateJobTitle: formData.canCreateJobTitle,
+      canCreateKpi: formData.canCreateKpi,
     };
 
     const response = await jobLevelService.create(data);
@@ -181,8 +195,10 @@ export default function JobLevelsPage() {
       addJobLevel(response.data);
       setIsAddDialogOpen(false);
       setFormData(initialFormData);
+      setTotalItems((prev) => prev + 1);
+      showToast.created("Job Level");
     } else {
-      setError(response.message || "Failed to create job level");
+      showToast.createError("job level", response.message);
     }
 
     setIsSubmitting(false);
@@ -197,6 +213,9 @@ export default function JobLevelsPage() {
       name: formData.name,
       category: formData.category,
       description: formData.description || undefined,
+      order: formData.order ? Number(formData.order) : undefined,
+      canCreateJobTitle: formData.canCreateJobTitle,
+      canCreateKpi: formData.canCreateKpi,
     });
 
     if (response.success && response.data) {
@@ -204,8 +223,9 @@ export default function JobLevelsPage() {
       setIsEditDialogOpen(false);
       setSelectedJobLevel(null);
       setFormData(initialFormData);
+      showToast.updated("Job Level");
     } else {
-      setError(response.message || "Failed to update job level");
+      showToast.updateError("job level", response.message);
     }
 
     setIsSubmitting(false);
@@ -222,8 +242,10 @@ export default function JobLevelsPage() {
       deleteJobLevel(selectedJobLevel.id);
       setIsDeleteDialogOpen(false);
       setSelectedJobLevel(null);
+      setTotalItems((prev) => prev - 1);
+      showToast.deleted("Job Level");
     } else {
-      setError(response.message || "Failed to delete job level");
+      showToast.deleteError("job level", response.message);
     }
 
     setIsSubmitting(false);
@@ -250,49 +272,123 @@ export default function JobLevelsPage() {
       ),
     },
     {
-      key: "createdAt",
-      label: "Created",
-      render: (_: unknown, row: JobLevel) => (
-        <span className="text-sm text-muted-foreground">
-          {formatShortDate(row.createdAt)}
-        </span>
-      ),
-    },
-    {
       key: "actions",
       label: "",
       className: "w-[50px]",
       render: (_: unknown, row: JobLevel) => (
-        <Link href={`/organization/job-levels/${row.id}`}>
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-accent">
-            <Eye className="h-4 w-4" />
-          </Button>
-        </Link>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-muted-foreground"
+            >
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => handleDetailClick(row)}>
+              <Eye className="mr-2 h-4 w-4" />
+              Detail
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleEditClick(row)}>
+              <Pencil className="mr-2 h-4 w-4" />
+              Edit
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="text-destructive focus:text-destructive"
+              onClick={() => handleDeleteClick(row)}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       ),
     },
   ];
+
+  const renderFormFields = (prefix: string) => (
+    <div className="grid gap-4 py-4">
+      <div className="space-y-1.5">
+        <Label htmlFor={`${prefix}-name`}>Name *</Label>
+        <Input
+          id={`${prefix}-name`}
+          placeholder="Enter level name"
+          value={formData.name}
+          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+        />
+      </div>
+      <div className="space-y-1.5">
+        <Label htmlFor={`${prefix}-category`}>Category *</Label>
+        <Select
+          value={formData.category}
+          onValueChange={(value) => setFormData({ ...formData, category: value })}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Select category" />
+          </SelectTrigger>
+          <SelectContent>
+            {JOB_LEVEL_CATEGORIES.map((cat) => (
+              <SelectItem key={cat} value={cat}>
+                {cat}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="space-y-1.5">
+        <Label htmlFor={`${prefix}-order`}>Order</Label>
+        <Input
+          id={`${prefix}-order`}
+          type="number"
+          placeholder="Enter order number"
+          value={formData.order}
+          onChange={(e) => setFormData({ ...formData, order: e.target.value })}
+        />
+      </div>
+      <div className="space-y-1.5">
+        <Label htmlFor={`${prefix}-description`}>Description</Label>
+        <Textarea
+          id={`${prefix}-description`}
+          placeholder="Enter description"
+          value={formData.description}
+          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+        />
+      </div>
+      <div className="flex items-center space-x-2">
+        <Checkbox
+          id={`${prefix}-canCreateJobTitle`}
+          checked={formData.canCreateJobTitle}
+          onCheckedChange={(checked) =>
+            setFormData({ ...formData, canCreateJobTitle: checked === true })
+          }
+        />
+        <Label htmlFor={`${prefix}-canCreateJobTitle`} className="font-normal">
+          Can create job title
+        </Label>
+      </div>
+      <div className="flex items-center space-x-2">
+        <Checkbox
+          id={`${prefix}-canCreateKpi`}
+          checked={formData.canCreateKpi}
+          onCheckedChange={(checked) =>
+            setFormData({ ...formData, canCreateKpi: checked === true })
+          }
+        />
+        <Label htmlFor={`${prefix}-canCreateKpi`} className="font-normal">
+          Can create KPI
+        </Label>
+      </div>
+    </div>
+  );
 
   return (
     <>
       <Header title="Job Levels" />
       <PageContainer>
         <div className="space-y-6">
-          {/* Error Banner */}
-          {error && (
-            <div className="flex items-center gap-2 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
-              <AlertCircle className="h-4 w-4 flex-shrink-0" />
-              <span>{error}</span>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="ml-auto h-6 px-2 text-xs"
-                onClick={() => setError(null)}
-              >
-                Dismiss
-              </Button>
-            </div>
-          )}
-
           {/* Stats */}
           <div className="grid gap-4 sm:grid-cols-3">
             <Card>
@@ -302,7 +398,7 @@ export default function JobLevelsPage() {
                 </div>
                 <div>
                   <p className="text-2xl font-semibold">
-                    {isLoading ? "-" : (jobLevels?.length || 0)}
+                    {isLoading ? "-" : totalItems || jobLevels?.length || 0}
                   </p>
                   <p className="text-sm text-muted-foreground">Total Levels</p>
                 </div>
@@ -345,17 +441,17 @@ export default function JobLevelsPage() {
             </Card>
           ) : (
             <DataTable
-              data={paginatedData}
+              data={filteredData}
               columns={columns}
               searchable
-              searchPlaceholder="Search job levels..."
+              searchPlaceholder="Search by name, category, or description..."
               onSearch={(value) => {
                 setSearchQuery(value);
                 setCurrentPage(1);
               }}
               pagination
               pageSize={pageSize}
-              totalItems={filteredData.length}
+              totalItems={totalItems}
               currentPage={currentPage}
               onPageChange={setCurrentPage}
               onPageSizeChange={(size) => {
@@ -364,7 +460,7 @@ export default function JobLevelsPage() {
               }}
               emptyMessage="No job levels found"
               actions={
-                <Button size="sm" onClick={handleAddClick}>
+                <Button onClick={handleAddClick}>
                   <Plus className="mr-2 h-4 w-4" />
                   Add Job Level
                 </Button>
@@ -382,44 +478,7 @@ export default function JobLevelsPage() {
                 Create a new job level for your organization.
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="name">Name *</Label>
-                <Input
-                  id="name"
-                  placeholder="Enter level name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="category">Category *</Label>
-                <Select
-                  value={formData.category}
-                  onValueChange={(value) => setFormData({ ...formData, category: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {JOB_LEVEL_CATEGORIES.map((cat) => (
-                      <SelectItem key={cat} value={cat}>
-                        {cat}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  placeholder="Enter description"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                />
-              </div>
-            </div>
+            {renderFormFields("add")}
             <DialogFooter>
               <Button
                 variant="outline"
@@ -458,44 +517,7 @@ export default function JobLevelsPage() {
                 Update the job level details.
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="edit-name">Name *</Label>
-                <Input
-                  id="edit-name"
-                  placeholder="Enter level name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="edit-category">Category *</Label>
-                <Select
-                  value={formData.category}
-                  onValueChange={(value) => setFormData({ ...formData, category: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {JOB_LEVEL_CATEGORIES.map((cat) => (
-                      <SelectItem key={cat} value={cat}>
-                        {cat}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="edit-description">Description</Label>
-                <Textarea
-                  id="edit-description"
-                  placeholder="Enter description"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                />
-              </div>
-            </div>
+            {renderFormFields("edit")}
             <DialogFooter>
               <Button
                 variant="outline"
@@ -520,6 +542,61 @@ export default function JobLevelsPage() {
                 ) : (
                   "Save Changes"
                 )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Detail Dialog */}
+        <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Job Level Detail</DialogTitle>
+              <DialogDescription>
+                Viewing job level information.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="space-y-1.5">
+                <Label>Name</Label>
+                <Input value={selectedJobLevel?.name || ""} disabled />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Category</Label>
+                <Input value={selectedJobLevel?.category || ""} disabled />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Order</Label>
+                <Input
+                  value={selectedJobLevel?.order != null ? String(selectedJobLevel.order) : "-"}
+                  disabled
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Description</Label>
+                <Textarea value={selectedJobLevel?.description || "-"} disabled />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Can Create Job Title</Label>
+                <Input
+                  value={selectedJobLevel?.canCreateJobTitle ? "Yes" : "No"}
+                  disabled
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Can Create KPI</Label>
+                <Input
+                  value={selectedJobLevel?.canCreateKpi ? "Yes" : "No"}
+                  disabled
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setIsDetailDialogOpen(false)}
+              >
+                Close
               </Button>
             </DialogFooter>
           </DialogContent>

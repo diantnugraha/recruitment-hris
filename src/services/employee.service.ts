@@ -1,42 +1,105 @@
 import { get, post, put, del } from "@/lib/axios";
-import { EmployeeWithRelations, ApiResponse, Department, Division, JobLevel, JobTitle } from "@/types";
+import {
+  EmployeeWithRelations,
+  EmployeeStatus,
+  EmployeeGender,
+  MaritalStatus,
+  ApiResponse,
+  Department,
+  Division,
+  JobLevel,
+  JobTitle,
+} from "@/types";
+
+// --- Request / Response DTOs (snake_case for API) ---
 
 export interface CreateEmployeeRequest {
   employee_id: string;
   first_name: string;
   last_name: string;
+  nickname?: string;
   email: string;
   phone: string;
   date_of_birth: string;
-  gender: "male" | "female";
+  gender: EmployeeGender;
   address: string;
   hire_date: string;
-  status?: "active" | "inactive" | "on_leave" | "terminated";
+  status?: EmployeeStatus;
   department_id: string;
   division_id: string;
   job_title_id: string;
   job_level_id: string;
   manager_id?: string;
+  superior_id?: string;
   photo?: string;
+  // Employment details
+  employee_type?: string;
+  employee_bu?: string;
+  employee_ext?: string;
+  employee_location?: string;
+  fte?: number;
+  // Contract & probation
+  employee_permanentdate?: string;
+  employee_contractdate?: string;
+  employee_contractenddate?: string;
+  employee_probationdate?: string;
+  employee_probationenddate?: string;
+  // Family
+  employee_mother?: string;
+  employee_father?: string;
+  employee_spouse?: string;
+  employee_maritalstatus?: string;
+  // Emergency
+  employee_emg_name?: string;
+  employee_emg_rel?: string;
+  employee_emg_phone?: string;
+  // Additional
+  employee_religion?: string;
+  employee_ethnic?: string;
+  certificate?: string;
 }
 
 export interface UpdateEmployeeRequest {
   employee_id?: string;
   first_name?: string;
   last_name?: string;
+  nickname?: string;
   email?: string;
   phone?: string;
   date_of_birth?: string;
-  gender?: "male" | "female";
+  gender?: EmployeeGender;
   address?: string;
   hire_date?: string;
-  status?: "active" | "inactive" | "on_leave" | "terminated";
+  status?: EmployeeStatus;
   department_id?: string;
   division_id?: string;
   job_title_id?: string;
   job_level_id?: string;
   manager_id?: string;
+  superior_id?: string;
   photo?: string;
+  employee_type?: string;
+  employee_bu?: string;
+  employee_ext?: string;
+  employee_location?: string;
+  fte?: number;
+  employee_permanentdate?: string;
+  employee_contractdate?: string;
+  employee_contractenddate?: string;
+  employee_probationdate?: string;
+  employee_probationenddate?: string;
+  employee_mother?: string;
+  employee_father?: string;
+  employee_spouse?: string;
+  employee_maritalstatus?: string;
+  employee_emg_name?: string;
+  employee_emg_rel?: string;
+  employee_emg_phone?: string;
+  employee_religion?: string;
+  employee_ethnic?: string;
+  certificate?: string;
+  employee_reason?: string;
+  employee_exitdate?: string;
 }
 
 // Frontend form data interface (camelCase)
@@ -44,19 +107,44 @@ export interface EmployeeFormData {
   employeeId: string;
   firstName: string;
   lastName: string;
+  nickname: string;
   email: string;
   phone: string;
   dateOfBirth: string;
-  gender: "male" | "female";
+  gender: EmployeeGender;
   address: string;
   hireDate: string;
-  status?: "active" | "inactive" | "on_leave" | "terminated";
+  status: EmployeeStatus;
   departmentId: string;
   divisionId: string;
   jobTitleId: string;
   jobLevelId: string;
-  managerId?: string;
-  photo?: string;
+  managerId: string;
+  // Employment details
+  employeeType: string;
+  businessUnit: string;
+  extension: string;
+  location: string;
+  fte: string;
+  // Contract & probation
+  permanentDate: string;
+  contractDate: string;
+  contractEndDate: string;
+  probationDate: string;
+  probationEndDate: string;
+  // Family
+  motherName: string;
+  fatherName: string;
+  spouseName: string;
+  maritalStatus: MaritalStatus | "";
+  // Emergency contact
+  emergencyContactName: string;
+  emergencyContactRelation: string;
+  emergencyContactPhone: string;
+  // Additional
+  religion: string;
+  ethnicity: string;
+  certificate: string;
 }
 
 export interface EmployeePaginatedResponse {
@@ -76,22 +164,47 @@ interface ApiEmployee {
   employee_nik?: string | null;
   first_name?: string;
   last_name?: string;
+  nickname?: string;
   email?: string;
   phone?: string;
-  employee_contact?: string; // employee_list.employee_contact
+  employee_contact?: string;
   date_of_birth?: string;
-  gender?: "male" | "female";
+  gender?: EmployeeGender;
   address?: string;
   hire_date?: string;
-  status?: "active" | "inactive" | "on_leave" | "terminated";
+  status?: EmployeeStatus;
   department_id?: string;
   division_id?: string;
   job_title_id?: string;
   job_level_id?: string;
   manager_id?: string;
+  superior_id?: string;
   photo?: string;
   created_at?: string;
   updated_at?: string;
+  // hris-tuv specific fields
+  employee_type?: string;
+  employee_bu?: string;
+  employee_ext?: string;
+  employee_location?: string;
+  fte?: number | string;
+  employee_permanentdate?: string;
+  employee_contractdate?: string;
+  employee_contractenddate?: string;
+  employee_probationdate?: string;
+  employee_probationenddate?: string;
+  employee_mother?: string;
+  employee_father?: string;
+  employee_spouse?: string;
+  employee_maritalstatus?: string;
+  employee_emg_name?: string;
+  employee_emg_rel?: string;
+  employee_emg_phone?: string;
+  employee_reason?: string;
+  employee_exitdate?: string;
+  employee_religion?: string;
+  employee_ethnic?: string;
+  certificate?: string;
   // Relations (might be nested objects or just IDs)
   department?: Department | { id: string; name: string; code?: string };
   division?: Division | { id: string; name: string; code?: string };
@@ -115,7 +228,8 @@ interface ApiEmployee {
   jobLevel?: JobLevel;
 }
 
-// Map API response to frontend format
+// --- Mapping Functions ---
+
 function mapEmployee(emp: ApiEmployee): EmployeeWithRelations {
   return {
     id: String(emp.employee_id ?? emp.id),
@@ -123,6 +237,7 @@ function mapEmployee(emp: ApiEmployee): EmployeeWithRelations {
     employeeNik: emp.employee_nik ?? null,
     firstName: emp.first_name || emp.firstName || "",
     lastName: emp.last_name || emp.lastName || "",
+    nickname: emp.nickname,
     email: emp.email || "",
     phone: emp.phone || "",
     employeeContact: emp.employee_contact ?? null,
@@ -136,7 +251,36 @@ function mapEmployee(emp: ApiEmployee): EmployeeWithRelations {
     jobTitleId: emp.job_title_id || emp.jobTitleId || "",
     jobLevelId: emp.job_level_id || emp.jobLevelId || "",
     managerId: emp.manager_id || emp.managerId,
+    superiorId: emp.superior_id,
     photo: emp.photo,
+    // Employment details
+    employeeType: emp.employee_type,
+    businessUnit: emp.employee_bu,
+    extension: emp.employee_ext,
+    location: emp.employee_location,
+    fte: emp.fte != null ? Number(emp.fte) : undefined,
+    // Contract & probation
+    permanentDate: emp.employee_permanentdate,
+    contractDate: emp.employee_contractdate,
+    contractEndDate: emp.employee_contractenddate,
+    probationDate: emp.employee_probationdate,
+    probationEndDate: emp.employee_probationenddate,
+    // Family
+    motherName: emp.employee_mother,
+    fatherName: emp.employee_father,
+    spouseName: emp.employee_spouse,
+    maritalStatus: emp.employee_maritalstatus as MaritalStatus | undefined,
+    // Emergency contact
+    emergencyContactName: emp.employee_emg_name,
+    emergencyContactRelation: emp.employee_emg_rel,
+    emergencyContactPhone: emp.employee_emg_phone,
+    // Exit
+    exitReason: emp.employee_reason,
+    exitDate: emp.employee_exitdate,
+    // Additional
+    religion: emp.employee_religion,
+    ethnicity: emp.employee_ethnic,
+    certificate: emp.certificate,
     createdAt: emp.created_at || emp.createdAt || "",
     updatedAt: emp.updated_at || emp.updatedAt || "",
     // Relations
@@ -148,9 +292,8 @@ function mapEmployee(emp: ApiEmployee): EmployeeWithRelations {
   };
 }
 
-// Map frontend form data to API request format (camelCase to snake_case)
 export function mapFormToRequest(form: EmployeeFormData): CreateEmployeeRequest {
-  return {
+  const req: CreateEmployeeRequest = {
     employee_id: form.employeeId,
     first_name: form.firstName,
     last_name: form.lastName,
@@ -160,21 +303,46 @@ export function mapFormToRequest(form: EmployeeFormData): CreateEmployeeRequest 
     gender: form.gender,
     address: form.address,
     hire_date: form.hireDate,
-    status: form.status,
+    status: form.status || undefined,
     department_id: form.departmentId,
     division_id: form.divisionId,
     job_title_id: form.jobTitleId,
     job_level_id: form.jobLevelId,
     manager_id: form.managerId || undefined,
-    photo: form.photo,
   };
+
+  if (form.nickname) req.nickname = form.nickname;
+  if (form.employeeType) req.employee_type = form.employeeType;
+  if (form.businessUnit) req.employee_bu = form.businessUnit;
+  if (form.extension) req.employee_ext = form.extension;
+  if (form.location) req.employee_location = form.location;
+  if (form.fte) req.fte = Number(form.fte);
+  if (form.permanentDate) req.employee_permanentdate = form.permanentDate;
+  if (form.contractDate) req.employee_contractdate = form.contractDate;
+  if (form.contractEndDate) req.employee_contractenddate = form.contractEndDate;
+  if (form.probationDate) req.employee_probationdate = form.probationDate;
+  if (form.probationEndDate) req.employee_probationenddate = form.probationEndDate;
+  if (form.motherName) req.employee_mother = form.motherName;
+  if (form.fatherName) req.employee_father = form.fatherName;
+  if (form.spouseName) req.employee_spouse = form.spouseName;
+  if (form.maritalStatus) req.employee_maritalstatus = form.maritalStatus;
+  if (form.emergencyContactName) req.employee_emg_name = form.emergencyContactName;
+  if (form.emergencyContactRelation) req.employee_emg_rel = form.emergencyContactRelation;
+  if (form.emergencyContactPhone) req.employee_emg_phone = form.emergencyContactPhone;
+  if (form.religion) req.employee_religion = form.religion;
+  if (form.ethnicity) req.employee_ethnic = form.ethnicity;
+  if (form.certificate) req.certificate = form.certificate;
+
+  return req;
 }
 
 export function mapFormToUpdateRequest(form: Partial<EmployeeFormData>): UpdateEmployeeRequest {
   const req: UpdateEmployeeRequest = {};
+
   if (form.employeeId !== undefined) req.employee_id = form.employeeId;
   if (form.firstName !== undefined) req.first_name = form.firstName;
   if (form.lastName !== undefined) req.last_name = form.lastName;
+  if (form.nickname !== undefined) req.nickname = form.nickname;
   if (form.email !== undefined) req.email = form.email;
   if (form.phone !== undefined) req.phone = form.phone;
   if (form.dateOfBirth !== undefined) req.date_of_birth = form.dateOfBirth;
@@ -187,18 +355,38 @@ export function mapFormToUpdateRequest(form: Partial<EmployeeFormData>): UpdateE
   if (form.jobTitleId !== undefined) req.job_title_id = form.jobTitleId;
   if (form.jobLevelId !== undefined) req.job_level_id = form.jobLevelId;
   if (form.managerId !== undefined) req.manager_id = form.managerId || undefined;
-  if (form.photo !== undefined) req.photo = form.photo;
+  if (form.employeeType !== undefined) req.employee_type = form.employeeType || undefined;
+  if (form.businessUnit !== undefined) req.employee_bu = form.businessUnit || undefined;
+  if (form.extension !== undefined) req.employee_ext = form.extension || undefined;
+  if (form.location !== undefined) req.employee_location = form.location || undefined;
+  if (form.fte !== undefined) req.fte = form.fte ? Number(form.fte) : undefined;
+  if (form.permanentDate !== undefined) req.employee_permanentdate = form.permanentDate || undefined;
+  if (form.contractDate !== undefined) req.employee_contractdate = form.contractDate || undefined;
+  if (form.contractEndDate !== undefined) req.employee_contractenddate = form.contractEndDate || undefined;
+  if (form.probationDate !== undefined) req.employee_probationdate = form.probationDate || undefined;
+  if (form.probationEndDate !== undefined) req.employee_probationenddate = form.probationEndDate || undefined;
+  if (form.motherName !== undefined) req.employee_mother = form.motherName || undefined;
+  if (form.fatherName !== undefined) req.employee_father = form.fatherName || undefined;
+  if (form.spouseName !== undefined) req.employee_spouse = form.spouseName || undefined;
+  if (form.maritalStatus !== undefined) req.employee_maritalstatus = form.maritalStatus || undefined;
+  if (form.emergencyContactName !== undefined) req.employee_emg_name = form.emergencyContactName || undefined;
+  if (form.emergencyContactRelation !== undefined) req.employee_emg_rel = form.emergencyContactRelation || undefined;
+  if (form.emergencyContactPhone !== undefined) req.employee_emg_phone = form.emergencyContactPhone || undefined;
+  if (form.religion !== undefined) req.employee_religion = form.religion || undefined;
+  if (form.ethnicity !== undefined) req.employee_ethnic = form.ethnicity || undefined;
+  if (form.certificate !== undefined) req.certificate = form.certificate || undefined;
+
   return req;
 }
 
+// --- Service ---
+
 export const employeeService = {
-  // Get all employees with pagination
   async getAll(
     page: number = 1,
     limit: number = 100
   ): Promise<ApiResponse<EmployeePaginatedResponse>> {
     try {
-      // Add include parameter to load relations
       const response = await get<unknown>(
         `/v1/employee?page=${page}&limit=${limit}&include=department,division,jobTitle,jobLevel,manager`
       );
@@ -209,7 +397,6 @@ export const employeeService = {
         pagination?: EmployeePaginatedResponse["pagination"];
       };
 
-      // API returns: { success: true, data: [...], pagination: {...} }
       if (res.success && res.data && Array.isArray(res.data)) {
         const mappedData = res.data.map(mapEmployee);
         return {
@@ -226,7 +413,6 @@ export const employeeService = {
         };
       }
 
-      // Handle direct data array without success wrapper (e.g., { data: [...], pagination: {...} })
       if (res.data && Array.isArray(res.data)) {
         const mappedData = res.data.map(mapEmployee);
         return {
@@ -243,7 +429,6 @@ export const employeeService = {
         };
       }
 
-      // Handle direct array response (no wrapper at all)
       if (Array.isArray(response)) {
         const mappedData = (response as ApiEmployee[]).map(mapEmployee);
         return {
@@ -263,14 +448,10 @@ export const employeeService = {
       return { success: false, message: "Unexpected response format" };
     } catch (error: unknown) {
       console.error("Employee API Error:", error);
-      return {
-        success: false,
-        message: "Failed to fetch employees",
-      };
+      return { success: false, message: "Failed to fetch employees" };
     }
   },
 
-  // Get single employee by ID
   async getById(id: string | number): Promise<ApiResponse<EmployeeWithRelations>> {
     try {
       const numericId = Number(id);
@@ -278,36 +459,24 @@ export const employeeService = {
         return { success: false, message: "Invalid employee ID" };
       }
       const response = await get<unknown>(`/v1/employee/${numericId}`);
-      const res = response as {
-        success?: boolean;
-        data?: ApiEmployee;
-      };
+      const res = response as { success?: boolean; data?: ApiEmployee };
 
       if (res.success && res.data) {
         return { success: true, data: mapEmployee(res.data) };
       }
 
-      // Handle direct object response
       if (response && typeof response === "object" && "id" in response) {
         return { success: true, data: mapEmployee(response as ApiEmployee) };
       }
 
       return { success: false, message: "Unexpected response format" };
     } catch (error: unknown) {
-      const err = error as {
-        response?: { data?: ApiResponse<EmployeeWithRelations> };
-      };
-      if (err.response?.data) {
-        return err.response.data;
-      }
-      return {
-        success: false,
-        message: "Failed to fetch employee",
-      };
+      const err = error as { response?: { data?: ApiResponse<EmployeeWithRelations> } };
+      if (err.response?.data) return err.response.data;
+      return { success: false, message: "Failed to fetch employee" };
     }
   },
 
-  // Get employees by department ID
   async getByDepartmentId(
     departmentId: string
   ): Promise<ApiResponse<EmployeeWithRelations[]>> {
@@ -315,10 +484,7 @@ export const employeeService = {
       const response = await get<unknown>(
         `/v1/employee?department_id=${departmentId}`
       );
-      const res = response as {
-        success?: boolean;
-        data?: ApiEmployee[];
-      };
+      const res = response as { success?: boolean; data?: ApiEmployee[] };
 
       if (res.success && res.data) {
         return { success: true, data: res.data.map(mapEmployee) };
@@ -330,20 +496,12 @@ export const employeeService = {
 
       return { success: false, message: "Unexpected response format" };
     } catch (error: unknown) {
-      const err = error as {
-        response?: { data?: ApiResponse<EmployeeWithRelations[]> };
-      };
-      if (err.response?.data) {
-        return err.response.data;
-      }
-      return {
-        success: false,
-        message: "Failed to fetch employees",
-      };
+      const err = error as { response?: { data?: ApiResponse<EmployeeWithRelations[]> } };
+      if (err.response?.data) return err.response.data;
+      return { success: false, message: "Failed to fetch employees" };
     }
   },
 
-  // Get employees by division ID
   async getByDivisionId(
     divisionId: string
   ): Promise<ApiResponse<EmployeeWithRelations[]>> {
@@ -351,10 +509,7 @@ export const employeeService = {
       const response = await get<unknown>(
         `/v1/employee?division_id=${divisionId}`
       );
-      const res = response as {
-        success?: boolean;
-        data?: ApiEmployee[];
-      };
+      const res = response as { success?: boolean; data?: ApiEmployee[] };
 
       if (res.success && res.data) {
         return { success: true, data: res.data.map(mapEmployee) };
@@ -366,20 +521,12 @@ export const employeeService = {
 
       return { success: false, message: "Unexpected response format" };
     } catch (error: unknown) {
-      const err = error as {
-        response?: { data?: ApiResponse<EmployeeWithRelations[]> };
-      };
-      if (err.response?.data) {
-        return err.response.data;
-      }
-      return {
-        success: false,
-        message: "Failed to fetch employees",
-      };
+      const err = error as { response?: { data?: ApiResponse<EmployeeWithRelations[]> } };
+      if (err.response?.data) return err.response.data;
+      return { success: false, message: "Failed to fetch employees" };
     }
   },
 
-  // Create new employee
   async create(
     data: CreateEmployeeRequest
   ): Promise<ApiResponse<EmployeeWithRelations>> {
@@ -388,36 +535,24 @@ export const employeeService = {
         "/v1/employee",
         data
       );
-      const res = response as {
-        success?: boolean;
-        data?: ApiEmployee;
-      };
+      const res = response as { success?: boolean; data?: ApiEmployee };
 
       if (res.success && res.data) {
         return { success: true, data: mapEmployee(res.data) };
       }
 
-      // Handle direct object response
       if (response && typeof response === "object" && "id" in response) {
         return { success: true, data: mapEmployee(response as ApiEmployee) };
       }
 
       return { success: false, message: "Unexpected response format" };
     } catch (error: unknown) {
-      const err = error as {
-        response?: { data?: ApiResponse<EmployeeWithRelations> };
-      };
-      if (err.response?.data) {
-        return err.response.data;
-      }
-      return {
-        success: false,
-        message: "Failed to create employee",
-      };
+      const err = error as { response?: { data?: ApiResponse<EmployeeWithRelations> } };
+      if (err.response?.data) return err.response.data;
+      return { success: false, message: "Failed to create employee" };
     }
   },
 
-  // Update employee
   async update(
     id: string | number,
     data: UpdateEmployeeRequest
@@ -431,36 +566,24 @@ export const employeeService = {
         `/v1/employee/${numericId}`,
         data
       );
-      const res = response as {
-        success?: boolean;
-        data?: ApiEmployee;
-      };
+      const res = response as { success?: boolean; data?: ApiEmployee };
 
       if (res.success && res.data) {
         return { success: true, data: mapEmployee(res.data) };
       }
 
-      // Handle direct object response
       if (response && typeof response === "object" && "id" in response) {
         return { success: true, data: mapEmployee(response as ApiEmployee) };
       }
 
       return { success: false, message: "Unexpected response format" };
     } catch (error: unknown) {
-      const err = error as {
-        response?: { data?: ApiResponse<EmployeeWithRelations> };
-      };
-      if (err.response?.data) {
-        return err.response.data;
-      }
-      return {
-        success: false,
-        message: "Failed to update employee",
-      };
+      const err = error as { response?: { data?: ApiResponse<EmployeeWithRelations> } };
+      if (err.response?.data) return err.response.data;
+      return { success: false, message: "Failed to update employee" };
     }
   },
 
-  // Delete employee (soft delete)
   async delete(id: string | number): Promise<ApiResponse<void>> {
     try {
       const numericId = Number(id);
@@ -477,13 +600,8 @@ export const employeeService = {
       return { success: true };
     } catch (error: unknown) {
       const err = error as { response?: { data?: ApiResponse<void> } };
-      if (err.response?.data) {
-        return err.response.data;
-      }
-      return {
-        success: false,
-        message: "Failed to delete employee",
-      };
+      if (err.response?.data) return err.response.data;
+      return { success: false, message: "Failed to delete employee" };
     }
   },
 };

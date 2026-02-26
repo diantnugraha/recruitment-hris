@@ -1,29 +1,23 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
 import {
   Plus,
   Eye,
   Pencil,
   Trash2,
-  Building2,
   Network,
+  Building2,
   Loader2,
-  AlertCircle,
+  MoreHorizontal,
 } from "lucide-react";
+
 import { Header } from "@/components/layout/header";
 import { PageContainer } from "@/components/layout/page-container";
+import { DataTable } from "@/components/shared/data-table";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -42,38 +36,21 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useOrganizationStore } from "@/stores/organization-store";
 import { obsService, CreateOrganizationRequest, OrganizationStats } from "@/services/obs.service";
+import { showToast } from "@/lib/utils/toast-messages";
 import { Organization } from "@/types";
 
-interface OrgCardProps {
-  org: Organization;
-  onEdit: (org: Organization) => void;
-  onDelete: (org: Organization) => void;
-}
-
-function OrgCard({ org }: OrgCardProps) {
-  return (
-    <Link
-      href={`/organization/obs/${org.id}`}
-      className="group relative flex items-center gap-4 rounded-lg border bg-card p-4 transition-colors hover:bg-secondary/50"
-    >
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-secondary">
-        <Building2 className="h-5 w-5 text-muted-foreground" />
-      </div>
-      <div className="flex-1">
-        <h3 className="font-medium">{org.name}</h3>
-        <p className="text-sm text-muted-foreground">{org.description || "No description"}</p>
-      </div>
-      <div className="shrink-0 text-muted-foreground group-hover:text-accent transition-colors">
-        <Eye className="h-4 w-4" />
-      </div>
-    </Link>
-  );
-}
 
 interface FormData {
   name: string;
@@ -96,8 +73,6 @@ export default function OBSPage() {
     deleteOrganization,
     isLoading,
     setLoading,
-    error,
-    setError,
   } = useOrganizationStore();
 
   const [stats, setStats] = React.useState<OrganizationStats>({
@@ -106,7 +81,13 @@ export default function OBSPage() {
     totalDepartments: 0,
   });
 
+  const [currentPage, setCurrentPage] = React.useState(1);
+  const [pageSize, setPageSize] = React.useState(10);
+  const [totalItems, setTotalItems] = React.useState(0);
+  const [searchQuery, setSearchQuery] = React.useState("");
+
   // Dialog states
+  const [isDetailDialogOpen, setIsDetailDialogOpen] = React.useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
@@ -114,22 +95,27 @@ export default function OBSPage() {
   const [formData, setFormData] = React.useState<FormData>(initialFormData);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
-  // Fetch organizations on mount
+  // Fetch data on mount and when pagination changes
   React.useEffect(() => {
-    fetchOrganizations();
+    fetchOrganizations(currentPage, pageSize);
+  }, [currentPage, pageSize]);
+
+  React.useEffect(() => {
     fetchStats();
   }, []);
 
-  const fetchOrganizations = async () => {
+  const fetchOrganizations = async (page: number, limit: number) => {
     setLoading(true);
-    setError(null);
 
-    const response = await obsService.getAll();
+    const response = await obsService.getAll(page, limit);
 
     if (response.success && response.data) {
-      setOrganizations(response.data);
+      const orgData = response.data.data || [];
+      setOrganizations(orgData);
+      setTotalItems(response.data.pagination?.total || orgData.length);
     } else {
-      setError(response.message || "Failed to fetch organizations");
+      showToast.fetchError("organizations", response.message);
+      setOrganizations([]);
     }
 
     setLoading(false);
@@ -140,6 +126,24 @@ export default function OBSPage() {
     if (response.success && response.data) {
       setStats(response.data);
     }
+  };
+
+  // Client-side search on current page data
+  const filteredData = React.useMemo(() => {
+    const orgArray = Array.isArray(organizations) ? organizations : [];
+    if (!searchQuery) return orgArray;
+    const query = searchQuery.toLowerCase();
+    return orgArray.filter(
+      (org) =>
+        org.name.toLowerCase().includes(query) ||
+        org.cluster.toLowerCase().includes(query) ||
+        (org.description && org.description.toLowerCase().includes(query))
+    );
+  }, [searchQuery, organizations]);
+
+  const handleDetailClick = (org: Organization) => {
+    setSelectedOrg(org);
+    setIsDetailDialogOpen(true);
   };
 
   const handleAddClick = () => {
@@ -177,9 +181,11 @@ export default function OBSPage() {
       addOrganization(response.data);
       setIsAddDialogOpen(false);
       setFormData(initialFormData);
+      setTotalItems((prev) => prev + 1);
       fetchStats();
+      showToast.created("Organization");
     } else {
-      setError(response.message || "Failed to create organization");
+      showToast.createError("organization", response.message);
     }
 
     setIsSubmitting(false);
@@ -201,8 +207,9 @@ export default function OBSPage() {
       setIsEditDialogOpen(false);
       setSelectedOrg(null);
       setFormData(initialFormData);
+      showToast.updated("Organization");
     } else {
-      setError(response.message || "Failed to update organization");
+      showToast.updateError("organization", response.message);
     }
 
     setIsSubmitting(false);
@@ -219,35 +226,79 @@ export default function OBSPage() {
       deleteOrganization(selectedOrg.id);
       setIsDeleteDialogOpen(false);
       setSelectedOrg(null);
+      setTotalItems((prev) => prev - 1);
       fetchStats();
+      showToast.deleted("Organization");
     } else {
-      setError(response.message || "Failed to delete organization");
+      showToast.deleteError("organization", response.message);
     }
 
     setIsSubmitting(false);
   };
+
+  const columns = [
+    {
+      key: "name",
+      label: "Name",
+      render: (_: unknown, row: Organization) => (
+        <p className="font-medium">{row.name}</p>
+      ),
+    },
+    {
+      key: "cluster",
+      label: "Cluster",
+      render: (_: unknown, row: Organization) => (
+        <Badge variant="secondary">{row.cluster}</Badge>
+      ),
+    },
+    {
+      key: "description",
+      label: "Description",
+      render: (_: unknown, row: Organization) => (
+        <span className="text-sm text-muted-foreground line-clamp-2">
+          {row.description || "-"}
+        </span>
+      ),
+    },
+    {
+      key: "actions",
+      label: "",
+      className: "w-[50px]",
+      render: (_: unknown, row: Organization) => (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => handleDetailClick(row)}>
+              <Eye className="mr-2 h-4 w-4" />
+              Detail
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleEditClick(row)}>
+              <Pencil className="mr-2 h-4 w-4" />
+              Edit
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="text-destructive focus:text-destructive"
+              onClick={() => handleDeleteClick(row)}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ),
+    },
+  ];
 
   return (
     <>
       <Header title="Organization Structure" />
       <PageContainer>
         <div className="space-y-6">
-          {/* Error Banner */}
-          {error && (
-            <div className="flex items-center gap-2 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
-              <AlertCircle className="h-4 w-4 flex-shrink-0" />
-              <span>{error}</span>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="ml-auto h-6 px-2 text-xs"
-                onClick={() => setError(null)}
-              >
-                Dismiss
-              </Button>
-            </div>
-          )}
-
           {/* Stats */}
           <div className="grid gap-4 sm:grid-cols-3">
             <Card>
@@ -257,7 +308,7 @@ export default function OBSPage() {
                 </div>
                 <div>
                   <p className="text-2xl font-semibold">
-                    {isLoading ? "-" : stats.totalUnits || organizations.length}
+                    {isLoading ? "-" : stats.totalUnits || totalItems}
                   </p>
                   <p className="text-sm text-muted-foreground">Total Units</p>
                 </div>
@@ -291,44 +342,41 @@ export default function OBSPage() {
             </Card>
           </div>
 
-          {/* List View */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-3">
-              <CardTitle className="text-base font-medium">Organization Units</CardTitle>
-              <Button size="sm" onClick={handleAddClick}>
-                <Plus className="mr-2 h-4 w-4" />
-                Add Unit
-              </Button>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {isLoading ? (
-                <div className="flex items-center justify-center py-12">
-                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                </div>
-              ) : organizations.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <Building2 className="h-12 w-12 text-muted-foreground/50 mb-4" />
-                  <h3 className="text-lg font-medium text-muted-foreground">No organizations yet</h3>
-                  <p className="text-sm text-muted-foreground/70 mt-1">
-                    Create your first organization unit to get started
-                  </p>
-                  <Button className="mt-4" onClick={handleAddClick}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Organization
-                  </Button>
-                </div>
-              ) : (
-                organizations.map((org) => (
-                  <OrgCard
-                    key={org.id}
-                    org={org}
-                    onEdit={handleEditClick}
-                    onDelete={handleDeleteClick}
-                  />
-                ))
-              )}
-            </CardContent>
-          </Card>
+          {/* Table */}
+          {isLoading ? (
+            <Card>
+              <CardContent className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </CardContent>
+            </Card>
+          ) : (
+            <DataTable
+              data={filteredData || []}
+              columns={columns}
+              searchable
+              searchPlaceholder="Search by name, cluster, or description..."
+              onSearch={(value) => {
+                setSearchQuery(value);
+                setCurrentPage(1);
+              }}
+              pagination
+              pageSize={pageSize}
+              totalItems={totalItems}
+              currentPage={currentPage}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(size) => {
+                setPageSize(size);
+                setCurrentPage(1);
+              }}
+              emptyMessage="No organizations found"
+              actions={
+                <Button onClick={handleAddClick}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Unit
+                </Button>
+              }
+            />
+          )}
         </div>
 
         {/* Add Dialog */}
@@ -452,6 +500,40 @@ export default function OBSPage() {
                 ) : (
                   "Save Changes"
                 )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Detail Dialog */}
+        <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Organization Detail</DialogTitle>
+              <DialogDescription>
+                Viewing organization unit information.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="space-y-1.5">
+                <Label>Name</Label>
+                <Input value={selectedOrg?.name || ""} disabled />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Cluster</Label>
+                <Input value={selectedOrg?.cluster || ""} disabled />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Description</Label>
+                <Textarea value={selectedOrg?.description || "-"} disabled />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setIsDetailDialogOpen(false)}
+              >
+                Close
               </Button>
             </DialogFooter>
           </DialogContent>
