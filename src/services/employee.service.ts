@@ -1,8 +1,6 @@
 import { get, post, put, del } from "@/lib/axios";
 import {
   EmployeeWithRelations,
-  EmployeeStatus,
-  EmployeeGender,
   MaritalStatus,
   ApiResponse,
   Department,
@@ -11,110 +9,78 @@ import {
   JobTitle,
 } from "@/types";
 
-// --- Request / Response DTOs (snake_case for API) ---
+// --- Request / Response DTOs (matching backend API schema) ---
 
 export interface CreateEmployeeRequest {
-  employee_id: string;
-  first_name: string;
-  last_name: string;
+  name: string;
   nickname?: string;
-  email: string;
-  phone: string;
-  date_of_birth: string;
-  gender: EmployeeGender;
-  address: string;
-  hire_date: string;
-  status?: EmployeeStatus;
-  department_id: string;
-  division_id: string;
-  job_title_id: string;
-  job_level_id: string;
-  manager_id?: string;
-  superior_id?: string;
-  photo?: string;
-  // Employment details
-  employee_type?: string;
-  employee_bu?: string;
-  employee_ext?: string;
-  employee_location?: string;
-  fte?: number;
-  // Contract & probation
-  employee_permanentdate?: string;
-  employee_contractdate?: string;
-  employee_contractenddate?: string;
-  employee_probationdate?: string;
-  employee_probationenddate?: string;
-  // Family
-  employee_mother?: string;
-  employee_father?: string;
-  employee_spouse?: string;
-  employee_maritalstatus?: string;
-  // Emergency
-  employee_emg_name?: string;
-  employee_emg_rel?: string;
-  employee_emg_phone?: string;
-  // Additional
-  employee_religion?: string;
-  employee_ethnic?: string;
-  certificate?: string;
+  email?: string;
+  contact?: string;
+  gender?: string;
+  status?: string;
+  title?: string;
+  location?: string;
+  business_unit?: string;
+  extension?: string;
+  join_date?: string;
+  birth_date?: string;
+  permanent_date?: string;
+  superior_id?: number;
+  marital_status?: string;
+  nik?: string;
+  address?: string;
+  religion?: string;
+  ethnic?: string;
+  mother_name?: string;
+  father_name?: string;
+  spouse_name?: string;
+  emergency_name?: string;
+  emergency_relation?: string;
+  emergency_phone?: string;
 }
 
 export interface UpdateEmployeeRequest {
-  employee_id?: string;
-  first_name?: string;
-  last_name?: string;
+  name?: string;
   nickname?: string;
   email?: string;
-  phone?: string;
-  date_of_birth?: string;
-  gender?: EmployeeGender;
+  contact?: string;
+  gender?: string;
+  status?: string;
+  title?: string;
+  location?: string;
+  business_unit?: string;
+  extension?: string;
+  join_date?: string;
+  birth_date?: string;
+  permanent_date?: string;
+  superior_id?: number | null;
+  marital_status?: string;
+  nik?: string;
   address?: string;
-  hire_date?: string;
-  status?: EmployeeStatus;
-  department_id?: string;
-  division_id?: string;
-  job_title_id?: string;
-  job_level_id?: string;
-  manager_id?: string;
-  superior_id?: string;
-  photo?: string;
-  employee_type?: string;
-  employee_bu?: string;
-  employee_ext?: string;
-  employee_location?: string;
-  fte?: number;
-  employee_permanentdate?: string;
-  employee_contractdate?: string;
-  employee_contractenddate?: string;
-  employee_probationdate?: string;
-  employee_probationenddate?: string;
-  employee_mother?: string;
-  employee_father?: string;
-  employee_spouse?: string;
-  employee_maritalstatus?: string;
-  employee_emg_name?: string;
-  employee_emg_rel?: string;
-  employee_emg_phone?: string;
-  employee_religion?: string;
-  employee_ethnic?: string;
-  certificate?: string;
-  employee_reason?: string;
-  employee_exitdate?: string;
+  religion?: string;
+  ethnic?: string;
+  mother_name?: string;
+  father_name?: string;
+  spouse_name?: string;
+  emergency_name?: string;
+  emergency_relation?: string;
+  emergency_phone?: string;
 }
 
 // Frontend form data interface (camelCase)
 export interface EmployeeFormData {
   employeeId: string;
+  employeeNik?: string;
   firstName: string;
   lastName: string;
   nickname: string;
   email: string;
   phone: string;
   dateOfBirth: string;
-  gender: EmployeeGender;
+  gender: string;
   address: string;
   hireDate: string;
-  status: EmployeeStatus;
+  status: string;
   departmentId: string;
   divisionId: string;
   jobTitleId: string;
@@ -136,7 +102,7 @@ export interface EmployeeFormData {
   motherName: string;
   fatherName: string;
   spouseName: string;
-  maritalStatus: MaritalStatus | "";
+  maritalStatus: string;
   // Emergency contact
   emergencyContactName: string;
   emergencyContactRelation: string;
@@ -162,6 +128,7 @@ interface ApiEmployee {
   id: string | number;
   employee_id?: string;
   employee_nik?: string | null;
+  nik?: string | null;
   first_name?: string;
   last_name?: string;
   nickname?: string;
@@ -169,10 +136,10 @@ interface ApiEmployee {
   phone?: string;
   employee_contact?: string;
   date_of_birth?: string;
-  gender?: EmployeeGender;
+  gender?: string;
   address?: string;
   hire_date?: string;
-  status?: EmployeeStatus;
+  status?: string;
   department_id?: string;
   division_id?: string;
   job_title_id?: string;
@@ -233,8 +200,8 @@ interface ApiEmployee {
 function mapEmployee(emp: ApiEmployee): EmployeeWithRelations {
   return {
     id: String(emp.employee_id ?? emp.id),
-    employeeId: emp.employee_nik || emp.employeeId || String(emp.employee_id ?? emp.id),
-    employeeNik: emp.employee_nik ?? null,
+    employeeId: emp.employee_nik || emp.nik || emp.employeeId || String(emp.employee_id ?? emp.id),
+    employeeNik: emp.employee_nik || emp.nik || null,
     firstName: emp.first_name || emp.firstName || "",
     lastName: emp.last_name || emp.lastName || "",
     nickname: emp.nickname,
@@ -242,10 +209,10 @@ function mapEmployee(emp: ApiEmployee): EmployeeWithRelations {
     phone: emp.phone || "",
     employeeContact: emp.employee_contact ?? null,
     dateOfBirth: emp.date_of_birth || emp.dateOfBirth || "",
-    gender: emp.gender || "male",
+    gender: (emp.gender || "male") as EmployeeWithRelations["gender"],
     address: emp.address || "",
     hireDate: emp.hire_date || emp.hireDate || "",
-    status: emp.status || "inactive",
+    status: (emp.status || "inactive") as EmployeeWithRelations["status"],
     departmentId: emp.department_id || emp.departmentId || "",
     divisionId: emp.division_id || emp.divisionId || "",
     jobTitleId: emp.job_title_id || emp.jobTitleId || "",
@@ -293,45 +260,33 @@ function mapEmployee(emp: ApiEmployee): EmployeeWithRelations {
 }
 
 export function mapFormToRequest(form: EmployeeFormData): CreateEmployeeRequest {
-  const req: CreateEmployeeRequest = {
-    employee_id: form.employeeId,
-    first_name: form.firstName,
-    last_name: form.lastName,
-    email: form.email,
-    phone: form.phone,
-    date_of_birth: form.dateOfBirth,
-    gender: form.gender,
-    address: form.address,
-    hire_date: form.hireDate,
-    status: form.status || undefined,
-    department_id: form.departmentId,
-    division_id: form.divisionId,
-    job_title_id: form.jobTitleId,
-    job_level_id: form.jobLevelId,
-    manager_id: form.managerId || undefined,
-  };
+  const name = `${form.firstName} ${form.lastName}`.trim();
+  const req: CreateEmployeeRequest = { name };
 
+  if (form.employeeNik) req.nik = form.employeeNik;
   if (form.nickname) req.nickname = form.nickname;
-  if (form.employeeType) req.employee_type = form.employeeType;
-  if (form.businessUnit) req.employee_bu = form.businessUnit;
-  if (form.extension) req.employee_ext = form.extension;
-  if (form.location) req.employee_location = form.location;
-  if (form.fte) req.fte = Number(form.fte);
-  if (form.permanentDate) req.employee_permanentdate = form.permanentDate;
-  if (form.contractDate) req.employee_contractdate = form.contractDate;
-  if (form.contractEndDate) req.employee_contractenddate = form.contractEndDate;
-  if (form.probationDate) req.employee_probationdate = form.probationDate;
-  if (form.probationEndDate) req.employee_probationenddate = form.probationEndDate;
-  if (form.motherName) req.employee_mother = form.motherName;
-  if (form.fatherName) req.employee_father = form.fatherName;
-  if (form.spouseName) req.employee_spouse = form.spouseName;
-  if (form.maritalStatus) req.employee_maritalstatus = form.maritalStatus;
-  if (form.emergencyContactName) req.employee_emg_name = form.emergencyContactName;
-  if (form.emergencyContactRelation) req.employee_emg_rel = form.emergencyContactRelation;
-  if (form.emergencyContactPhone) req.employee_emg_phone = form.emergencyContactPhone;
-  if (form.religion) req.employee_religion = form.religion;
-  if (form.ethnicity) req.employee_ethnic = form.ethnicity;
-  if (form.certificate) req.certificate = form.certificate;
+  if (form.email) req.email = form.email;
+  if (form.phone) req.contact = form.phone;
+  if (form.gender) req.gender = form.gender;
+  if (form.status) req.status = form.status;
+  if (form.jobTitleId) req.title = form.jobTitleId;
+  if (form.location) req.location = form.location;
+  if (form.businessUnit) req.business_unit = form.businessUnit;
+  if (form.extension) req.extension = form.extension;
+  if (form.hireDate) req.join_date = form.hireDate;
+  if (form.dateOfBirth) req.birth_date = form.dateOfBirth;
+  if (form.permanentDate) req.permanent_date = form.permanentDate;
+  if (form.managerId) req.superior_id = Number(form.managerId) || undefined;
+  if (form.maritalStatus) req.marital_status = form.maritalStatus;
+  if (form.address) req.address = form.address;
+  if (form.religion) req.religion = form.religion;
+  if (form.ethnicity) req.ethnic = form.ethnicity;
+  if (form.motherName) req.mother_name = form.motherName;
+  if (form.fatherName) req.father_name = form.fatherName;
+  if (form.spouseName) req.spouse_name = form.spouseName;
+  if (form.emergencyContactName) req.emergency_name = form.emergencyContactName;
+  if (form.emergencyContactRelation) req.emergency_relation = form.emergencyContactRelation;
+  if (form.emergencyContactPhone) req.emergency_phone = form.emergencyContactPhone;
 
   return req;
 }
@@ -339,44 +294,70 @@ export function mapFormToRequest(form: EmployeeFormData): CreateEmployeeRequest 
 export function mapFormToUpdateRequest(form: Partial<EmployeeFormData>): UpdateEmployeeRequest {
   const req: UpdateEmployeeRequest = {};
 
-  if (form.employeeId !== undefined) req.employee_id = form.employeeId;
-  if (form.firstName !== undefined) req.first_name = form.firstName;
-  if (form.lastName !== undefined) req.last_name = form.lastName;
+  if (form.firstName !== undefined || form.lastName !== undefined) {
+    req.name = `${form.firstName || ""} ${form.lastName || ""}`.trim();
+  }
+  if (form.employeeNik !== undefined) req.nik = form.employeeNik;
   if (form.nickname !== undefined) req.nickname = form.nickname;
   if (form.email !== undefined) req.email = form.email;
-  if (form.phone !== undefined) req.phone = form.phone;
-  if (form.dateOfBirth !== undefined) req.date_of_birth = form.dateOfBirth;
+  if (form.phone !== undefined) req.contact = form.phone;
   if (form.gender !== undefined) req.gender = form.gender;
-  if (form.address !== undefined) req.address = form.address;
-  if (form.hireDate !== undefined) req.hire_date = form.hireDate;
   if (form.status !== undefined) req.status = form.status;
-  if (form.departmentId !== undefined) req.department_id = form.departmentId;
-  if (form.divisionId !== undefined) req.division_id = form.divisionId;
-  if (form.jobTitleId !== undefined) req.job_title_id = form.jobTitleId;
-  if (form.jobLevelId !== undefined) req.job_level_id = form.jobLevelId;
-  if (form.managerId !== undefined) req.manager_id = form.managerId || undefined;
-  if (form.employeeType !== undefined) req.employee_type = form.employeeType || undefined;
-  if (form.businessUnit !== undefined) req.employee_bu = form.businessUnit || undefined;
-  if (form.extension !== undefined) req.employee_ext = form.extension || undefined;
-  if (form.location !== undefined) req.employee_location = form.location || undefined;
-  if (form.fte !== undefined) req.fte = form.fte ? Number(form.fte) : undefined;
-  if (form.permanentDate !== undefined) req.employee_permanentdate = form.permanentDate || undefined;
-  if (form.contractDate !== undefined) req.employee_contractdate = form.contractDate || undefined;
-  if (form.contractEndDate !== undefined) req.employee_contractenddate = form.contractEndDate || undefined;
-  if (form.probationDate !== undefined) req.employee_probationdate = form.probationDate || undefined;
-  if (form.probationEndDate !== undefined) req.employee_probationenddate = form.probationEndDate || undefined;
-  if (form.motherName !== undefined) req.employee_mother = form.motherName || undefined;
-  if (form.fatherName !== undefined) req.employee_father = form.fatherName || undefined;
-  if (form.spouseName !== undefined) req.employee_spouse = form.spouseName || undefined;
-  if (form.maritalStatus !== undefined) req.employee_maritalstatus = form.maritalStatus || undefined;
-  if (form.emergencyContactName !== undefined) req.employee_emg_name = form.emergencyContactName || undefined;
-  if (form.emergencyContactRelation !== undefined) req.employee_emg_rel = form.emergencyContactRelation || undefined;
-  if (form.emergencyContactPhone !== undefined) req.employee_emg_phone = form.emergencyContactPhone || undefined;
-  if (form.religion !== undefined) req.employee_religion = form.religion || undefined;
-  if (form.ethnicity !== undefined) req.employee_ethnic = form.ethnicity || undefined;
-  if (form.certificate !== undefined) req.certificate = form.certificate || undefined;
+  if (form.jobTitleId !== undefined) req.title = form.jobTitleId;
+  if (form.location !== undefined) req.location = form.location || undefined;
+  if (form.businessUnit !== undefined) req.business_unit = form.businessUnit || undefined;
+  if (form.extension !== undefined) req.extension = form.extension || undefined;
+  if (form.hireDate !== undefined) req.join_date = form.hireDate;
+  if (form.dateOfBirth !== undefined) req.birth_date = form.dateOfBirth;
+  if (form.permanentDate !== undefined) req.permanent_date = form.permanentDate || undefined;
+  if (form.managerId !== undefined) {
+    req.superior_id = form.managerId ? Number(form.managerId) : null;
+  }
+  if (form.maritalStatus !== undefined) req.marital_status = form.maritalStatus || undefined;
+  if (form.address !== undefined) req.address = form.address || undefined;
+  if (form.religion !== undefined) req.religion = form.religion || undefined;
+  if (form.ethnicity !== undefined) req.ethnic = form.ethnicity || undefined;
+  if (form.motherName !== undefined) req.mother_name = form.motherName || undefined;
+  if (form.fatherName !== undefined) req.father_name = form.fatherName || undefined;
+  if (form.spouseName !== undefined) req.spouse_name = form.spouseName || undefined;
+  if (form.emergencyContactName !== undefined) req.emergency_name = form.emergencyContactName || undefined;
+  if (form.emergencyContactRelation !== undefined) req.emergency_relation = form.emergencyContactRelation || undefined;
+  if (form.emergencyContactPhone !== undefined) req.emergency_phone = form.emergencyContactPhone || undefined;
 
   return req;
+}
+
+// --- NIK Generation (format: YYYYMM### based on join date) ---
+
+export async function generateNik(joinDate: string): Promise<string> {
+  const date = new Date(joinDate);
+  const year = date.getFullYear().toString();
+  const month = (date.getMonth() + 1).toString().padStart(2, "0");
+  const prefix = `${year}${month}`;
+
+  try {
+    // Fetch employees to find the latest NIK with the same YYYYMM prefix
+    const res = await employeeService.getAll(1, 100);
+    let maxSeq = 0;
+
+    if (res.success && res.data) {
+      for (const emp of res.data.data) {
+        const nik = emp.employeeNik || emp.employeeId || "";
+        if (nik.startsWith(prefix) && nik.length === 9) {
+          const seq = parseInt(nik.substring(6, 9), 10);
+          if (!isNaN(seq) && seq > maxSeq) {
+            maxSeq = seq;
+          }
+        }
+      }
+    }
+
+    const nextSeq = (maxSeq + 1).toString().padStart(3, "0");
+    return `${prefix}${nextSeq}`;
+  } catch {
+    // Fallback to 001 if API call fails
+    return `${prefix}001`;
+  }
 }
 
 // --- Service ---

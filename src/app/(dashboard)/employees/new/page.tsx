@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { ArrowLeft, Loader2, Save } from "lucide-react";
 
 import { Header } from "@/components/layout/header";
@@ -18,16 +18,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import employeeService, {
-  mapFormToUpdateRequest,
+  generateNik,
+  mapFormToRequest,
 } from "@/services/employee.service";
 import jobTitleService from "@/services/job-title.service";
-import type {
-  EmployeeWithRelations,
-  JobTitle,
-  EmployeeGender,
-  EmployeeStatus,
-  MaritalStatus,
-} from "@/types";
+import { useEmployeeStore } from "@/stores/employee-store";
+import type { JobTitle, EmployeeWithRelations, EmployeeGender, EmployeeStatus, MaritalStatus } from "@/types";
 import { showToast } from "@/lib/utils/toast-messages";
 
 // --- Constants (matching hris-tuv exactly) ---
@@ -104,12 +100,15 @@ const PROBATION_PERIODS = [
 // --- Form State Interface ---
 
 interface FormState {
+  // NIK (auto-generated)
   nik: string;
+  // Biodata
   fullName: string;
   gender: string;
   birthDate: string;
   religion: string;
   ethnic: string;
+  // Work Details
   jobTitleId: string;
   fte: string;
   joinDate: string;
@@ -122,69 +121,45 @@ interface FormState {
   probationPeriod: string;
   exitDate: string;
   superior: string;
+  // Family
   motherName: string;
   fatherName: string;
   maritalStatus: string;
   spouseName: string;
 }
 
-// Capitalize first letter to match backend enum values
-function capitalize(s: string): string {
-  return s ? s.charAt(0).toUpperCase() + s.slice(1).toLowerCase() : "";
-}
+const initialForm: FormState = {
+  nik: "",
+  fullName: "",
+  gender: "Male",
+  birthDate: "",
+  religion: "Islam",
+  ethnic: "Jawa",
+  jobTitleId: "",
+  fte: "1",
+  joinDate: "",
+  phone: "",
+  email: "",
+  location: "",
+  status: "Permanent",
+  permanentDate: "",
+  contractPeriod: "",
+  probationPeriod: "",
+  exitDate: "",
+  superior: "",
+  motherName: "",
+  fatherName: "",
+  maritalStatus: "",
+  spouseName: "",
+};
 
-// Map API status values back to backend enum format
-function mapStatusToForm(status: string): string {
-  const map: Record<string, string> = {
-    permanent: "Permanent",
-    contract: "Contract",
-    probation: "Probation",
-    terminated: "Resigned",
-    resigned: "Resigned",
-    active: "Permanent",
-    inactive: "",
-  };
-  return map[status.toLowerCase()] ?? capitalize(status);
-}
-
-function mapEmployeeToFormState(emp: EmployeeWithRelations): FormState {
-  const fullName = `${emp.firstName || ""} ${emp.lastName || ""}`.trim();
-  return {
-    nik: emp.employeeNik || "",
-    fullName,
-    gender: capitalize(emp.gender) || "Male",
-    birthDate: emp.dateOfBirth || "",
-    religion: emp.religion || "",
-    ethnic: emp.ethnicity || "",
-    jobTitleId: emp.jobTitleId || "",
-    fte: emp.fte != null ? String(emp.fte) : "1",
-    joinDate: emp.hireDate || "",
-    phone: emp.phone || "",
-    email: emp.email || "",
-    location: emp.location || "",
-    status: mapStatusToForm(emp.status || "Permanent"),
-    permanentDate: emp.permanentDate || "",
-    contractPeriod: "",
-    probationPeriod: "",
-    exitDate: emp.exitDate || "",
-    superior: emp.managerId || "",
-    motherName: emp.motherName || "",
-    fatherName: emp.fatherName || "",
-    maritalStatus: emp.maritalStatus ? capitalize(emp.maritalStatus) : "",
-    spouseName: emp.spouseName || "",
-  };
-}
-
-export default function EmployeeEditPage() {
-  const params = useParams();
+export default function EmployeeNewPage() {
   const router = useRouter();
-  const id = params.id as string;
+  const { addEmployee } = useEmployeeStore();
 
-  const [employee, setEmployee] = React.useState<EmployeeWithRelations | null>(null);
-  const [form, setForm] = React.useState<FormState | null>(null);
+  const [form, setForm] = React.useState<FormState>(initialForm);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
 
   // Dropdown data
   const [jobTitles, setJobTitles] = React.useState<JobTitle[]>([]);
@@ -192,103 +167,136 @@ export default function EmployeeEditPage() {
 
   // Derived read-only fields from selected job title
   const selectedJobTitle = React.useMemo(
-    () => (form ? jobTitles.find((jt) => jt.id === form.jobTitleId) : null),
-    [jobTitles, form]
+    () => jobTitles.find((jt) => jt.id === form.jobTitleId),
+    [jobTitles, form.jobTitleId]
   );
 
-  // Fetch data
-  const fetchData = React.useCallback(async () => {
+  // Fetch dropdown data
+  const fetchDropdownData = React.useCallback(async () => {
     setIsLoading(true);
-    setError(null);
-
-    const [empRes, titleRes, allEmpRes] = await Promise.all([
-      employeeService.getById(id),
+    const [titleRes, empRes] = await Promise.all([
       jobTitleService.getAll(1, 100),
       employeeService.getAll(1, 100),
     ]);
-
-    if (empRes.success && empRes.data) {
-      setEmployee(empRes.data);
-      setForm(mapEmployeeToFormState(empRes.data));
-    } else {
-      setError(empRes.message || "Failed to fetch employee");
-    }
-
     if (titleRes.success && titleRes.data) setJobTitles(titleRes.data.data || []);
-    if (allEmpRes.success && allEmpRes.data) setEmployees(allEmpRes.data.data || []);
-
+    if (empRes.success && empRes.data) setEmployees(empRes.data.data || []);
     setIsLoading(false);
-  }, [id]);
+  }, []);
 
   React.useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    fetchDropdownData();
+  }, [fetchDropdownData]);
+
+  // Auto-generate NIK when join date changes
+  React.useEffect(() => {
+    if (!form.joinDate) {
+      setForm((prev) => ({ ...prev, nik: "" }));
+      return;
+    }
+    let cancelled = false;
+    generateNik(form.joinDate)
+      .then((nik) => {
+        if (!cancelled) setForm((prev) => ({ ...prev, nik }));
+      })
+      .catch(() => {
+        // Fallback: use prefix + 001
+        if (!cancelled) {
+          const d = new Date(form.joinDate);
+          const fallback = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}001`;
+          setForm((prev) => ({ ...prev, nik: fallback }));
+        }
+      });
+    return () => { cancelled = true; };
+  }, [form.joinDate]);
 
   // Form field change
   const handleChange = (field: keyof FormState, value: string) => {
-    setForm((prev) => (prev ? { ...prev, [field]: value } : prev));
+    setForm((prev) => ({ ...prev, [field]: value }));
   };
 
   // Calculate contract/probation end dates
   const getContractEndDate = (): string => {
-    if (!form?.joinDate || !form?.contractPeriod) return "";
+    if (!form.joinDate || !form.contractPeriod) return "";
     const date = new Date(form.joinDate);
     date.setFullYear(date.getFullYear() + Number(form.contractPeriod));
     return date.toISOString().split("T")[0];
   };
 
   const getProbationEndDate = (): string => {
-    if (!form?.joinDate || !form?.probationPeriod) return "";
+    if (!form.joinDate || !form.probationPeriod) return "";
     const date = new Date(form.joinDate);
     date.setMonth(date.getMonth() + Number(form.probationPeriod));
     return date.toISOString().split("T")[0];
   };
 
-  // Submit
+  // Submit — map form to API request
   const handleSubmit = async () => {
-    if (!employee || !form) return;
     setIsSubmitting(true);
 
+    // Split fullName into firstName and lastName
     const nameParts = form.fullName.trim().split(/\s+/);
     const firstName = nameParts[0] || "";
     const lastName = nameParts.slice(1).join(" ") || "";
 
-    const requestData = mapFormToUpdateRequest({
+    const requestData = mapFormToRequest({
+      employeeId: form.nik,
+      employeeNik: form.nik,
       firstName,
       lastName,
+      nickname: "",
       email: form.email,
       phone: form.phone,
       dateOfBirth: form.birthDate,
       gender: form.gender as EmployeeGender,
+      address: "",
       hireDate: form.joinDate,
       status: form.status as EmployeeStatus,
+      departmentId: "",
+      divisionId: "",
       jobTitleId: selectedJobTitle?.name || "",
+      jobLevelId: "",
       managerId: form.superior,
+      employeeType: "",
+      businessUnit: "",
+      extension: "",
       location: form.location,
+      fte: form.fte,
       permanentDate: form.status === "Permanent" ? form.permanentDate : "",
+      contractDate: "",
+      contractEndDate: "",
+      probationDate: "",
+      probationEndDate: "",
       motherName: form.motherName,
       fatherName: form.fatherName,
       spouseName: form.maritalStatus === "Married" ? form.spouseName : "",
       maritalStatus: form.maritalStatus as MaritalStatus | "",
+      emergencyContactName: "",
+      emergencyContactRelation: "",
+      emergencyContactPhone: "",
       religion: form.religion,
       ethnicity: form.ethnic,
+      certificate: "",
     });
 
-    const response = await employeeService.update(employee.id, requestData);
+    // Explicitly ensure nik is set
+    requestData.nik = form.nik;
 
-    if (response.success) {
-      showToast.updated("Employee");
-      router.push(`/employees/${employee.id}`);
+    const response = await employeeService.create(requestData);
+
+    if (response.success && response.data) {
+      addEmployee(response.data);
+      showToast.created("Employee");
+      router.push("/employees");
     } else {
-      showToast.updateError("employee", response.message);
+      showToast.createError("employee", response.message);
     }
 
     setIsSubmitting(false);
   };
 
-  // Form validity
+  // Form validity — include nik so submit waits for generation
   const isFormValid =
-    form &&
+    form.nik &&
     form.fullName.trim() &&
     form.birthDate &&
     form.jobTitleId &&
@@ -299,7 +307,7 @@ export default function EmployeeEditPage() {
   if (isLoading) {
     return (
       <>
-        <Header title="Edit Employee" />
+        <Header title="Add Employee" />
         <PageContainer>
           <div className="flex h-64 items-center justify-center">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -309,42 +317,25 @@ export default function EmployeeEditPage() {
     );
   }
 
-  // Error state
-  if (error || !employee || !form) {
-    return (
-      <>
-        <Header title="Edit Employee" />
-        <PageContainer>
-          <div className="flex h-64 flex-col items-center justify-center gap-3">
-            <p className="text-sm text-muted-foreground">{error || "Employee not found"}</p>
-            <Button variant="outline" size="sm" onClick={fetchData}>
-              Try Again
-            </Button>
-          </div>
-        </PageContainer>
-      </>
-    );
-  }
-
   return (
     <>
-      <Header title="Edit Employee" />
+      <Header title="Add Employee" />
       <PageContainer>
         <div className="space-y-4">
           {/* Top Bar */}
           <div className="flex items-center justify-between">
             <button
-              onClick={() => router.push(`/employees/${employee.id}`)}
+              onClick={() => router.push("/employees")}
               className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
               <ArrowLeft className="h-4 w-4" />
-              Back to {form.fullName || "Employee"}
+              Back to Employees
             </button>
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => router.push(`/employees/${employee.id}`)}
+                onClick={() => router.push("/employees")}
                 disabled={isSubmitting}
               >
                 Cancel
@@ -360,7 +351,7 @@ export default function EmployeeEditPage() {
                 ) : (
                   <Save className="h-4 w-4" />
                 )}
-                Save Changes
+                Save
               </Button>
             </div>
           </div>
@@ -378,6 +369,7 @@ export default function EmployeeEditPage() {
                     <div className="space-y-1.5">
                       <Label>NIK</Label>
                       <Input
+                        placeholder="Auto-generated from Join Date"
                         value={form.nik}
                         disabled
                         className="bg-muted font-mono"
@@ -433,7 +425,7 @@ export default function EmployeeEditPage() {
                         onValueChange={(v) => handleChange("religion", v)}
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="Select religion" />
+                          <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
                           {RELIGIONS.map((r) => (
@@ -451,7 +443,7 @@ export default function EmployeeEditPage() {
                         onValueChange={(v) => handleChange("ethnic", v)}
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="Select ethnic" />
+                          <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
                           {ETHNICITIES.map((e) => (
@@ -710,13 +702,11 @@ export default function EmployeeEditPage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="__none__">— No Superior —</SelectItem>
-                        {employees
-                          .filter((emp) => emp.id !== employee?.id)
-                          .map((emp) => (
-                            <SelectItem key={emp.id} value={emp.id}>
-                              {`${emp.firstName} ${emp.lastName}`.trim()}
-                            </SelectItem>
-                          ))}
+                        {employees.map((emp) => (
+                          <SelectItem key={emp.id} value={emp.id}>
+                            {`${emp.firstName} ${emp.lastName}`.trim()}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -790,7 +780,7 @@ export default function EmployeeEditPage() {
           <div className="flex items-center justify-end gap-2 pb-6">
             <Button
               variant="outline"
-              onClick={() => router.push(`/employees/${employee.id}`)}
+              onClick={() => router.push("/employees")}
               disabled={isSubmitting}
             >
               Cancel
@@ -805,7 +795,7 @@ export default function EmployeeEditPage() {
               ) : (
                 <Save className="h-4 w-4" />
               )}
-              Save Changes
+              Save
             </Button>
           </div>
         </div>

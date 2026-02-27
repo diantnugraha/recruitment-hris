@@ -186,123 +186,88 @@ export default function EmployeeDetailPage() {
           </div>
 
           {/* Single card with all content */}
-          <Card className="border-0 shadow-none">
-            <CardContent className="p-6 space-y-6">
+          <Card>
+            <CardContent className="p-6 space-y-8">
               {/* Profile Header */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-700">
-                    <span className="text-xl font-bold">{initials}</span>
+              <div className="flex items-center gap-4">
+                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-700">
+                  <span className="text-xl font-bold">{initials}</span>
+                </div>
+                <div>
+                  <div className="flex items-center gap-2.5">
+                    <h1 className="text-lg font-bold">{fullName || "—"}</h1>
+                    <Badge variant={statusCfg.variant}>{statusCfg.label}</Badge>
                   </div>
-                  <div>
-                    <div className="flex items-center gap-2.5">
-                      <h1 className="text-lg font-bold">{fullName || "—"}</h1>
-                      <Badge variant={statusCfg.variant}>{statusCfg.label}</Badge>
-                    </div>
-                    {subtitle && (
-                      <p className="mt-0.5 text-sm text-muted-foreground">{subtitle}</p>
-                    )}
-                    <p className="mt-0.5 text-xs text-muted-foreground">
-                      {employee.employeeNik || employee.employeeId || "—"}
-                      {employee.nickname && ` · "${employee.nickname}"`}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Separator */}
-              <div className="border-t border-dashed" />
-
-              {/* Personal Information */}
-              <div>
-                <h2 className="text-sm font-semibold uppercase tracking-wide mb-4">
-                  Personal Information
-                </h2>
-                <div className="grid grid-cols-2 gap-x-8 gap-y-4 lg:grid-cols-3">
-                  <DetailField label="NIK" value={employee.employeeNik || employee.employeeId || ""} />
-                  <DetailField label="Email" value={employee.email} />
-                  <DetailField label="Phone" value={employee.employeeContact || employee.phone || ""} />
-                  <DetailField label="Date of Birth" value={formatDateField(employee.dateOfBirth)} />
-                  <DetailField label="Gender" value={employee.gender === "male" ? "Male" : "Female"} />
-                  <DetailField label="Marital Status" value={maritalStatusLabel} />
-                  <DetailField label="Religion" value={employee.religion || ""} />
-                  <DetailField label="Ethnicity" value={employee.ethnicity || ""} />
-                  <DetailField label="Address" value={employee.address} />
-                </div>
-              </div>
-
-              {/* Separator */}
-              <div className="border-t border-dashed" />
-
-              {/* Position Information */}
-              <div>
-                <h2 className="text-sm font-semibold uppercase tracking-wide mb-4">
-                  Position Information
-                </h2>
-                <div className="grid grid-cols-2 gap-x-8 gap-y-4 lg:grid-cols-3">
-                  <DetailField label="Job Title" value={employee.jobTitle?.name || ""} />
-                  <DetailField label="Department" value={employee.department?.name || ""} />
-                  <DetailField label="Division" value={employee.division?.name || ""} />
-                  <DetailField label="Job Level" value={employee.jobLevel?.name || ""} />
-                  <DetailField label="Employee Type" value={employee.employeeType || ""} />
-                  <DetailField label="Business Unit" value={employee.businessUnit || ""} />
-                  <DetailField label="Location" value={employee.location || ""} />
-                  <DetailField label="FTE" value={employee.fte != null ? String(employee.fte) : ""} />
-                  <DetailField label="Certificate" value={employee.certificate || ""} />
-                </div>
-              </div>
-
-              {/* Separator */}
-              <div className="border-t border-dashed" />
-
-              {/* Dates */}
-              <div>
-                <h2 className="text-sm font-semibold uppercase tracking-wide mb-4">
-                  Employment Dates
-                </h2>
-                <div className="grid grid-cols-2 gap-x-8 gap-y-4 lg:grid-cols-3">
-                  <DetailField label="Join Date" value={formatDateField(employee.hireDate)} />
-                  <DetailField label="Permanent Date" value={formatDateField(employee.permanentDate)} />
-                  <DetailField label="Contract Start" value={formatDateField(employee.contractDate)} />
-                  <DetailField label="Contract End" value={formatDateField(employee.contractEndDate)} />
-                  <DetailField label="Probation Start" value={formatDateField(employee.probationDate)} />
-                  <DetailField label="Probation End" value={formatDateField(employee.probationEndDate)} />
-                  {employee.exitDate && (
-                    <>
-                      <DetailField label="Exit Date" value={formatDateField(employee.exitDate)} />
-                      <DetailField label="Exit Reason" value={employee.exitReason || ""} />
-                    </>
+                  {subtitle && (
+                    <p className="mt-0.5 text-sm text-muted-foreground">{subtitle}</p>
                   )}
                 </div>
               </div>
 
-              {/* Separator */}
               <div className="border-t border-dashed" />
 
-              {/* Family Information */}
+              {/* ========== SECTION: BIODATA ========== */}
               <div>
                 <h2 className="text-sm font-semibold uppercase tracking-wide mb-4">
-                  Family Information
+                  Biodata
                 </h2>
-                <div className="grid grid-cols-2 gap-x-8 gap-y-4 lg:grid-cols-3">
-                  <DetailField label="Father's Name" value={employee.fatherName || ""} />
-                  <DetailField label="Mother's Name" value={employee.motherName || ""} />
-                  <DetailField label="Spouse Name" value={employee.spouseName || ""} />
+                <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+                  <DetailField label="NIK" value={employee.employeeNik || "No Data"} />
+                  <DetailField label="Full Name" value={fullName} />
+                  <DetailField label="Gender" value={employee.gender === "male" ? "Male" : "Female"} />
+                  <DetailField label="Birth Date" value={formatDateField(employee.dateOfBirth)} />
+                  <DetailField label="Religion" value={employee.religion || ""} />
+                  <DetailField label="Ethnic" value={employee.ethnicity || ""} />
                 </div>
               </div>
 
-              {/* Separator */}
               <div className="border-t border-dashed" />
 
-              {/* Emergency Contact */}
+              {/* ========== SECTION: WORK DETAILS ========== */}
               <div>
                 <h2 className="text-sm font-semibold uppercase tracking-wide mb-4">
-                  Emergency Contact
+                  Work Details
                 </h2>
-                <div className="grid grid-cols-2 gap-x-8 gap-y-4 lg:grid-cols-3">
-                  <DetailField label="Contact Name" value={employee.emergencyContactName || ""} />
-                  <DetailField label="Relationship" value={employee.emergencyContactRelation || ""} />
-                  <DetailField label="Phone Number" value={employee.emergencyContactPhone || ""} />
+                <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+                  <DetailField label="Employee Type" value={employee.employeeType || ""} />
+                  <DetailField label="Job Level" value={employee.jobLevel?.name || ""} />
+                  <DetailField label="Department" value={employee.department?.name || ""} />
+                  <DetailField label="Job Title" value={employee.jobTitle?.name || ""} />
+                  <DetailField label="FTE" value={employee.fte != null ? String(employee.fte) : ""} />
+                  <DetailField label="Join Date" value={formatDateField(employee.hireDate)} />
+                  <DetailField label="Mobile Phone No." value={employee.employeeContact || employee.phone || ""} />
+                  <DetailField label="Email Address" value={employee.email} />
+                  <DetailField label="Location" value={employee.location || ""} />
+                  <DetailField label="Status" value={statusCfg.label} />
+                  {employee.permanentDate && (
+                    <DetailField label="Permanent Date" value={formatDateField(employee.permanentDate)} />
+                  )}
+                  {employee.contractEndDate && (
+                    <DetailField label="Contract End" value={formatDateField(employee.contractEndDate)} />
+                  )}
+                  {employee.probationEndDate && (
+                    <DetailField label="Probation End" value={formatDateField(employee.probationEndDate)} />
+                  )}
+                  {employee.exitDate && (
+                    <DetailField label="Resigned Date" value={formatDateField(employee.exitDate)} />
+                  )}
+                </div>
+              </div>
+
+              <div className="border-t border-dashed" />
+
+              {/* ========== SECTION: FAMILY ========== */}
+              <div>
+                <h2 className="text-sm font-semibold uppercase tracking-wide mb-4">
+                  Family
+                </h2>
+                <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+                  <DetailField label="Mothers Name" value={employee.motherName || ""} />
+                  <DetailField label="Fathers Name" value={employee.fatherName || ""} />
+                  <DetailField label="Marital Status" value={maritalStatusLabel} />
+                  {employee.spouseName && (
+                    <DetailField label="Spouse" value={employee.spouseName} />
+                  )}
                 </div>
               </div>
             </CardContent>
