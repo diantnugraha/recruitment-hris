@@ -21,7 +21,8 @@ import {
 } from "@/components/ui/alert-dialog";
 
 import employeeService from "@/services/employee.service";
-import { EmployeeWithRelations } from "@/types";
+import jobTitleService from "@/services/job-title.service";
+import { EmployeeWithRelations, JobTitle } from "@/types";
 import { formatShortDate, getInitials } from "@/lib/utils";
 import { showToast } from "@/lib/utils/toast-messages";
 
@@ -56,7 +57,9 @@ function DetailField({ label, value }: { label: string; value: string }) {
       <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
         {label}
       </p>
-      <p className="text-sm font-medium">{value || "—"}</p>
+      <p className={`text-sm font-medium ${!value ? "text-muted-foreground" : ""}`}>
+        {value || "No data"}
+      </p>
     </div>
   );
 }
@@ -72,26 +75,60 @@ export default function EmployeeDetailPage() {
   const id = params.id as string;
 
   const [employee, setEmployee] = React.useState<EmployeeWithRelations | null>(null);
+  const [jobTitles, setJobTitles] = React.useState<JobTitle[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
   const [isDeleting, setIsDeleting] = React.useState(false);
 
-  const fetchEmployee = React.useCallback(async () => {
+  const fetchData = React.useCallback(async () => {
     setIsLoading(true);
     setError(null);
-    const res = await employeeService.getById(id);
-    if (res.success && res.data) {
-      setEmployee(res.data);
+
+    const [empRes, jtRes] = await Promise.all([
+      employeeService.getById(id),
+      jobTitleService.fetchAll(),
+    ]);
+
+    if (empRes.success && empRes.data) {
+      setEmployee(empRes.data);
     } else {
-      setError(res.message || "Failed to fetch employee");
+      setError(empRes.message || "Failed to fetch employee");
     }
+
+    if (jtRes.success && jtRes.data) {
+      setJobTitles(jtRes.data);
+    }
+
     setIsLoading(false);
   }, [id]);
 
+  // Find matching job title to get type and job level
+  // Try to match by ID first, then by name as fallback
+  const matchedJobTitle = React.useMemo(() => {
+    if (!employee || jobTitles.length === 0) return null;
+
+    // Try matching by jobTitleId first (most reliable)
+    if (employee.jobTitleId) {
+      const byId = jobTitles.find(
+        (jt) => String(jt.id) === String(employee.jobTitleId)
+      );
+      if (byId) return byId;
+    }
+
+    // Fallback: match by name
+    if (employee.jobTitle?.name) {
+      return jobTitles.find(
+        (jt) => jt.name.toLowerCase() === employee.jobTitle?.name?.toLowerCase()
+      );
+    }
+
+    return null;
+  }, [employee, jobTitles]);
+
   React.useEffect(() => {
-    fetchEmployee();
-  }, [fetchEmployee]);
+    fetchData();
+  }, [fetchData]);
 
   const handleDelete = async () => {
     if (!employee) return;
@@ -129,7 +166,7 @@ export default function EmployeeDetailPage() {
         <PageContainer>
           <div className="flex h-64 flex-col items-center justify-center gap-3">
             <p className="text-sm text-muted-foreground">{error || "Employee not found"}</p>
-            <Button variant="outline" size="sm" onClick={fetchEmployee}>
+            <Button variant="outline" size="sm" onClick={fetchData}>
               Try Again
             </Button>
           </div>
@@ -198,6 +235,9 @@ export default function EmployeeDetailPage() {
                     <h1 className="text-lg font-bold">{fullName || "—"}</h1>
                     <Badge variant={statusCfg.variant}>{statusCfg.label}</Badge>
                   </div>
+                  <p className="mt-0.5 font-mono text-sm font-medium text-primary">
+                    {employee.employeeNik || "No NIK"}
+                  </p>
                   {subtitle && (
                     <p className="mt-0.5 text-sm text-muted-foreground">{subtitle}</p>
                   )}
@@ -229,11 +269,10 @@ export default function EmployeeDetailPage() {
                   Work Details
                 </h2>
                 <div className="grid grid-cols-2 gap-x-8 gap-y-4">
-                  <DetailField label="Employee Type" value={employee.employeeType || ""} />
-                  <DetailField label="Job Level" value={employee.jobLevel?.name || ""} />
+                  <DetailField label="Employee Type" value={matchedJobTitle?.type || employee.employeeType || ""} />
+                  <DetailField label="Job Level" value={matchedJobTitle?.jobLevel?.name || employee.jobLevel?.name || ""} />
                   <DetailField label="Department" value={employee.department?.name || ""} />
                   <DetailField label="Job Title" value={employee.jobTitle?.name || ""} />
-                  <DetailField label="FTE" value={employee.fte != null ? String(employee.fte) : ""} />
                   <DetailField label="Join Date" value={formatDateField(employee.hireDate)} />
                   <DetailField label="Mobile Phone No." value={employee.employeeContact || employee.phone || ""} />
                   <DetailField label="Email Address" value={employee.email} />

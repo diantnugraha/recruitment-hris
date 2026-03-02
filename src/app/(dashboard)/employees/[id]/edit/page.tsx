@@ -17,6 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import employeeService, {
   mapFormToUpdateRequest,
 } from "@/services/employee.service";
@@ -147,8 +148,24 @@ function mapStatusToForm(status: string): string {
   return map[status.toLowerCase()] ?? capitalize(status);
 }
 
-function mapEmployeeToFormState(emp: EmployeeWithRelations): FormState {
+function mapEmployeeToFormState(
+  emp: EmployeeWithRelations,
+  jobTitles: JobTitle[]
+): FormState {
   const fullName = `${emp.firstName || ""} ${emp.lastName || ""}`.trim();
+
+  // Find job title by NAME because employee API returns slug (jt-xxx)
+  // while JobTitle API returns numeric IDs (59, 60, etc)
+  let jobTitleId = "";
+  if (emp.jobTitle?.name && jobTitles.length > 0) {
+    const match = jobTitles.find(
+      (jt) => jt.name.toLowerCase() === emp.jobTitle!.name.toLowerCase()
+    );
+    if (match) {
+      jobTitleId = match.id;
+    }
+  }
+
   return {
     nik: emp.employeeNik || "",
     fullName,
@@ -156,7 +173,7 @@ function mapEmployeeToFormState(emp: EmployeeWithRelations): FormState {
     birthDate: emp.dateOfBirth || "",
     religion: emp.religion || "",
     ethnic: emp.ethnicity || "",
-    jobTitleId: emp.jobTitleId || "",
+    jobTitleId,
     fte: emp.fte != null ? String(emp.fte) : "1",
     joinDate: emp.hireDate || "",
     phone: emp.phone || "",
@@ -167,7 +184,7 @@ function mapEmployeeToFormState(emp: EmployeeWithRelations): FormState {
     contractPeriod: "",
     probationPeriod: "",
     exitDate: emp.exitDate || "",
-    superior: emp.managerId || "",
+    superior: emp.managerId || "0",
     motherName: emp.motherName || "",
     fatherName: emp.fatherName || "",
     maritalStatus: emp.maritalStatus ? capitalize(emp.maritalStatus) : "",
@@ -201,21 +218,31 @@ export default function EmployeeEditPage() {
     setIsLoading(true);
     setError(null);
 
-    const [empRes, titleRes, allEmpRes] = await Promise.all([
-      employeeService.getById(id),
-      jobTitleService.getAll(1, 100),
-      employeeService.getAll(1, 100),
-    ]);
+    try {
+      const [empRes, titleRes, allEmpRes] = await Promise.all([
+        employeeService.getById(id),
+        jobTitleService.fetchAll(),
+        employeeService.getAll(1, 100),
+      ]);
 
-    if (empRes.success && empRes.data) {
-      setEmployee(empRes.data);
-      setForm(mapEmployeeToFormState(empRes.data));
-    } else {
-      setError(empRes.message || "Failed to fetch employee");
+      // Get job titles first
+      const fetchedJobTitles = titleRes.success && titleRes.data ? titleRes.data : [];
+      setJobTitles(fetchedJobTitles);
+
+      if (empRes.success && empRes.data) {
+        setEmployee(empRes.data);
+        // Pass jobTitles to find matching ID by name
+        const formState = mapEmployeeToFormState(empRes.data, fetchedJobTitles);
+        setForm(formState);
+      } else {
+        setError(empRes.message || "Failed to fetch employee");
+      }
+
+      if (allEmpRes.success && allEmpRes.data) setEmployees(allEmpRes.data.data || []);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+      setError("Failed to load employee data");
     }
-
-    if (titleRes.success && titleRes.data) setJobTitles(titleRes.data.data || []);
-    if (allEmpRes.success && allEmpRes.data) setEmployees(allEmpRes.data.data || []);
 
     setIsLoading(false);
   }, [id]);
@@ -332,7 +359,7 @@ export default function EmployeeEditPage() {
       <PageContainer>
         <div className="space-y-4">
           {/* Top Bar */}
-          <div className="flex items-center justify-between">
+          <div className="flex items-center">
             <button
               onClick={() => router.push(`/employees/${employee.id}`)}
               className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
@@ -340,29 +367,6 @@ export default function EmployeeEditPage() {
               <ArrowLeft className="h-4 w-4" />
               Back to {form.fullName || "Employee"}
             </button>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => router.push(`/employees/${employee.id}`)}
-                disabled={isSubmitting}
-              >
-                Cancel
-              </Button>
-              <Button
-                size="sm"
-                className="gap-2"
-                onClick={handleSubmit}
-                disabled={isSubmitting || !isFormValid}
-              >
-                {isSubmitting ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Save className="h-4 w-4" />
-                )}
-                Save Changes
-              </Button>
-            </div>
           </div>
 
           {/* Form Card */}
@@ -530,21 +534,17 @@ export default function EmployeeEditPage() {
                   <div className="grid grid-cols-[1fr_120px] gap-4">
                     <div className="space-y-1.5">
                       <Label>Job Title *</Label>
-                      <Select
+                      <SearchableSelect
+                        options={jobTitles.map((t) => ({
+                          value: t.id,
+                          label: t.name,
+                        }))}
                         value={form.jobTitleId}
                         onValueChange={(v) => handleChange("jobTitleId", v)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Job Title" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {jobTitles.map((t) => (
-                            <SelectItem key={t.id} value={t.id}>
-                              {t.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        placeholder="Job Title"
+                        searchPlaceholder="Search job title..."
+                        emptyText="No job title found."
+                      />
                     </div>
                     <div className="space-y-1.5">
                       <Label htmlFor="fte">FTE</Label>
@@ -702,14 +702,14 @@ export default function EmployeeEditPage() {
                   <div className="space-y-1.5">
                     <Label>Superior</Label>
                     <Select
-                      value={form.superior}
-                      onValueChange={(v) => handleChange("superior", v === "__none__" ? "" : v)}
+                      value={form.superior || "0"}
+                      onValueChange={(v) => handleChange("superior", v)}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select superior" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="__none__">— No Superior —</SelectItem>
+                        <SelectItem value="0">— No Superior —</SelectItem>
                         {employees
                           .filter((emp) => emp.id !== employee?.id)
                           .map((emp) => (

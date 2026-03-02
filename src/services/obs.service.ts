@@ -125,20 +125,25 @@ export const obsService = {
     }
   },
 
-  // Get organization statistics
+  // Get organization statistics (calculated from getAll response)
   async getStats(): Promise<ApiResponse<OrganizationStats>> {
     try {
-      const response = await get<ApiResponse<OrganizationStats>>(
-        "/v1/obs/stats"
-      );
-      return response;
-    } catch (error: unknown) {
-      const err = error as {
-        response?: { data?: ApiResponse<OrganizationStats> };
-      };
-      if (err.response?.data) {
-        return err.response.data;
+      const response = await this.getAll(1, 1);
+      if (response.success && response.data) {
+        return {
+          success: true,
+          data: {
+            totalUnits: response.data.pagination.total,
+            totalDivisions: 0, // Not available from OBS API
+            totalDepartments: 0, // Not available from OBS API
+          },
+        };
       }
+      return {
+        success: false,
+        message: "Failed to fetch organization stats",
+      };
+    } catch (error: unknown) {
       return {
         success: false,
         message: "Failed to fetch organization stats",

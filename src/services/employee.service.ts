@@ -53,7 +53,7 @@ export interface UpdateEmployeeRequest {
   join_date?: string;
   birth_date?: string;
   permanent_date?: string;
-  superior_id?: number | null;
+  superior_id?: number;
   marital_status?: string;
   nik?: string;
   address?: string;
@@ -140,15 +140,18 @@ interface ApiEmployee {
   address?: string;
   hire_date?: string;
   status?: string;
-  department_id?: string;
-  division_id?: string;
-  job_title_id?: string;
-  job_level_id?: string;
-  manager_id?: string;
-  superior_id?: string;
+  department_id?: string | number;
+  division_id?: string | number;
+  job_title_id?: string | number;
+  job_level_id?: string | number;
+  manager_id?: string | number;
+  superior_id?: string | number;
   photo?: string;
   created_at?: string;
   updated_at?: string;
+  // Job title name (sent as 'title' when creating, might be returned as 'title' or 'employee_title')
+  title?: string;
+  employee_title?: string;
   // hris-tuv specific fields
   employee_type?: string;
   employee_bu?: string;
@@ -215,8 +218,8 @@ function mapEmployee(emp: ApiEmployee): EmployeeWithRelations {
     status: (emp.status || "inactive") as EmployeeWithRelations["status"],
     departmentId: emp.department_id || emp.departmentId || "",
     divisionId: emp.division_id || emp.divisionId || "",
-    jobTitleId: emp.job_title_id || emp.jobTitleId || "",
-    jobLevelId: emp.job_level_id || emp.jobLevelId || "",
+    jobTitleId: emp.job_title_id ? String(emp.job_title_id) : (emp.jobTitleId || ""),
+    jobLevelId: emp.job_level_id ? String(emp.job_level_id) : (emp.jobLevelId || ""),
     managerId: emp.manager_id || emp.managerId,
     superiorId: emp.superior_id,
     photo: emp.photo,
@@ -276,7 +279,9 @@ export function mapFormToRequest(form: EmployeeFormData): CreateEmployeeRequest 
   if (form.hireDate) req.join_date = form.hireDate;
   if (form.dateOfBirth) req.birth_date = form.dateOfBirth;
   if (form.permanentDate) req.permanent_date = form.permanentDate;
-  if (form.managerId) req.superior_id = Number(form.managerId) || undefined;
+  // Always set superior_id, default to 0 (No Superior)
+  // Check explicitly for "0" or empty string
+  req.superior_id = (form.managerId && form.managerId !== "0") ? Number(form.managerId) : 0;
   if (form.maritalStatus) req.marital_status = form.maritalStatus;
   if (form.address) req.address = form.address;
   if (form.religion) req.religion = form.religion;
@@ -311,7 +316,9 @@ export function mapFormToUpdateRequest(form: Partial<EmployeeFormData>): UpdateE
   if (form.dateOfBirth !== undefined) req.birth_date = form.dateOfBirth;
   if (form.permanentDate !== undefined) req.permanent_date = form.permanentDate || undefined;
   if (form.managerId !== undefined) {
-    req.superior_id = form.managerId ? Number(form.managerId) : null;
+    // Always set superior_id as number, default to 0 (No Superior)
+    // Check explicitly for "0" or empty string
+    req.superior_id = (form.managerId && form.managerId !== "0") ? Number(form.managerId) : 0;
   }
   if (form.maritalStatus !== undefined) req.marital_status = form.maritalStatus || undefined;
   if (form.address !== undefined) req.address = form.address || undefined;
@@ -329,6 +336,102 @@ export function mapFormToUpdateRequest(form: Partial<EmployeeFormData>): UpdateE
 
 // --- NIK Generation (format: YYYYMM### based on join date) ---
 
+/**
+ * Get all employees for NIK generation (with pagination, max 100 per page)
+ */
+async function getAllEmployeesForNik(): Promise<ApiEmployee[]> {
+  try {
+    const allEmployees: ApiEmployee[] = [];
+    let page = 1;
+    let hasMore = true;
+
+    // Paginate through all employees (API limit is 100 per page)
+    while (hasMore) {
+      const response = await get<unknown>(`/v1/employee?page=${page}&limit=100`);
+
+      const res = response as {
+        success?: boolean;
+        data?: ApiEmployee[];
+        pagination?: { totalPages: number; page: number };
+      };
+
+      if (res.success && res.data && Array.isArray(res.data)) {
+        allEmployees.push(...res.data);
+        // Check if there are more pages
+        if (res.pagination) {
+          hasMore = page < res.pagination.totalPages;
+        } else {
+          // If no pagination info, assume single page
+          hasMore = false;
+        }
+      } else if (res.data && Array.isArray(res.data)) {
+        allEmployees.push(...res.data);
+        hasMore = false;
+      } else if (Array.isArray(response)) {
+        allEmployees.push(...(response as ApiEmployee[]));
+        hasMore = false;
+      } else {
+        hasMore = false;
+      }
+
+      page++;
+
+      // Safety limit to prevent infinite loops
+      if (page > 50) break;
+    }
+
+    return allEmployees;
+  } catch (error) {
+    // Silently fail - NIK generation will use fallback
+    console.warn("Could not fetch employees for NIK generation, using fallback");
+    return [];
+  }
+}
+
+/**
+ * Get the maximum sequence number for a given YYYYMM prefix
+ */
+async function getMaxSequenceForPrefix(prefix: string): Promise<number> {
+  try {
+    const employees = await getAllEmployeesForNik();
+    let maxSeq = 0;
+
+    for (const emp of employees) {
+      // Check multiple possible NIK fields from raw API response
+      const nik = emp.employee_nik || emp.nik || emp.employeeId || "";
+      if (nik && nik.startsWith(prefix) && nik.length === 9) {
+        const seq = parseInt(nik.substring(6, 9), 10);
+        if (!isNaN(seq) && seq > maxSeq) {
+          maxSeq = seq;
+        }
+      }
+    }
+
+    return maxSeq;
+  } catch (error) {
+    console.error("Error getting max sequence for prefix:", error);
+    return 0;
+  }
+}
+
+/**
+ * Check if a NIK already exists in the system
+ */
+export async function checkNikExists(nik: string): Promise<boolean> {
+  try {
+    const employees = await getAllEmployeesForNik();
+    return employees.some(
+      (emp) => emp.employee_nik === nik || emp.nik === nik || emp.employeeId === nik
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Generate a unique NIK for a given join date
+ * Format: YYYYMM### where ### is a sequential number starting from 001
+ */
 export async function generateNik(joinDate: string): Promise<string> {
   const date = new Date(joinDate);
   const year = date.getFullYear().toString();
@@ -336,24 +439,40 @@ export async function generateNik(joinDate: string): Promise<string> {
   const prefix = `${year}${month}`;
 
   try {
-    // Fetch employees to find the latest NIK with the same YYYYMM prefix
-    const res = await employeeService.getAll(1, 100);
-    let maxSeq = 0;
-
-    if (res.success && res.data) {
-      for (const emp of res.data.data) {
-        const nik = emp.employeeNik || emp.employeeId || "";
-        if (nik.startsWith(prefix) && nik.length === 9) {
-          const seq = parseInt(nik.substring(6, 9), 10);
-          if (!isNaN(seq) && seq > maxSeq) {
-            maxSeq = seq;
-          }
-        }
-      }
-    }
-
+    const maxSeq = await getMaxSequenceForPrefix(prefix);
     const nextSeq = (maxSeq + 1).toString().padStart(3, "0");
     return `${prefix}${nextSeq}`;
+  } catch {
+    // Fallback to 001 if API call fails
+    return `${prefix}001`;
+  }
+}
+
+/**
+ * Generate and validate a unique NIK before submission
+ * This re-checks the database to ensure no race condition occurred
+ */
+export async function generateUniqueNik(joinDate: string): Promise<string> {
+  const date = new Date(joinDate);
+  const year = date.getFullYear().toString();
+  const month = (date.getMonth() + 1).toString().padStart(2, "0");
+  const prefix = `${year}${month}`;
+
+  try {
+    // Get fresh data to avoid race conditions
+    const maxSeq = await getMaxSequenceForPrefix(prefix);
+    const nextSeq = (maxSeq + 1).toString().padStart(3, "0");
+    const nik = `${prefix}${nextSeq}`;
+
+    // Double-check if this NIK already exists
+    const exists = await checkNikExists(nik);
+    if (exists) {
+      // If exists (race condition), try the next number
+      const newSeq = (maxSeq + 2).toString().padStart(3, "0");
+      return `${prefix}${newSeq}`;
+    }
+
+    return nik;
   } catch {
     // Fallback to 001 if API call fails
     return `${prefix}001`;
@@ -368,8 +487,12 @@ export const employeeService = {
     limit: number = 100
   ): Promise<ApiResponse<EmployeePaginatedResponse>> {
     try {
+      // Ensure page and limit are valid numbers (API max limit is 100)
+      const validPage = Math.max(1, Math.floor(page));
+      const validLimit = Math.max(1, Math.min(100, Math.floor(limit)));
+
       const response = await get<unknown>(
-        `/v1/employee?page=${page}&limit=${limit}&include=department,division,jobTitle,jobLevel,manager`
+        `/v1/employee?page=${validPage}&limit=${validLimit}`
       );
 
       const res = response as {
@@ -439,7 +562,9 @@ export const employeeService = {
       if (!Number.isInteger(numericId) || numericId <= 0) {
         return { success: false, message: "Invalid employee ID" };
       }
-      const response = await get<unknown>(`/v1/employee/${numericId}`);
+      const response = await get<unknown>(
+        `/v1/employee/${numericId}`
+      );
       const res = response as { success?: boolean; data?: ApiEmployee };
 
       if (res.success && res.data) {

@@ -5,6 +5,7 @@ const baseURL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 export const api = axios.create({
   baseURL,
   timeout: 30000,
+  withCredentials: true,
   headers: {
     "Content-Type": "application/json",
   },
@@ -47,8 +48,15 @@ api.interceptors.response.use(
 
 // Generic request functions
 export async function get<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
-  const response = await api.get<T>(url, config);
-  return response.data;
+  try {
+    const response = await api.get<T>(url, config);
+    return response.data;
+  } catch (error) {
+    // Re-throw with more context for debugging
+    const axiosError = error as AxiosError;
+    console.error(`GET ${url} failed:`, axiosError.response?.status, axiosError.response?.data);
+    throw error;
+  }
 }
 
 export async function post<T, D = unknown>(

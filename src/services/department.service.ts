@@ -164,16 +164,24 @@ export const departmentService = {
     }
   },
 
-  // Get department statistics
+  // Get department statistics (calculated from getAll response)
   async getStats(): Promise<ApiResponse<DepartmentStats>> {
     try {
-      const response = await get<ApiResponse<DepartmentStats>>("/v1/department/stats");
-      return response;
-    } catch (error: unknown) {
-      const err = error as { response?: { data?: ApiResponse<DepartmentStats> } };
-      if (err.response?.data) {
-        return err.response.data;
+      const response = await this.getAll(1, 1);
+      if (response.success && response.data) {
+        return {
+          success: true,
+          data: {
+            totalDepartments: response.data.pagination.total,
+            totalEmployees: 0, // Not available from department API
+          },
+        };
       }
+      return {
+        success: false,
+        message: "Failed to fetch department stats",
+      };
+    } catch (error: unknown) {
       return {
         success: false,
         message: "Failed to fetch department stats",

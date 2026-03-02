@@ -17,8 +17,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import employeeService, {
   generateNik,
+  generateUniqueNik,
+  checkNikExists,
   mapFormToRequest,
 } from "@/services/employee.service";
 import jobTitleService from "@/services/job-title.service";
@@ -146,7 +149,7 @@ const initialForm: FormState = {
   contractPeriod: "",
   probationPeriod: "",
   exitDate: "",
-  superior: "",
+  superior: "0",
   motherName: "",
   fatherName: "",
   maritalStatus: "",
@@ -174,12 +177,16 @@ export default function EmployeeNewPage() {
   // Fetch dropdown data
   const fetchDropdownData = React.useCallback(async () => {
     setIsLoading(true);
-    const [titleRes, empRes] = await Promise.all([
-      jobTitleService.getAll(1, 100),
-      employeeService.getAll(1, 100),
-    ]);
-    if (titleRes.success && titleRes.data) setJobTitles(titleRes.data.data || []);
-    if (empRes.success && empRes.data) setEmployees(empRes.data.data || []);
+    try {
+      const [titleRes, empRes] = await Promise.all([
+        jobTitleService.fetchAll(),
+        employeeService.getAll(1, 100),
+      ]);
+      if (titleRes.success && titleRes.data) setJobTitles(titleRes.data);
+      if (empRes.success && empRes.data) setEmployees(empRes.data.data || []);
+    } catch (error) {
+      console.error("Error fetching dropdown data:", error);
+    }
     setIsLoading(false);
   }, []);
 
@@ -194,18 +201,25 @@ export default function EmployeeNewPage() {
       return;
     }
     let cancelled = false;
-    generateNik(form.joinDate)
-      .then((nik) => {
-        if (!cancelled) setForm((prev) => ({ ...prev, nik }));
-      })
-      .catch(() => {
+
+    const generateNikAsync = async () => {
+      try {
+        const nik = await generateNik(form.joinDate);
+        if (!cancelled) {
+          setForm((prev) => ({ ...prev, nik }));
+        }
+      } catch (error) {
+        console.error("Error generating NIK:", error);
         // Fallback: use prefix + 001
         if (!cancelled) {
           const d = new Date(form.joinDate);
           const fallback = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}001`;
           setForm((prev) => ({ ...prev, nik: fallback }));
         }
-      });
+      }
+    };
+
+    generateNikAsync();
     return () => { cancelled = true; };
   }, [form.joinDate]);
 
@@ -233,14 +247,36 @@ export default function EmployeeNewPage() {
   const handleSubmit = async () => {
     setIsSubmitting(true);
 
+    // Re-generate NIK right before submission to avoid race conditions
+    // This ensures we get a fresh, unique NIK even if another employee was created
+    let finalNik = form.nik;
+    if (form.joinDate) {
+      try {
+        finalNik = await generateUniqueNik(form.joinDate);
+        // Update form state with final NIK
+        setForm((prev) => ({ ...prev, nik: finalNik }));
+      } catch {
+        // Use existing NIK if generation fails
+        finalNik = form.nik;
+      }
+    }
+
+    // Double-check NIK doesn't exist (safety check)
+    const nikExists = await checkNikExists(finalNik);
+    if (nikExists) {
+      showToast.createError("employee", "NIK already exists. Please try again.");
+      setIsSubmitting(false);
+      return;
+    }
+
     // Split fullName into firstName and lastName
     const nameParts = form.fullName.trim().split(/\s+/);
     const firstName = nameParts[0] || "";
     const lastName = nameParts.slice(1).join(" ") || "";
 
     const requestData = mapFormToRequest({
-      employeeId: form.nik,
-      employeeNik: form.nik,
+      employeeId: finalNik,
+      employeeNik: finalNik,
       firstName,
       lastName,
       nickname: "",
@@ -279,7 +315,7 @@ export default function EmployeeNewPage() {
     });
 
     // Explicitly ensure nik is set
-    requestData.nik = form.nik;
+    requestData.nik = finalNik;
 
     const response = await employeeService.create(requestData);
 
@@ -323,7 +359,7 @@ export default function EmployeeNewPage() {
       <PageContainer>
         <div className="space-y-4">
           {/* Top Bar */}
-          <div className="flex items-center justify-between">
+          <div className="flex items-center">
             <button
               onClick={() => router.push("/employees")}
               className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
@@ -331,29 +367,6 @@ export default function EmployeeNewPage() {
               <ArrowLeft className="h-4 w-4" />
               Back to Employees
             </button>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => router.push("/employees")}
-                disabled={isSubmitting}
-              >
-                Cancel
-              </Button>
-              <Button
-                size="sm"
-                className="gap-2"
-                onClick={handleSubmit}
-                disabled={isSubmitting || !isFormValid}
-              >
-                {isSubmitting ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Save className="h-4 w-4" />
-                )}
-                Save
-              </Button>
-            </div>
           </div>
 
           {/* Form Card */}
@@ -522,21 +535,17 @@ export default function EmployeeNewPage() {
                   <div className="grid grid-cols-[1fr_120px] gap-4">
                     <div className="space-y-1.5">
                       <Label>Job Title *</Label>
-                      <Select
+                      <SearchableSelect
+                        options={jobTitles.map((t) => ({
+                          value: t.id,
+                          label: t.name,
+                        }))}
                         value={form.jobTitleId}
                         onValueChange={(v) => handleChange("jobTitleId", v)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Job Title" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {jobTitles.map((t) => (
-                            <SelectItem key={t.id} value={t.id}>
-                              {t.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        placeholder="Job Title"
+                        searchPlaceholder="Search job title..."
+                        emptyText="No job title found."
+                      />
                     </div>
                     <div className="space-y-1.5">
                       <Label htmlFor="fte">FTE</Label>
@@ -694,14 +703,14 @@ export default function EmployeeNewPage() {
                   <div className="space-y-1.5">
                     <Label>Superior</Label>
                     <Select
-                      value={form.superior}
-                      onValueChange={(v) => handleChange("superior", v === "__none__" ? "" : v)}
+                      value={form.superior || "0"}
+                      onValueChange={(v) => handleChange("superior", v)}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select superior" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="__none__">— No Superior —</SelectItem>
+                        <SelectItem value="0">— No Superior —</SelectItem>
                         {employees.map((emp) => (
                           <SelectItem key={emp.id} value={emp.id}>
                             {`${emp.firstName} ${emp.lastName}`.trim()}

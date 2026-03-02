@@ -40,7 +40,11 @@ export const jobTitleService = {
   // Get all job titles with pagination
   async getAll(page: number = 1, limit: number = 100): Promise<ApiResponse<JobTitlePaginatedResponse>> {
     try {
-      const response = await get<unknown>(`/v1/job-title?page=${page}&limit=${limit}`);
+      // Ensure page and limit are valid numbers (API max limit is 100)
+      const validPage = Math.max(1, Math.floor(page));
+      const validLimit = Math.max(1, Math.min(100, Math.floor(limit)));
+
+      const response = await get<unknown>(`/v1/job-title?page=${validPage}&limit=${validLimit}`);
 
       const res = response as { success?: boolean; data?: JobTitle[]; pagination?: JobTitlePaginatedResponse["pagination"] };
 

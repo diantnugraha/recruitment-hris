@@ -326,3 +326,73 @@ export interface FilterState {
   dateFrom?: string;
   dateTo?: string;
 }
+
+// Employee Budget Types
+export interface EmployeeBudget {
+  id: string;
+  departmentId: string;
+  department?: Department;
+  year: number;
+  technical: number;
+  admin: number;
+  document?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface EmployeeBudgetSummary {
+  departmentId: string;
+  departmentName: string;
+  year: number;
+  // Previous year data
+  previousYear: {
+    technical: number;
+    admin: number;
+    total: number;
+  };
+  // Current employee count
+  currentEmployees: {
+    technical: {
+      male: number;
+      female: number;
+      total: number;
+    };
+    admin: {
+      male: number;
+      female: number;
+      total: number;
+    };
+    total: number;
+  };
+  // Approved budget (current year)
+  approvedBudget: {
+    technical: number;
+    admin: number;
+    total: number;
+  };
+  // Rest budget (approved - current)
+  restBudget: {
+    technical: number;
+    admin: number;
+    total: number;
+  };
+  // Growth percentage
+  growth: {
+    technical: number;
+    admin: number;
+    total: number;
+  };
+}
+
+export interface BudgetCalculation {
+  rows: {
+    type: "admin" | "technical";
+    label: string;
+    male: number;
+    female: number;
+    total: number;
+  }[];
+  totalCurrent: number;
+  totalBudget: number;
+  restBudget: number;
+}

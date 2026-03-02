@@ -143,16 +143,25 @@ export const divisionService = {
     }
   },
 
-  // Get division statistics
+  // Get division statistics (calculated from getAll response)
   async getStats(): Promise<ApiResponse<DivisionStats>> {
     try {
-      const response = await get<ApiResponse<DivisionStats>>("/v1/division/stats");
-      return response;
-    } catch (error: unknown) {
-      const err = error as { response?: { data?: ApiResponse<DivisionStats> } };
-      if (err.response?.data) {
-        return err.response.data;
+      const response = await this.getAll(1, 1);
+      if (response.success && response.data) {
+        return {
+          success: true,
+          data: {
+            totalDivisions: response.data.pagination.total,
+            totalDepartments: 0, // Not available from division API
+            totalEmployees: 0, // Not available from division API
+          },
+        };
       }
+      return {
+        success: false,
+        message: "Failed to fetch division stats",
+      };
+    } catch (error: unknown) {
       return {
         success: false,
         message: "Failed to fetch division stats",

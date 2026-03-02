@@ -68,6 +68,11 @@ import { Department } from "@/types";
 
 const DEPARTMENT_CATEGORIES = ["Profit Center", "Non Profit Center"] as const;
 
+// Format category from API (e.g., "Non_Profit_Center" -> "Non Profit Center")
+const formatCategory = (category: string): string => {
+  return category.replace(/_/g, " ");
+};
+
 interface FormData {
   name: string;
   code: string;
@@ -313,15 +318,18 @@ export default function DepartmentsPage() {
     {
       key: "category",
       label: "Category",
-      render: (_: unknown, row: Department) => (
-        <Badge
-          variant={
-            row.category === "Profit Center" ? "default" : "secondary"
-          }
-        >
-          {row.category}
-        </Badge>
-      ),
+      render: (_: unknown, row: Department) => {
+        const displayCategory = formatCategory(row.category);
+        return (
+          <Badge
+            variant={
+              displayCategory === "Profit Center" ? "default" : "secondary"
+            }
+          >
+            {displayCategory}
+          </Badge>
+        );
+      },
     },
     {
       key: "division",
@@ -757,7 +765,7 @@ export default function DepartmentsPage() {
               </div>
               <div className="space-y-1.5">
                 <Label>Category</Label>
-                <Input value={selectedDepartment?.category || ""} disabled />
+                <Input value={selectedDepartment ? formatCategory(selectedDepartment.category) : ""} disabled />
               </div>
               <div className="space-y-1.5">
                 <Label>OBS</Label>

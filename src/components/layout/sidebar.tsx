@@ -15,6 +15,7 @@ import {
   Award,
   Briefcase,
   Wallet,
+  ClipboardList,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/stores/app-store";
@@ -82,6 +83,11 @@ const navigation: NavSection[] = [
   {
     title: "Recruitment",
     items: [
+      {
+        title: "Employee Request",
+        href: "/employee-request",
+        icon: ClipboardList,
+      },
       {
         title: "Recruitment",
         href: "/recruitment",
