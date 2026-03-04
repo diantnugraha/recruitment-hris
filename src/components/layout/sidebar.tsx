@@ -16,6 +16,7 @@ import {
   Briefcase,
   Wallet,
   ClipboardList,
+  UserCog,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/stores/app-store";
@@ -92,6 +93,16 @@ const navigation: NavSection[] = [
         title: "Recruitment",
         href: "/recruitment",
         icon: UserPlus,
+      },
+    ],
+  },
+  {
+    title: "User Management",
+    items: [
+      {
+        title: "Users",
+        href: "/users",
+        icon: UserCog,
       },
     ],
   },
