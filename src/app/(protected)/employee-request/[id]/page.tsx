@@ -80,6 +80,7 @@ import type { EmployeeRequestWithRelations } from "@/types/employee-request";
 const WORKFLOW_STEPS = [
   { key: "draft", label: "Draft", icon: Pencil },
   { key: "created", label: "Submitted", icon: Send },
+  { key: "hod_review", label: "HOD Review", icon: UserCircle },
   { key: "reviewed", label: "HR Review", icon: CheckCircle },
   { key: "approved", label: "Approved", icon: Sparkles },
   { key: "in_recruitment", label: "Recruiting", icon: Users },
@@ -203,7 +204,7 @@ export default function EmployeeRequestDetailPage() {
   const getStatusBadge = (status: EmployeeRequestStatus) => {
     const config = EMPLOYEE_REQUEST_STATUS_CONFIG[status];
     return (
-      <Badge variant={config?.variant || "secondary"} className="text-sm font-medium">
+      <Badge variant={config?.variant || "secondary"} className="text-xs font-medium">
         {config?.label || status}
       </Badge>
     );
@@ -296,7 +297,7 @@ export default function EmployeeRequestDetailPage() {
     <>
       <Header title="Employee Request" />
       <PageContainer>
-        <div className="space-y-8">
+        <div className="space-y-6">
           {/* Back button and actions */}
           <div className="flex items-center justify-between">
             <Button variant="ghost" onClick={() => router.push("/employee-request")} className="gap-2">
@@ -352,7 +353,7 @@ export default function EmployeeRequestDetailPage() {
           {/* Workflow Progress */}
           {request.status !== "rejected" && (
             <Card className="overflow-hidden border-accent/10 bg-gradient-to-br from-accent/5 to-transparent">
-              <CardContent className="p-6">
+              <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   {WORKFLOW_STEPS.map((step, index) => {
                     const StepIcon = step.icon;
@@ -365,13 +366,13 @@ export default function EmployeeRequestDetailPage() {
                         <div className="flex flex-col items-center gap-2">
                           <div
                             className={cn(
-                              "h-12 w-12 rounded-full flex items-center justify-center transition-all duration-500",
-                              isActive && "bg-accent text-accent-foreground ring-4 ring-accent/20 scale-110",
+                              "h-9 w-9 rounded-full flex items-center justify-center transition-all duration-500",
+                              isActive && "bg-accent text-accent-foreground ring-4 ring-accent/20",
                               isCompleted && "bg-accent/20 text-accent",
                               isPending && "bg-secondary text-muted-foreground"
                             )}
                           >
-                            {isCompleted ? <Check className="h-5 w-5" /> : <StepIcon className="h-5 w-5" />}
+                            {isCompleted ? <Check className="h-4 w-4" /> : <StepIcon className="h-4 w-4" />}
                           </div>
                           <span
                             className={cn(
@@ -405,8 +406,8 @@ export default function EmployeeRequestDetailPage() {
             <Card className="border-destructive/50 bg-destructive/5">
               <CardContent className="p-6">
                 <div className="flex items-center gap-4">
-                  <div className="h-12 w-12 rounded-full bg-destructive/10 flex items-center justify-center">
-                    <XCircle className="h-6 w-6 text-destructive" />
+                  <div className="h-9 w-9 rounded-full bg-destructive/10 flex items-center justify-center">
+                    <XCircle className="h-4 w-4 text-destructive" />
                   </div>
                   <div>
                     <h3 className="font-semibold text-destructive">Request Rejected</h3>
@@ -429,10 +430,10 @@ export default function EmployeeRequestDetailPage() {
                   <div className="flex items-start justify-between">
                     <div>
                       <div className="flex items-center gap-3">
-                        <h2 className="text-2xl font-semibold tracking-tight">{request.code}</h2>
+                        <h2 className="text-base font-semibold tracking-tight">{request.code}</h2>
                         {getStatusBadge(request.status)}
                       </div>
-                      <p className="mt-2 text-xl text-foreground/80">{request.jobTitle?.name}</p>
+                      <p className="mt-1.5 text-sm text-foreground/80">{request.jobTitle?.name}</p>
                       <div className="mt-3 flex items-center gap-4 text-sm text-muted-foreground">
                         <div className="flex items-center gap-1.5">
                           <Building2 className="h-4 w-4" />
@@ -458,10 +459,10 @@ export default function EmployeeRequestDetailPage() {
                     )}
                   </div>
 
-                  <Separator className="my-6" />
+                  <Separator className="my-4" />
 
                   <div>
-                    <h4 className="text-xs font-medium text-muted-foreground mb-3 uppercase tracking-wider">
+                    <h4 className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wider">
                       Purpose / Justification
                     </h4>
                     <p className="text-sm leading-relaxed whitespace-pre-wrap">{request.purpose}</p>
@@ -477,7 +478,7 @@ export default function EmployeeRequestDetailPage() {
                 <CardContent className="space-y-6">
                   <div className="grid gap-6 sm:grid-cols-2">
                     <div className="flex items-start gap-3">
-                      <div className="h-10 w-10 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
+                      <div className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
                         <GraduationCap className="h-5 w-5 text-muted-foreground" />
                       </div>
                       <div>
@@ -486,7 +487,7 @@ export default function EmployeeRequestDetailPage() {
                       </div>
                     </div>
                     <div className="flex items-start gap-3">
-                      <div className="h-10 w-10 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
+                      <div className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
                         <Clock className="h-5 w-5 text-muted-foreground" />
                       </div>
                       <div>
@@ -495,7 +496,7 @@ export default function EmployeeRequestDetailPage() {
                       </div>
                     </div>
                     <div className="flex items-start gap-3">
-                      <div className="h-10 w-10 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
+                      <div className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
                         <UserCircle className="h-5 w-5 text-muted-foreground" />
                       </div>
                       <div>
@@ -505,7 +506,7 @@ export default function EmployeeRequestDetailPage() {
                     </div>
                     {(request.ageMin || request.ageMax) && (
                       <div className="flex items-start gap-3">
-                        <div className="h-10 w-10 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
+                        <div className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
                           <Users className="h-5 w-5 text-muted-foreground" />
                         </div>
                         <div>
@@ -567,8 +568,8 @@ export default function EmployeeRequestDetailPage() {
                     <div className="space-y-6">
                       {request.comments.map((comment, index) => (
                         <div key={comment.id} className={cn("flex gap-4", index !== 0 && "pt-6 border-t")}>
-                          <div className="h-10 w-10 rounded-full bg-accent/10 flex items-center justify-center flex-shrink-0">
-                            <UserCircle className="h-5 w-5 text-accent" />
+                          <div className="h-8 w-8 rounded-full bg-accent/10 flex items-center justify-center flex-shrink-0">
+                            <UserCircle className="h-4 w-4 text-accent" />
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between gap-4">
@@ -666,7 +667,7 @@ export default function EmployeeRequestDetailPage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="flex items-center gap-3">
-                    <Avatar className="h-12 w-12 border">
+                    <Avatar className="h-10 w-10 border">
                       <AvatarFallback className="bg-accent/10 text-accent font-medium">
                         {getInitials(request.requestedByName || "U")}
                       </AvatarFallback>

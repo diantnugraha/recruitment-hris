@@ -14,6 +14,10 @@ import {
   CalendarDays,
   Pencil,
   Plus,
+  Upload,
+  X,
+  File,
+  FileText,
 } from "lucide-react";
 
 import { Header } from "@/components/layout/header";
@@ -45,11 +49,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 import { employeeBudgetService } from "@/services/employee-budget.service";
 import { departmentService } from "@/services/department.service";
 import { employeeService } from "@/services/employee.service";
-import { EmployeeBudget, Department, EmployeeWithRelations } from "@/types";
+import { jobTitleService } from "@/services/job-title.service";
+import { EmployeeBudget, Department, EmployeeWithRelations, JobTitle } from "@/types";
 import { showToast } from "@/lib/utils/toast-messages";
 
 // --- Constants ---
@@ -79,13 +90,16 @@ function BudgetFormDialog({
   onSuccess,
 }: BudgetFormDialogProps) {
   const isEdit = !!budget;
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [formData, setFormData] = React.useState({
     year: CURRENT_YEAR + 1,
     technical: 0,
     admin: 0,
+    document: "",
   });
+  const [selectedFile, setSelectedFile] = React.useState<globalThis.File | null>(null);
 
   React.useEffect(() => {
     if (open) {
@@ -94,26 +108,62 @@ function BudgetFormDialog({
           year: budget.year,
           technical: budget.technical,
           admin: budget.admin,
+          document: budget.document || "",
         });
       } else {
         setFormData({
           year: CURRENT_YEAR + 1,
           technical: 0,
           admin: 0,
+          document: "",
         });
       }
+      setSelectedFile(null);
     }
   }, [open, budget]);
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const allowedTypes = [
+        "application/pdf",
+        "application/vnd.ms-excel",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      ];
+      if (!allowedTypes.includes(file.type)) {
+        showToast.error("Please upload PDF, Excel, or Word document");
+        return;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        showToast.error("File size must be less than 10MB");
+        return;
+      }
+      setSelectedFile(file);
+    }
+  };
+
+  const handleRemoveFile = () => {
+    setSelectedFile(null);
+    setFormData((prev) => ({ ...prev, document: "" }));
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
+    const documentPath = selectedFile ? selectedFile.name : formData.document;
+
     const payload = {
-      department_id: Number(departmentId),
+      departmentId: Number(departmentId),
       year: formData.year,
       technical: formData.technical,
       admin: formData.admin,
+      document: documentPath || undefined,
     };
 
     const response = isEdit
@@ -135,7 +185,7 @@ function BudgetFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg overflow-hidden">
         <DialogHeader>
           <DialogTitle>{isEdit ? "Edit Budget" : "Add Budget"}</DialogTitle>
           <DialogDescription>
@@ -183,6 +233,9 @@ function BudgetFormDialog({
                   }))
                 }
               />
+              <p className="text-xs text-muted-foreground">
+                Number of technical positions
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="admin">Admin Staff</Label>
@@ -198,17 +251,89 @@ function BudgetFormDialog({
                   }))
                 }
               />
+              <p className="text-xs text-muted-foreground">
+                Number of admin positions
+              </p>
             </div>
           </div>
 
-          <Card className="bg-accent/5 border-accent/20">
-            <CardContent className="py-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Total Budget</span>
-                <span className="text-2xl font-bold text-accent">{totalBudget}</span>
+          {/* Document Upload */}
+          <div className="space-y-2">
+            <Label>Supporting Document</Label>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,.doc,.docx,.xls,.xlsx"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
+
+            {!selectedFile && !formData.document ? (
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center cursor-pointer hover:border-accent/50 hover:bg-accent/5 transition-colors"
+              >
+                <Upload className="h-8 w-8 mx-auto text-muted-foreground/50 mb-2" />
+                <p className="text-sm text-muted-foreground">
+                  Click to upload document
+                </p>
+                <p className="text-xs text-muted-foreground/70 mt-1">
+                  PDF, Excel, or Word (max 10MB)
+                </p>
               </div>
-            </CardContent>
-          </Card>
+            ) : (
+              <div className="flex items-center gap-3 p-3 border rounded-lg bg-muted/30">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/10">
+                  <File className="h-5 w-5 text-accent" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">
+                    {selectedFile?.name || "Uploaded Document"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {selectedFile
+                      ? `${(selectedFile.size / 1024).toFixed(1)} KB`
+                      : "Previously uploaded"
+                    }
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                  onClick={handleRemoveFile}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+          </div>
+
+          {/* Total Summary */}
+          <div className="rounded-lg border bg-muted/30 p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium">Total Budget</p>
+                <p className="text-xs text-muted-foreground">
+                  Headcount for {formData.year}
+                </p>
+              </div>
+              <span className="text-4xl font-bold tabular-nums text-accent">
+                {totalBudget}
+              </span>
+            </div>
+            <div className="mt-3 flex gap-4 border-t pt-3 text-sm">
+              <div className="flex items-center gap-2">
+                <span className="text-muted-foreground">Technical</span>
+                <span className="font-semibold">{formData.technical}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-muted-foreground">Admin</span>
+                <span className="font-semibold">{formData.admin}</span>
+              </div>
+            </div>
+          </div>
 
           <div className="flex justify-end gap-3">
             <Button
@@ -223,10 +348,10 @@ function BudgetFormDialog({
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving...
+                  {isEdit ? "Updating..." : "Creating..."}
                 </>
               ) : (
-                "Save"
+                <>{isEdit ? "Update Budget" : "Create Budget"}</>
               )}
             </Button>
           </div>
@@ -246,6 +371,7 @@ export default function EmployeeBudgetDetailPage() {
   const [department, setDepartment] = React.useState<Department | null>(null);
   const [budgets, setBudgets] = React.useState<EmployeeBudget[]>([]);
   const [employees, setEmployees] = React.useState<EmployeeWithRelations[]>([]);
+  const [deptJobTitles, setDeptJobTitles] = React.useState<JobTitle[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -258,10 +384,11 @@ export default function EmployeeBudgetDetailPage() {
     setIsLoading(true);
     setError(null);
 
-    const [deptRes, budgetsRes, employeesRes] = await Promise.all([
+    const [deptRes, budgetsRes, jobTitlesRes, employeesRes] = await Promise.all([
       departmentService.getById(departmentId),
       employeeBudgetService.fetchAll(),
-      employeeService.getByDepartmentId(departmentId),
+      jobTitleService.getByDepartmentId(Number(departmentId)),
+      employeeService.getAll(1, 1000),
     ]);
 
     if (deptRes.success && deptRes.data) {
@@ -273,13 +400,23 @@ export default function EmployeeBudgetDetailPage() {
     }
 
     if (budgetsRes.success && budgetsRes.data) {
-      // Filter budgets for this department
-      const deptBudgets = budgetsRes.data.filter((b) => b.departmentId === departmentId);
+      const deptBudgets = budgetsRes.data.filter((b) => String(b.departmentId) === String(departmentId));
       setBudgets(deptBudgets);
     }
 
+    // Store job titles for type lookup
+    if (jobTitlesRes.success && jobTitlesRes.data) {
+      const jtData = Array.isArray(jobTitlesRes.data) ? jobTitlesRes.data : [];
+      setDeptJobTitles(jtData);
+    }
+
+    // Filter employees by department (backend resolves department from job title)
     if (employeesRes.success && employeesRes.data) {
-      setEmployees(employeesRes.data);
+      const allEmployees = employeesRes.data.data;
+      const filteredEmployees = allEmployees.filter(
+        (e) => String(e.departmentId) === String(departmentId)
+      );
+      setEmployees(filteredEmployees);
     }
 
     setIsLoading(false);
@@ -289,23 +426,41 @@ export default function EmployeeBudgetDetailPage() {
     fetchData();
   }, [fetchData]);
 
+  // Build job title name → type lookup from department job titles
+  // Use startsWith matching to handle name variants like "Administration Staff" vs "Administration Staff (Agri Food)"
+  const getJobTitleType = React.useCallback((jtName?: string): string | undefined => {
+    if (!jtName) return undefined;
+    const key = jtName.trim().toLowerCase();
+    for (const jt of deptJobTitles) {
+      if (!jt.type) continue;
+      const jtKey = jt.name.trim().toLowerCase();
+      if (jtKey === key || jtKey.startsWith(key) || key.startsWith(jtKey)) {
+        return jt.type;
+      }
+    }
+    return undefined;
+  }, [deptJobTitles]);
+
   // Calculate current employee stats
   const employeeStats = React.useMemo(() => {
-    const technicalMale = employees.filter(
-      (e) => e.jobTitle?.type === "Technical" && e.gender === "male"
-    ).length;
-    const technicalFemale = employees.filter(
-      (e) => e.jobTitle?.type === "Technical" && e.gender === "female"
-    ).length;
-    const adminMale = employees.filter(
-      (e) => e.jobTitle?.type === "Administration" && e.gender === "male"
-    ).length;
-    const adminFemale = employees.filter(
-      (e) => e.jobTitle?.type === "Administration" && e.gender === "female"
-    ).length;
+    // Only count permanent employees
+    const permanent = employees.filter((e) => e.status === "permanent");
 
-    // Handle employees without job title type
-    const unknownType = employees.filter((e) => !e.jobTitle?.type);
+    const isMale = (e: EmployeeWithRelations) => e.gender?.toLowerCase() === "male";
+    const isFemale = (e: EmployeeWithRelations) => e.gender?.toLowerCase() === "female";
+
+    const technicalMale = permanent.filter(
+      (e) => getJobTitleType(e.jobTitle?.name) === "Technical" && isMale(e)
+    ).length;
+    const technicalFemale = permanent.filter(
+      (e) => getJobTitleType(e.jobTitle?.name) === "Technical" && isFemale(e)
+    ).length;
+    const adminMale = permanent.filter(
+      (e) => getJobTitleType(e.jobTitle?.name) === "Administration" && isMale(e)
+    ).length;
+    const adminFemale = permanent.filter(
+      (e) => getJobTitleType(e.jobTitle?.name) === "Administration" && isFemale(e)
+    ).length;
 
     return {
       technical: {
@@ -318,10 +473,9 @@ export default function EmployeeBudgetDetailPage() {
         female: adminFemale,
         total: adminMale + adminFemale,
       },
-      unknown: unknownType.length,
-      total: employees.length,
+      total: permanent.length,
     };
-  }, [employees]);
+  }, [employees, getJobTitleType]);
 
   // Get budget by year
   const getBudgetByYear = (year: number) => {
@@ -332,18 +486,15 @@ export default function EmployeeBudgetDetailPage() {
   const currentYearBudget = getBudgetByYear(CURRENT_YEAR);
   const nextYearBudget = getBudgetByYear(CURRENT_YEAR + 1);
 
-  // Calculate rest budget
+  // Rest budget = total budget allocation for current year
   const restBudget = React.useMemo(() => {
     if (!currentYearBudget) return { technical: 0, admin: 0, total: 0 };
     return {
-      technical: currentYearBudget.technical - employeeStats.technical.total,
-      admin: currentYearBudget.admin - employeeStats.admin.total,
-      total:
-        currentYearBudget.technical +
-        currentYearBudget.admin -
-        employeeStats.total,
+      technical: currentYearBudget.technical,
+      admin: currentYearBudget.admin,
+      total: currentYearBudget.technical + currentYearBudget.admin,
     };
-  }, [currentYearBudget, employeeStats]);
+  }, [currentYearBudget]);
 
   const handleAddClick = () => {
     setSelectedBudget(null);
@@ -399,10 +550,6 @@ export default function EmployeeBudgetDetailPage() {
                 Back to Budget List
               </Link>
             </Button>
-            <Button size="sm" onClick={handleAddClick}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Year Budget
-            </Button>
           </div>
 
           {/* Department Info */}
@@ -449,9 +596,7 @@ export default function EmployeeBudgetDetailPage() {
                       Technical Staff
                     </p>
                     <p className="mt-1 text-3xl font-semibold">{employeeStats.technical.total}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      M: {employeeStats.technical.male} | F: {employeeStats.technical.female}
-                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">Current headcount</p>
                   </div>
                   <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-100">
                     <UserCheck className="h-5 w-5 text-blue-600" />
@@ -468,9 +613,7 @@ export default function EmployeeBudgetDetailPage() {
                       Admin Staff
                     </p>
                     <p className="mt-1 text-3xl font-semibold">{employeeStats.admin.total}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      M: {employeeStats.admin.male} | F: {employeeStats.admin.female}
-                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">Current headcount</p>
                   </div>
                   <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-purple-100">
                     <Briefcase className="h-5 w-5 text-purple-600" />
@@ -508,13 +651,21 @@ export default function EmployeeBudgetDetailPage() {
           {/* Budget by Year Table */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <CalendarDays className="h-5 w-5" />
-                Budget History
-              </CardTitle>
-              <CardDescription>
-                Year-by-year budget allocation and comparison
-              </CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <CalendarDays className="h-5 w-5" />
+                    Budget History
+                  </CardTitle>
+                  <CardDescription className="mt-1.5">
+                    Year-by-year budget allocation and comparison
+                  </CardDescription>
+                </div>
+                <Button size="sm" onClick={handleAddClick}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Budget
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               {budgets.length === 0 ? (
@@ -595,13 +746,36 @@ export default function EmployeeBudgetDetailPage() {
                               )}
                             </TableCell>
                             <TableCell className="text-right">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleEditClick(budget)}
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
+                              <div className="inline-flex items-center gap-0.5">
+                                {budget.document && (
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => {
+                                            const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+                                            window.open(`${apiUrl}/${budget.document}`, "_blank");
+                                          }}
+                                        >
+                                          <FileText className="h-4 w-4" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p>View document</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                )}
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleEditClick(budget)}
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                              </div>
                             </TableCell>
                           </TableRow>
                         );
@@ -676,30 +850,6 @@ export default function EmployeeBudgetDetailPage() {
                           variant={restBudget.admin >= 0 ? "success" : "destructive"}
                         >
                           {restBudget.admin >= 0 ? "Under Budget" : "Over Budget"}
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
-                    <TableRow className="bg-muted/50 font-semibold">
-                      <TableCell>Total</TableCell>
-                      <TableCell className="text-center">
-                        {currentYearBudget.technical + currentYearBudget.admin}
-                      </TableCell>
-                      <TableCell className="text-center">{employeeStats.total}</TableCell>
-                      <TableCell className="text-center">
-                        <span
-                          className={
-                            restBudget.total >= 0 ? "text-green-600" : "text-red-600"
-                          }
-                        >
-                          {restBudget.total >= 0 ? "+" : ""}
-                          {restBudget.total}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Badge
-                          variant={restBudget.total >= 0 ? "success" : "destructive"}
-                        >
-                          {restBudget.total >= 0 ? "Under Budget" : "Over Budget"}
                         </Badge>
                       </TableCell>
                     </TableRow>

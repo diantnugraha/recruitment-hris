@@ -176,8 +176,8 @@ export const GENDER_PREFERENCE_LABELS: Record<GenderPreference, string> = {
 
 export const GENDER_PREFERENCE_OPTIONS = [
   { value: GENDER_PREFERENCE.ANY, label: 'Any' },
-  { value: GENDER_PREFERENCE.MALE, label: 'Male Only' },
-  { value: GENDER_PREFERENCE.FEMALE, label: 'Female Only' },
+  { value: GENDER_PREFERENCE.MALE, label: 'Male' },
+  { value: GENDER_PREFERENCE.FEMALE, label: 'Female' },
 ] as const;
 
 // Work Location / Placement

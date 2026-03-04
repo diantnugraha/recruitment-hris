@@ -10,7 +10,7 @@ import {
   XCircle,
   RotateCcw,
   Users,
-  Clock,
+  Pencil,
   PlayCircle,
   Sparkles,
   Send,
@@ -19,6 +19,7 @@ import {
   UserPlus,
   Search,
   ChevronRight,
+  UserCircle,
 } from "lucide-react";
 
 import { Header } from "@/components/layout/header";
@@ -65,8 +66,9 @@ import type { EmployeeRequestWithRelations } from "@/types/employee-request";
 
 // Workflow steps for the timeline
 const WORKFLOW_STEPS = [
-  { key: "draft", label: "Draft", icon: Clock },
+  { key: "draft", label: "Draft", icon: Pencil },
   { key: "created", label: "Submitted", icon: Send },
+  { key: "hod_review", label: "HOD Review", icon: UserCircle },
   { key: "reviewed", label: "HR Review", icon: CheckCircle },
   { key: "approved", label: "Approved", icon: Sparkles },
   { key: "in_recruitment", label: "Recruiting", icon: Users },
@@ -432,7 +434,7 @@ export default function RecruitmentRequestDetailPage() {
             const currentStep = getCurrentStepIndex(request.status);
             return (
               <Card className="overflow-hidden border-accent/10 bg-gradient-to-br from-accent/5 to-transparent">
-                <CardContent className="p-6">
+                <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     {WORKFLOW_STEPS.map((step, index) => {
                       const StepIcon = step.icon;
@@ -445,20 +447,17 @@ export default function RecruitmentRequestDetailPage() {
                           <div className="flex flex-col items-center gap-2">
                             <div
                               className={cn(
-                                "h-12 w-12 rounded-full flex items-center justify-center transition-all duration-500",
-                                isActive && "bg-accent text-accent-foreground ring-4 ring-accent/20 scale-110",
+                                "h-9 w-9 rounded-full flex items-center justify-center transition-all duration-500",
+                                isActive && "bg-accent text-accent-foreground ring-4 ring-accent/20",
                                 isCompleted && "bg-accent/20 text-accent",
                                 isPending && "bg-secondary text-muted-foreground"
                               )}
                             >
-                              {isCompleted
-                                ? <Check className="h-5 w-5" />
-                                : <StepIcon className="h-5 w-5" />
-                              }
+                              {isCompleted ? <Check className="h-4 w-4" /> : <StepIcon className="h-4 w-4" />}
                             </div>
                             <span
                               className={cn(
-                                "text-xs font-medium whitespace-nowrap text-center transition-colors",
+                                "text-xs font-medium text-center transition-colors",
                                 isActive && "text-accent",
                                 isCompleted && "text-accent/80",
                                 isPending && "text-muted-foreground"
@@ -470,7 +469,7 @@ export default function RecruitmentRequestDetailPage() {
                           {index < WORKFLOW_STEPS.length - 1 && (
                             <div
                               className={cn(
-                                "flex-1 h-0.5 mx-2 mb-6 transition-colors duration-500",
+                                "flex-1 h-0.5 mx-2 transition-colors duration-500",
                                 index < currentStep ? "bg-accent" : "bg-secondary"
                               )}
                             />

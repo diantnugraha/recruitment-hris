@@ -27,6 +27,7 @@ import {
   PartyPopper,
   Send,
   Save,
+  Check,
 } from "lucide-react";
 
 import { Header } from "@/components/layout/header";
@@ -89,6 +90,14 @@ const ASSESSMENT_STAGES = [
     icon: Stethoscope,
   },
 ] as const;
+
+// Workflow progress steps for visual stepper
+const RECRUITMENT_WORKFLOW_STEPS = [
+  { key: "interview1", label: "Interview 1", icon: ClipboardCheck },
+  { key: "interview2", label: "Interview 2", icon: Users },
+  { key: "mcu", label: "MCU", icon: Stethoscope },
+  { key: "completed", label: "Completed", icon: PartyPopper },
+];
 
 type AssessmentStageKey = typeof ASSESSMENT_STAGES[number]["key"];
 
@@ -364,6 +373,18 @@ export default function CandidateDetailPage() {
     };
   };
 
+  // Get current recruitment workflow step index
+  const getCurrentStepIndex = () => {
+    if (!progress) return 0;
+    if (progress.anyFailed) return -1;
+    if (progress.allPassed) return 3;
+    if (progress.interview2.passed) return 2;
+    if (progress.interview1.passed) return 1;
+    return 0;
+  };
+
+  const currentStepIndex = getCurrentStepIndex();
+
   // Loading state
   if (isLoading) {
     return (
@@ -410,68 +431,123 @@ export default function CandidateDetailPage() {
 
           {/* Candidate Header Card */}
           <Card>
-            <CardContent className="p-6">
-              <div className="flex flex-col md:flex-row md:items-start gap-6">
-                <Avatar className="h-20 w-20 border-4 border-background shadow-lg">
-                  <AvatarFallback className="bg-accent/10 text-accent text-2xl font-semibold">
+            <CardContent className="pt-6">
+              <div className="flex items-start gap-4">
+                <Avatar className="h-10 w-10 border">
+                  <AvatarFallback className="bg-accent/10 text-accent font-medium">
                     {getInitials(candidate.fullname)}
                   </AvatarFallback>
                 </Avatar>
-                <div className="flex-1 space-y-3">
-                  <div>
-                    <h1 className="text-2xl font-bold">{candidate.fullname}</h1>
-                    {candidate.jobTitle && (
-                      <p className="text-lg text-muted-foreground">
-                        Applying for: {candidate.jobTitle.name}
-                      </p>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-3">
+                    <h2 className="text-base font-semibold tracking-tight">{candidate.fullname}</h2>
+                    {progress && (
+                      <>
+                        {progress.anyFailed ? (
+                          <Badge variant="destructive" className="text-xs">Assessment Failed</Badge>
+                        ) : progress.allPassed ? (
+                          <Badge className="text-xs bg-emerald-600">All Passed</Badge>
+                        ) : null}
+                      </>
                     )}
                   </div>
-                  <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-                    <span className="flex items-center gap-1.5">
+                  {candidate.jobTitle && (
+                    <p className="mt-1.5 text-sm text-foreground/80">
+                      Applying for: {candidate.jobTitle.name}
+                    </p>
+                  )}
+                  <div className="mt-3 flex items-center gap-4 text-sm text-muted-foreground">
+                    <div className="flex items-center gap-1.5">
                       <Mail className="h-4 w-4" />
                       {candidate.email}
-                    </span>
+                    </div>
                     {candidate.mobilePhone && (
-                      <span className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1.5">
                         <Phone className="h-4 w-4" />
                         {candidate.mobilePhone}
-                      </span>
+                      </div>
                     )}
                     {candidate.employeeRequest && (
-                      <span className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1.5">
                         <Briefcase className="h-4 w-4" />
                         {candidate.employeeRequest.code}
-                      </span>
+                      </div>
                     )}
                   </div>
-
-                  {/* Assessment Progress Summary */}
-                  {progress && (
-                    <div className="flex items-center gap-2 pt-2">
-                      {progress.anyFailed ? (
-                        <Badge variant="destructive" className="gap-1">
-                          <XCircle className="h-3.5 w-3.5" />
-                          Assessment Failed
-                        </Badge>
-                      ) : progress.allPassed ? (
-                        <Badge className="gap-1 bg-emerald-600">
-                          <CheckCircle2 className="h-3.5 w-3.5" />
-                          All Assessments Passed
-                        </Badge>
-                      ) : (
-                        <Badge variant="secondary" className="gap-1">
-                          <Clock className="h-3.5 w-3.5" />
-                          Stage: {progress.currentStage === "interview1" ? "Interview 1" :
-                                  progress.currentStage === "interview2" ? "Interview 2" :
-                                  progress.currentStage === "mcu" ? "MCU" : progress.currentStage}
-                        </Badge>
-                      )}
-                    </div>
-                  )}
                 </div>
               </div>
             </CardContent>
           </Card>
+
+          {/* Workflow Progress */}
+          {!progress?.anyFailed && (
+            <Card className="overflow-hidden border-accent/10 bg-gradient-to-br from-accent/5 to-transparent">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  {RECRUITMENT_WORKFLOW_STEPS.map((step, index) => {
+                    const StepIcon = step.icon;
+                    const isActive = index === currentStepIndex;
+                    const isCompleted = index < currentStepIndex;
+                    const isPending = index > currentStepIndex;
+
+                    return (
+                      <React.Fragment key={step.key}>
+                        <div className="flex flex-col items-center gap-2">
+                          <div
+                            className={cn(
+                              "h-9 w-9 rounded-full flex items-center justify-center transition-all duration-500",
+                              isActive && "bg-accent text-accent-foreground ring-4 ring-accent/20",
+                              isCompleted && "bg-accent/20 text-accent",
+                              isPending && "bg-secondary text-muted-foreground"
+                            )}
+                          >
+                            {isCompleted ? <Check className="h-4 w-4" /> : <StepIcon className="h-4 w-4" />}
+                          </div>
+                          <span
+                            className={cn(
+                              "text-xs font-medium text-center transition-colors",
+                              isActive && "text-accent",
+                              isCompleted && "text-accent/80",
+                              isPending && "text-muted-foreground"
+                            )}
+                          >
+                            {step.label}
+                          </span>
+                        </div>
+                        {index < RECRUITMENT_WORKFLOW_STEPS.length - 1 && (
+                          <div
+                            className={cn(
+                              "flex-1 h-0.5 mx-2 transition-colors duration-500",
+                              index < currentStepIndex ? "bg-accent" : "bg-secondary"
+                            )}
+                          />
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Failed Banner */}
+          {progress?.anyFailed && (
+            <Card className="border-destructive/50 bg-destructive/5">
+              <CardContent className="p-6">
+                <div className="flex items-center gap-4">
+                  <div className="h-9 w-9 rounded-full bg-destructive/10 flex items-center justify-center">
+                    <XCircle className="h-4 w-4 text-destructive" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-destructive">Assessment Failed</h3>
+                    <p className="text-sm text-muted-foreground">
+                      This candidate has failed one of the assessment stages and cannot proceed further.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Tabs */}
           <Tabs value={activeTab} onValueChange={handleTabChange}>

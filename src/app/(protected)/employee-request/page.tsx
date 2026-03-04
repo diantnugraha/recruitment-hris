@@ -249,82 +249,75 @@ export default function EmployeeRequestPage() {
     <>
       <Header title="Employee Request" />
       <PageContainer>
-        <div className="space-y-8">
+        <div className="space-y-6">
           {/* Stats */}
           {isLoading ? (
             <StatsSkeletonCards />
           ) : (
-            <div className="grid gap-4 sm:grid-cols-4">
-              <div className="animate-fade-in">
-                <Card className="border-accent/20 bg-accent/5">
-                  <CardContent className="p-5">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-xs uppercase tracking-wider text-muted-foreground">
-                          Total Requests
-                        </p>
-                        <p className="mt-1 font-semibold text-3xl text-accent">
-                          {stats.total}
-                        </p>
-                      </div>
-                      <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-accent/10">
-                        <FileText className="h-5 w-5 text-accent" />
-                      </div>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <Card className="overflow-hidden">
+                <CardContent className="p-0">
+                  <div className="flex items-stretch">
+                    <div className="flex w-14 shrink-0 items-center justify-center bg-accent/10">
+                      <FileText className="h-5 w-5 text-accent" />
                     </div>
-                  </CardContent>
-                </Card>
-              </div>
-              <div className="animate-fade-in" style={{ animationDelay: "50ms" }}>
-                <Card>
-                  <CardContent className="p-5">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-xs uppercase tracking-wider text-muted-foreground">
-                          Pending Review
-                        </p>
-                        <p className="mt-1 font-semibold text-3xl">{stats.pending}</p>
-                      </div>
-                      <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-secondary">
-                        <Clock className="h-5 w-5 text-muted-foreground" />
-                      </div>
+                    <div className="flex-1 p-4">
+                      <p className="text-xs font-medium text-muted-foreground">Total Requests</p>
+                      <p className="mt-1 text-xl font-bold tabular-nums">
+                        {stats.total}
+                      </p>
                     </div>
-                  </CardContent>
-                </Card>
-              </div>
-              <div className="animate-fade-in" style={{ animationDelay: "100ms" }}>
-                <Card>
-                  <CardContent className="p-5">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-xs uppercase tracking-wider text-muted-foreground">
-                          Approved
-                        </p>
-                        <p className="mt-1 font-semibold text-3xl">{stats.approved}</p>
-                      </div>
-                      <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-secondary">
-                        <CheckCircle className="h-5 w-5 text-muted-foreground" />
-                      </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="overflow-hidden">
+                <CardContent className="p-0">
+                  <div className="flex items-stretch">
+                    <div className="flex w-14 shrink-0 items-center justify-center bg-amber-500/10">
+                      <Clock className="h-5 w-5 text-amber-600" />
                     </div>
-                  </CardContent>
-                </Card>
-              </div>
-              <div className="animate-fade-in" style={{ animationDelay: "150ms" }}>
-                <Card>
-                  <CardContent className="p-5">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-xs uppercase tracking-wider text-muted-foreground">
-                          Rejected
-                        </p>
-                        <p className="mt-1 font-semibold text-3xl">{stats.rejected}</p>
-                      </div>
-                      <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-secondary">
-                        <XCircle className="h-5 w-5 text-muted-foreground" />
-                      </div>
+                    <div className="flex-1 p-4">
+                      <p className="text-xs font-medium text-muted-foreground">Pending Review</p>
+                      <p className="mt-1 text-xl font-bold tabular-nums">
+                        {stats.pending}
+                      </p>
                     </div>
-                  </CardContent>
-                </Card>
-              </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="overflow-hidden">
+                <CardContent className="p-0">
+                  <div className="flex items-stretch">
+                    <div className="flex w-14 shrink-0 items-center justify-center bg-green-500/10">
+                      <CheckCircle className="h-5 w-5 text-green-600" />
+                    </div>
+                    <div className="flex-1 p-4">
+                      <p className="text-xs font-medium text-muted-foreground">Approved</p>
+                      <p className="mt-1 text-xl font-bold tabular-nums">
+                        {stats.approved}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="overflow-hidden">
+                <CardContent className="p-0">
+                  <div className="flex items-stretch">
+                    <div className="flex w-14 shrink-0 items-center justify-center bg-red-500/10">
+                      <XCircle className="h-5 w-5 text-red-600" />
+                    </div>
+                    <div className="flex-1 p-4">
+                      <p className="text-xs font-medium text-muted-foreground">Rejected</p>
+                      <p className="mt-1 text-xl font-bold tabular-nums">
+                        {stats.rejected}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           )}
 

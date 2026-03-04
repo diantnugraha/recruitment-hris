@@ -487,9 +487,8 @@ export const employeeService = {
     limit: number = 100
   ): Promise<ApiResponse<EmployeePaginatedResponse>> {
     try {
-      // Ensure page and limit are valid numbers (API max limit is 100)
       const validPage = Math.max(1, Math.floor(page));
-      const validLimit = Math.max(1, Math.min(100, Math.floor(limit)));
+      const validLimit = Math.max(1, Math.floor(limit));
 
       const response = await get<unknown>(
         `/v1/employee?page=${validPage}&limit=${validLimit}`
