@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { LexicalEditor } from "@/components/shared/lexical-editor";
 import {
   Select,
   SelectContent,
@@ -22,6 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 
 import { jobTitleService } from "@/services/job-title.service";
 import { departmentService } from "@/services/department.service";
@@ -32,6 +34,7 @@ import {
   EMPLOYMENT_TYPE_OPTIONS,
   EDUCATION_LEVEL_OPTIONS,
   GENDER_PREFERENCE_OPTIONS,
+  WORK_LOCATION_OPTIONS,
 } from "@/lib/constants/employeeRequest";
 import type { JobTitle, Department } from "@/types";
 
@@ -45,16 +48,14 @@ const employeeRequestSchema = z.object({
   quantity: z.coerce.number().min(1, "At least 1 position required"),
   employmentType: z.string().min(1, "Employment type is required"),
   education: z.string().min(1, "Education level is required"),
-  experience: z.string().min(1, "Experience requirement is required"),
-  skills: z.string().optional(),
-  certification: z.string().optional(),
+  experience: z.coerce.number().min(0, "Experience is required"),
   genderPreference: z.string().min(1, "Gender preference is required"),
   ageMin: z.coerce.number().optional(),
   ageMax: z.coerce.number().optional(),
   jobPlacement: z.string().optional(),
-  budgetMin: z.coerce.number().optional(),
-  budgetMax: z.coerce.number().optional(),
+  headcount: z.coerce.number().min(1, "At least 1 headcount required"),
   expectedOnboardDate: z.string().optional(),
+  generalJobPurpose: z.string().optional(),
   jobDescription: z.string().optional(),
   jobRequirement: z.string().optional(),
 });
@@ -79,6 +80,7 @@ export default function NewEmployeeRequestPage() {
     resolver: zodResolver(employeeRequestSchema),
     defaultValues: {
       quantity: 1,
+      headcount: 1,
       genderPreference: "any",
     },
   });
@@ -89,22 +91,26 @@ export default function NewEmployeeRequestPage() {
   const watchedEmploymentType = watch("employmentType");
   const watchedEducation = watch("education");
   const watchedGenderPreference = watch("genderPreference");
+  const watchedJobPlacement = watch("jobPlacement");
+  const watchedGeneralJobPurpose = watch("generalJobPurpose");
+  const watchedJobDescription = watch("jobDescription");
+  const watchedJobRequirement = watch("jobRequirement");
 
-  // Fetch job titles and departments
+  // Fetch all job titles and departments (no pagination limit)
   React.useEffect(() => {
     const fetchData = async () => {
       setIsLoadingData(true);
       try {
         const [jobTitlesRes, departmentsRes] = await Promise.all([
-          jobTitleService.getAll(1, 100),
-          departmentService.getAll(1, 100),
+          jobTitleService.fetchAll(),
+          departmentService.fetchAll(),
         ]);
 
         if (jobTitlesRes.success && jobTitlesRes.data) {
-          setJobTitles(jobTitlesRes.data.data);
+          setJobTitles(jobTitlesRes.data);
         }
         if (departmentsRes.success && departmentsRes.data) {
-          setDepartments(departmentsRes.data.data);
+          setDepartments(departmentsRes.data);
         }
       } catch (error) {
         console.error("Failed to fetch data:", error);
@@ -127,16 +133,14 @@ export default function NewEmployeeRequestPage() {
         quantity: data.quantity,
         employment_type: data.employmentType,
         education: data.education,
-        experience: data.experience,
-        skills: data.skills || undefined,
-        certification: data.certification || undefined,
+        experience: String(data.experience),
         gender_preference: data.genderPreference,
         age_min: data.ageMin || undefined,
         age_max: data.ageMax || undefined,
         job_placement: data.jobPlacement || undefined,
-        budget_min: data.budgetMin || undefined,
-        budget_max: data.budgetMax || undefined,
+        headcount: data.headcount,
         expected_onboard_date: data.expectedOnboardDate || undefined,
+        general_job_purpose: data.generalJobPurpose || undefined,
         job_description: data.jobDescription || undefined,
         job_requirement: data.jobRequirement || undefined,
         status,
@@ -226,21 +230,17 @@ export default function NewEmployeeRequestPage() {
                     <Label htmlFor="jobTitleId">
                       Job Title <span className="text-destructive">*</span>
                     </Label>
-                    <Select
+                    <SearchableSelect
+                      options={jobTitles.map((jt) => ({
+                        value: String(jt.id),
+                        label: jt.name,
+                      }))}
                       value={watchedJobTitleId}
                       onValueChange={(value) => setValue("jobTitleId", value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select job title" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {jobTitles.map((jt) => (
-                          <SelectItem key={jt.id} value={String(jt.id)}>
-                            {jt.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      placeholder="Select job title"
+                      searchPlaceholder="Search job title..."
+                      emptyText="No job title found."
+                    />
                     {errors.jobTitleId && (
                       <p className="text-sm text-destructive">{errors.jobTitleId.message}</p>
                     )}
@@ -250,21 +250,17 @@ export default function NewEmployeeRequestPage() {
                     <Label htmlFor="departmentId">
                       Department <span className="text-destructive">*</span>
                     </Label>
-                    <Select
+                    <SearchableSelect
+                      options={departments.map((d) => ({
+                        value: String(d.id),
+                        label: d.name,
+                      }))}
                       value={watchedDepartmentId}
                       onValueChange={(value) => setValue("departmentId", value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select department" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {departments.map((d) => (
-                          <SelectItem key={d.id} value={String(d.id)}>
-                            {d.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      placeholder="Select department"
+                      searchPlaceholder="Search department..."
+                      emptyText="No department found."
+                    />
                     {errors.departmentId && (
                       <p className="text-sm text-destructive">{errors.departmentId.message}</p>
                     )}
@@ -297,20 +293,6 @@ export default function NewEmployeeRequestPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="quantity">
-                      Quantity <span className="text-destructive">*</span>
-                    </Label>
-                    <Input
-                      type="number"
-                      min={1}
-                      {...register("quantity")}
-                    />
-                    {errors.quantity && (
-                      <p className="text-sm text-destructive">{errors.quantity.message}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
                     <Label htmlFor="employmentType">
                       Employment Type <span className="text-destructive">*</span>
                     </Label>
@@ -331,6 +313,24 @@ export default function NewEmployeeRequestPage() {
                     </Select>
                     {errors.employmentType && (
                       <p className="text-sm text-destructive">{errors.employmentType.message}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="quantity">
+                      Quantity <span className="text-destructive">*</span>
+                    </Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        min={1}
+                        className="w-24"
+                        {...register("quantity")}
+                      />
+                      <span className="text-sm text-muted-foreground">headcount</span>
+                    </div>
+                    {errors.quantity && (
+                      <p className="text-sm text-destructive">{errors.quantity.message}</p>
                     )}
                   </div>
                 </div>
@@ -389,33 +389,19 @@ export default function NewEmployeeRequestPage() {
                     <Label htmlFor="experience">
                       Experience <span className="text-destructive">*</span>
                     </Label>
-                    <Input
-                      placeholder="e.g., 2-3 years"
-                      {...register("experience")}
-                    />
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        min={0}
+                        placeholder="e.g., 2"
+                        className="w-24"
+                        {...register("experience")}
+                      />
+                      <span className="text-sm text-muted-foreground">years</span>
+                    </div>
                     {errors.experience && (
                       <p className="text-sm text-destructive">{errors.experience.message}</p>
                     )}
-                  </div>
-                </div>
-
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="skills">Skills</Label>
-                    <Textarea
-                      placeholder="List required skills..."
-                      rows={2}
-                      {...register("skills")}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="certification">Certification</Label>
-                    <Textarea
-                      placeholder="Required certifications (if any)..."
-                      rows={2}
-                      {...register("certification")}
-                    />
                   </div>
                 </div>
 
@@ -468,32 +454,29 @@ export default function NewEmployeeRequestPage() {
               </CardContent>
             </Card>
 
-            {/* Budget & Timeline */}
+            {/* Headcount & Timeline */}
             <Card>
               <CardHeader>
-                <CardTitle>Budget & Timeline</CardTitle>
+                <CardTitle>Headcount & Timeline</CardTitle>
                 <CardDescription>
-                  Set the budget range and expected timeline
+                  Set the headcount and expected timeline
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid gap-4 sm:grid-cols-3">
+                <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
-                    <Label htmlFor="budgetMin">Budget Min (IDR)</Label>
+                    <Label htmlFor="headcount">
+                      Headcount <span className="text-destructive">*</span>
+                    </Label>
                     <Input
                       type="number"
-                      placeholder="e.g., 8000000"
-                      {...register("budgetMin")}
+                      min={1}
+                      placeholder="e.g., 5"
+                      {...register("headcount")}
                     />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="budgetMax">Budget Max (IDR)</Label>
-                    <Input
-                      type="number"
-                      placeholder="e.g., 12000000"
-                      {...register("budgetMax")}
-                    />
+                    {errors.headcount && (
+                      <p className="text-sm text-destructive">{errors.headcount.message}</p>
+                    )}
                   </div>
 
                   <div className="space-y-2">
@@ -507,10 +490,21 @@ export default function NewEmployeeRequestPage() {
 
                 <div className="space-y-2">
                   <Label htmlFor="jobPlacement">Work Location / Placement</Label>
-                  <Input
-                    placeholder="e.g., Jakarta Office, Remote, etc."
-                    {...register("jobPlacement")}
-                  />
+                  <Select
+                    value={watchedJobPlacement}
+                    onValueChange={(value) => setValue("jobPlacement", value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select location" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {WORK_LOCATION_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </CardContent>
             </Card>
@@ -523,22 +517,31 @@ export default function NewEmployeeRequestPage() {
                   Provide detailed job description and requirements
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-6">
                 <div className="space-y-2">
-                  <Label htmlFor="jobDescription">Job Description</Label>
-                  <Textarea
-                    placeholder="Describe the role, responsibilities, and day-to-day activities..."
-                    rows={5}
-                    {...register("jobDescription")}
+                  <Label>General Job Purpose</Label>
+                  <LexicalEditor
+                    value={watchedGeneralJobPurpose}
+                    onChange={(val) => setValue("generalJobPurpose", val)}
+                    placeholder="Describe the general purpose of this position..."
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="jobRequirement">Additional Requirements</Label>
-                  <Textarea
-                    placeholder="Any additional requirements or nice-to-haves..."
-                    rows={3}
-                    {...register("jobRequirement")}
+                  <Label>Job Description</Label>
+                  <LexicalEditor
+                    value={watchedJobDescription}
+                    onChange={(val) => setValue("jobDescription", val)}
+                    placeholder="Describe the role, responsibilities, and day-to-day activities..."
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Job Requirement</Label>
+                  <LexicalEditor
+                    value={watchedJobRequirement}
+                    onChange={(val) => setValue("jobRequirement", val)}
+                    placeholder="List the requirements, qualifications, and skills needed..."
                   />
                 </div>
               </CardContent>

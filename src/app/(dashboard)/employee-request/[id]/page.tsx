@@ -19,7 +19,7 @@ import {
   GraduationCap,
   Calendar,
   MapPin,
-  Banknote,
+  Hash,
   UserCircle,
   PlayCircle,
   ChevronRight,
@@ -35,6 +35,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
+import { LexicalRenderer, hasLexicalContent } from "@/components/shared/lexical-renderer";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   AlertDialog,
@@ -56,27 +57,23 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 
-import { cn, formatShortDate, formatCurrency, getInitials } from "@/lib/utils";
+import { cn, formatShortDate, getInitials } from "@/lib/utils";
 import { showToast } from "@/lib/utils/toast-messages";
 import { employeeRequestService } from "@/services/employee-request.service";
-import { candidateService, type CandidateWithRelations } from "@/services/candidate.service";
 import {
   EMPLOYEE_REQUEST_STATUS_CONFIG,
   EMPLOYMENT_TYPE_LABELS,
   REQUEST_REASON_LABELS,
   EDUCATION_LEVEL_LABELS,
   GENDER_PREFERENCE_LABELS,
+  WORK_LOCATION_LABELS,
   type EmployeeRequestStatus,
   type EmploymentType,
   type RequestReason,
   type EducationLevel,
   type GenderPreference,
+  type WorkLocation,
 } from "@/lib/constants/employeeRequest";
-import {
-  CANDIDATE_STATUS,
-  CANDIDATE_STATUS_CONFIG,
-  type CandidateStatus,
-} from "@/lib/constants/candidateStatus";
 import type { EmployeeRequestWithRelations } from "@/types/employee-request";
 
 // Workflow steps visualization
@@ -96,7 +93,6 @@ export default function EmployeeRequestDetailPage() {
 
   // State
   const [request, setRequest] = React.useState<EmployeeRequestWithRelations | null>(null);
-  const [candidates, setCandidates] = React.useState<CandidateWithRelations[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -118,23 +114,6 @@ export default function EmployeeRequestDetailPage() {
 
         if (response.success && response.data) {
           setRequest(response.data);
-
-          // If in recruitment, fetch candidates for this request
-          if (["approved", "in_recruitment", "completed"].includes(response.data.status)) {
-            try {
-              const candidatesRes = await candidateService.getByEmployeeRequest(
-                Number(response.data.id),
-                1,
-                100
-              );
-              if (candidatesRes.success && candidatesRes.data) {
-                setCandidates(candidatesRes.data.data);
-              }
-            } catch (candidateErr) {
-              // Silently fail - candidates section will just show empty state
-              console.warn("Failed to fetch candidates:", candidateErr);
-            }
-          }
         } else {
           setError(response.message || "Request not found");
         }
@@ -230,36 +209,6 @@ export default function EmployeeRequestDetailPage() {
     );
   };
 
-  const getCandidateStatusBadge = (status: CandidateStatus) => {
-    const config = CANDIDATE_STATUS_CONFIG[status];
-    return (
-      <Badge variant={config?.variant || "secondary"} className="text-xs">
-        {config?.label || status}
-      </Badge>
-    );
-  };
-
-  // Derive candidate pipeline status from assessment data
-  const deriveCandidateStatus = (candidate: CandidateWithRelations): CandidateStatus => {
-    const assessment = candidate.assessment;
-    if (!assessment) return CANDIDATE_STATUS.APPLIED;
-
-    // Check from latest stage backwards
-    if (assessment.mcuStatus === "PASSED") return CANDIDATE_STATUS.HIRED;
-    if (assessment.mcuStatus === "FAILED") return CANDIDATE_STATUS.REJECTED;
-    if (assessment.mcuStatus && assessment.mcuStatus !== "PENDING") return CANDIDATE_STATUS.MCU;
-
-    if (assessment.interview2Status === "PASSED") return CANDIDATE_STATUS.MCU;
-    if (assessment.interview2Status === "FAILED") return CANDIDATE_STATUS.REJECTED;
-    if (assessment.interview2Status && assessment.interview2Status !== "PENDING") return CANDIDATE_STATUS.INTERVIEW_2;
-
-    if (assessment.interview1Status === "PASSED") return CANDIDATE_STATUS.INTERVIEW_2;
-    if (assessment.interview1Status === "FAILED") return CANDIDATE_STATUS.REJECTED;
-    if (assessment.interview1Status && assessment.interview1Status !== "PENDING") return CANDIDATE_STATUS.INTERVIEW_1;
-
-    return CANDIDATE_STATUS.SCREENING;
-  };
-
   const getActionDialogContent = () => {
     switch (actionType) {
       case "review":
@@ -342,7 +291,6 @@ export default function EmployeeRequestDetailPage() {
   const statusConfig = EMPLOYEE_REQUEST_STATUS_CONFIG[request.status];
   const dialogContent = getActionDialogContent();
   const currentStepIndex = getCurrentStepIndex(request.status);
-  const isApprovedOrRecruitment = ["approved", "in_recruitment"].includes(request.status);
 
   return (
     <>
@@ -521,61 +469,6 @@ export default function EmployeeRequestDetailPage() {
                 </CardContent>
               </Card>
 
-              {/* Candidates Section */}
-              {isApprovedOrRecruitment && (
-                <Card className="border-accent/20">
-                  <CardHeader className="pb-4">
-                    <CardTitle className="flex items-center gap-2">
-                      <Users className="h-5 w-5 text-accent" />
-                      Candidates
-                      {candidates.length > 0 && (
-                        <Badge variant="secondary" className="ml-2">
-                          {candidates.length}
-                        </Badge>
-                      )}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {candidates.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center py-12 text-center">
-                        <div className="h-20 w-20 rounded-full bg-secondary flex items-center justify-center mb-4">
-                          <Users className="h-10 w-10 text-muted-foreground/50" />
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                          No candidates for this request yet
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="divide-y divide-border -mx-6">
-                        {candidates.map((candidate) => (
-                          <div
-                            key={candidate.id}
-                            className="flex items-center justify-between py-4 px-6 group cursor-pointer hover:bg-accent/5 transition-colors"
-                            onClick={() => router.push(`/recruitment/${candidate.id}`)}
-                          >
-                            <div className="flex items-center gap-4">
-                              <Avatar className="h-11 w-11 border-2 border-background shadow-sm">
-                                <AvatarFallback className="bg-accent/10 text-accent font-semibold">
-                                  {getInitials(candidate.fullname)}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div>
-                                <p className="font-medium">{candidate.fullname}</p>
-                                <p className="text-sm text-muted-foreground">{candidate.email}</p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-4">
-                              {getCandidateStatusBadge(deriveCandidateStatus(candidate))}
-                              <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              )}
-
               {/* Requirements */}
               <Card>
                 <CardHeader>
@@ -629,39 +522,32 @@ export default function EmployeeRequestDetailPage() {
                     )}
                   </div>
 
-                  {request.skills && (
-                    <div>
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Skills</p>
-                      <p className="text-sm">{request.skills}</p>
-                    </div>
-                  )}
-
-                  {request.certification && (
-                    <div>
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Certification</p>
-                      <p className="text-sm">{request.certification}</p>
-                    </div>
-                  )}
                 </CardContent>
               </Card>
 
               {/* Job Description */}
-              {(request.jobDescription || request.jobRequirement) && (
+              {(hasLexicalContent(request.generalJobPurpose) || hasLexicalContent(request.jobDescription) || hasLexicalContent(request.jobRequirement)) && (
                 <Card>
                   <CardHeader>
                     <CardTitle>Job Description</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-6">
-                    {request.jobDescription && (
+                    {hasLexicalContent(request.generalJobPurpose) && (
                       <div>
-                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Description</p>
-                        <p className="text-sm whitespace-pre-wrap leading-relaxed">{request.jobDescription}</p>
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">General Job Purpose</p>
+                        <LexicalRenderer value={request.generalJobPurpose} />
                       </div>
                     )}
-                    {request.jobRequirement && (
+                    {hasLexicalContent(request.jobDescription) && (
                       <div>
-                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Additional Requirements</p>
-                        <p className="text-sm whitespace-pre-wrap leading-relaxed">{request.jobRequirement}</p>
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Job Description</p>
+                        <LexicalRenderer value={request.jobDescription} />
+                      </div>
+                    )}
+                    {hasLexicalContent(request.jobRequirement) && (
+                      <div>
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Job Requirement</p>
+                        <LexicalRenderer value={request.jobRequirement} />
                       </div>
                     )}
                   </CardContent>
@@ -733,29 +619,21 @@ export default function EmployeeRequestDetailPage() {
                 </CardContent>
               </Card>
 
-              {/* Budget & Timeline */}
+              {/* Headcount & Timeline */}
               <Card>
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-base">Budget & Timeline</CardTitle>
+                  <CardTitle className="text-base">Headcount & Timeline</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {(request.budgetMin || request.budgetMax) && (
-                    <div className="flex items-start gap-3">
-                      <div className="h-9 w-9 rounded-lg bg-secondary flex items-center justify-center">
-                        <Banknote className="h-4 w-4 text-muted-foreground" />
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">Budget Range</p>
-                        <p className="font-medium">
-                          {request.budgetMin && request.budgetMax
-                            ? `${formatCurrency(request.budgetMin)} - ${formatCurrency(request.budgetMax)}`
-                            : request.budgetMin
-                            ? `Min ${formatCurrency(request.budgetMin)}`
-                            : `Max ${formatCurrency(request.budgetMax)}`}
-                        </p>
-                      </div>
+                  <div className="flex items-start gap-3">
+                    <div className="h-9 w-9 rounded-lg bg-secondary flex items-center justify-center">
+                      <Hash className="h-4 w-4 text-muted-foreground" />
                     </div>
-                  )}
+                    <div>
+                      <p className="text-xs text-muted-foreground">Headcount</p>
+                      <p className="font-medium">{request.headcount} {request.headcount > 1 ? "people" : "person"}</p>
+                    </div>
+                  </div>
                   {request.expectedOnboardDate && (
                     <div className="flex items-start gap-3">
                       <div className="h-9 w-9 rounded-lg bg-secondary flex items-center justify-center">
@@ -774,7 +652,7 @@ export default function EmployeeRequestDetailPage() {
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground">Work Location</p>
-                        <p className="font-medium">{request.jobPlacement}</p>
+                        <p className="font-medium">{WORK_LOCATION_LABELS[request.jobPlacement as WorkLocation] || request.jobPlacement}</p>
                       </div>
                     </div>
                   )}

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
   Mail,
@@ -49,6 +49,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 import {
   candidateService,
@@ -57,6 +65,8 @@ import {
 } from "@/services/candidate.service";
 import { formatShortDate, getInitials, cn } from "@/lib/utils";
 import { showToast } from "@/lib/utils/toast-messages";
+import { LexicalEditor } from "@/components/shared/lexical-editor";
+import { LexicalRenderer } from "@/components/shared/lexical-renderer";
 
 // Assessment stage configuration
 const ASSESSMENT_STAGES = [
@@ -82,17 +92,47 @@ const ASSESSMENT_STAGES = [
 
 type AssessmentStageKey = typeof ASSESSMENT_STAGES[number]["key"];
 
+// HR Assessment Scoring Criteria
+const HR_SCORING_CRITERIA = [
+  { key: "relevanceOfExperience", label: "Relevance of Experience" },
+  { key: "trainingUndertaken", label: "Training Undertaken" },
+  { key: "technicalSkills", label: "Technical Skills" },
+  { key: "nonTechnicalSkills", label: "Non-Technical Skills" },
+  { key: "communicationSkills", label: "Communication Skills" },
+  { key: "emotionalMaturity", label: "Emotional Maturity" },
+  { key: "understandingOfPosition", label: "Understanding of the Applied Position" },
+  { key: "teamworkAbility", label: "Ability to Work Collaboratively in a Team" },
+] as const;
+
+const SCORE_OPTIONS = [
+  { value: 1, label: "Very Poor" },
+  { value: 2, label: "Poor" },
+  { value: 3, label: "Fair" },
+  { value: 4, label: "Good" },
+  { value: 5, label: "Excellent" },
+] as const;
+
+type HRScoringKey = typeof HR_SCORING_CRITERIA[number]["key"];
+type HRConclusion = "proceed" | "recommended" | "rejected" | null;
+
+// LocalStorage key for HR assessment form data
+const HR_FORM_STORAGE_KEY = (id: string) => `hr-assessment-form-${id}`;
+
 export default function CandidateDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const id = params.id as string;
+
+  // Get initial tab from URL or default to "profile"
+  const initialTab = searchParams.get("tab") || "profile";
 
   // State
   const [candidate, setCandidate] = React.useState<CandidateWithRelations | null>(null);
   const [progress, setProgress] = React.useState<AssessmentProgress | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
-  const [activeTab, setActiveTab] = React.useState("profile");
+  const [activeTab, setActiveTab] = React.useState(initialTab);
 
   // Assessment state
   const [assessmentNotes, setAssessmentNotes] = React.useState<Record<AssessmentStageKey, string>>({
@@ -106,6 +146,68 @@ export default function CandidateDetailPage() {
     stage: AssessmentStageKey;
     action: "PASSED" | "FAILED";
   } | null>(null);
+
+  // HR Assessment Form State
+  const [hrScoring, setHrScoring] = React.useState<Record<HRScoringKey, number | null>>({
+    relevanceOfExperience: null,
+    trainingUndertaken: null,
+    technicalSkills: null,
+    nonTechnicalSkills: null,
+    communicationSkills: null,
+    emotionalMaturity: null,
+    understandingOfPosition: null,
+    teamworkAbility: null,
+  });
+  const [hrKeyCompetencies, setHrKeyCompetencies] = React.useState("");
+  const [hrUserNotes, setHrUserNotes] = React.useState("");
+  const [hrConclusion, setHrConclusion] = React.useState<HRConclusion>(null);
+  const [isSubmittingHR, setIsSubmittingHR] = React.useState(false);
+  const [showHRPreview, setShowHRPreview] = React.useState(false);
+
+  // Handle tab change and update URL
+  const handleTabChange = React.useCallback((tab: string) => {
+    setActiveTab(tab);
+    const newParams = new URLSearchParams(searchParams.toString());
+    newParams.set("tab", tab);
+    router.replace(`?${newParams.toString()}`, { scroll: false });
+  }, [searchParams, router]);
+
+  // Restore HR form data from localStorage on mount
+  React.useEffect(() => {
+    if (!id) return;
+    const storageKey = HR_FORM_STORAGE_KEY(id);
+    const savedData = localStorage.getItem(storageKey);
+    if (savedData) {
+      try {
+        const parsed = JSON.parse(savedData);
+        if (parsed.hrScoring) setHrScoring(parsed.hrScoring);
+        if (parsed.hrKeyCompetencies) setHrKeyCompetencies(parsed.hrKeyCompetencies);
+        if (parsed.hrUserNotes) setHrUserNotes(parsed.hrUserNotes);
+        if (parsed.hrConclusion) setHrConclusion(parsed.hrConclusion);
+      } catch (e) {
+        console.warn("Failed to restore HR form data:", e);
+      }
+    }
+  }, [id]);
+
+  // Save HR form data to localStorage when it changes
+  React.useEffect(() => {
+    if (!id) return;
+    const storageKey = HR_FORM_STORAGE_KEY(id);
+    const dataToSave = {
+      hrScoring,
+      hrKeyCompetencies,
+      hrUserNotes,
+      hrConclusion,
+    };
+    localStorage.setItem(storageKey, JSON.stringify(dataToSave));
+  }, [id, hrScoring, hrKeyCompetencies, hrUserNotes, hrConclusion]);
+
+  // Clear localStorage after successful submit
+  const clearHRFormStorage = React.useCallback(() => {
+    if (!id) return;
+    localStorage.removeItem(HR_FORM_STORAGE_KEY(id));
+  }, [id]);
 
   // Fetch candidate and assessment data
   const fetchData = React.useCallback(async () => {
@@ -189,6 +291,65 @@ export default function CandidateDetailPage() {
     }
   };
 
+  // HR Assessment Submit Handler
+  const handleHRAssessmentSubmit = async () => {
+    if (!hrConclusion) {
+      showToast.error("Please select Interview Result Conclusion");
+      return;
+    }
+
+    // Check if all scores are filled
+    const allScoresFilled = Object.values(hrScoring).every(score => score !== null);
+    if (!allScoresFilled) {
+      showToast.error("Please fill in all scoring criteria");
+      return;
+    }
+
+    setIsSubmittingHR(true);
+
+    try {
+      // Map conclusion to action
+      const action: "PASSED" | "FAILED" = hrConclusion === "rejected" ? "FAILED" : "PASSED";
+
+      // Compose notes with all form data
+      const formattedNotes = [
+        "=== SCORING ===",
+        ...HR_SCORING_CRITERIA.map(criteria => {
+          const score = hrScoring[criteria.key];
+          const scoreLabel = SCORE_OPTIONS.find(opt => opt.value === score)?.label || "-";
+          return `${criteria.label}: ${scoreLabel} (${score}/5)`;
+        }),
+        "",
+        "=== ADDITIONAL INFORMATION ===",
+        `Key Competencies: ${hrKeyCompetencies || "-"}`,
+        `User Notes: ${hrUserNotes || "-"}`,
+        `Conclusion: ${hrConclusion?.toUpperCase() || "-"}`,
+      ].join("\n");
+
+      const response = await candidateService.updateInterview1(id, action, formattedNotes);
+
+      if (response?.success && response.data) {
+        setProgress(response.data);
+        showToast.success("HR Assessment submitted successfully");
+
+        // Clear localStorage after successful submit
+        clearHRFormStorage();
+
+        // Refresh candidate data
+        const candidateRes = await candidateService.getById(id);
+        if (candidateRes.success && candidateRes.data) {
+          setCandidate(candidateRes.data);
+        }
+      } else {
+        showToast.error(response?.message || "Failed to submit HR Assessment");
+      }
+    } catch (err) {
+      showToast.error("Failed to submit HR Assessment");
+    } finally {
+      setIsSubmittingHR(false);
+    }
+  };
+
   // Check if onboarding is available
   const canStartOnboarding = progress?.allPassed === true;
 
@@ -238,7 +399,7 @@ export default function CandidateDetailPage() {
 
   return (
     <>
-      <Header title={candidate.fullname} />
+      <Header title="Assessment Form" />
       <PageContainer>
         <div className="space-y-6">
           {/* Back Button */}
@@ -313,10 +474,11 @@ export default function CandidateDetailPage() {
           </Card>
 
           {/* Tabs */}
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-3">
+          <Tabs value={activeTab} onValueChange={handleTabChange}>
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="profile">Profile</TabsTrigger>
-              <TabsTrigger value="assessment">Assessment</TabsTrigger>
+              <TabsTrigger value="assessment-hr">Assessment HR</TabsTrigger>
+              <TabsTrigger value="assessment-user">Assessment User</TabsTrigger>
               <TabsTrigger value="onboarding" disabled={!canStartOnboarding}>
                 {canStartOnboarding ? (
                   <>
@@ -471,11 +633,224 @@ export default function CandidateDetailPage() {
               </div>
             </TabsContent>
 
-            {/* Assessment Tab */}
-            <TabsContent value="assessment" className="space-y-6 mt-6">
-              {/* Assessment Pipeline */}
+            {/* Assessment HR Tab */}
+            <TabsContent value="assessment-hr" className="space-y-6 mt-6">
+              {(() => {
+                const { status } = getStageStatus("interview1");
+                const isCompleted = status === "passed" || status === "failed";
+
+                return (
+                  <>
+                    {/* Status Banner */}
+                    {status === "passed" && (
+                      <Card className="border-emerald-500 bg-emerald-500/5">
+                        <CardContent className="flex items-center justify-between p-6">
+                          <div className="flex items-center gap-4">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/10">
+                              <CheckCircle2 className="h-6 w-6 text-emerald-600" />
+                            </div>
+                            <div>
+                              <h3 className="font-semibold text-emerald-600">Assessment HR Completed!</h3>
+                              <p className="text-sm text-muted-foreground">
+                                This candidate has passed the HR assessment. Proceed to Assessment User for the next stage.
+                              </p>
+                            </div>
+                          </div>
+                          <Button onClick={() => handleTabChange("assessment-user")}>
+                            Go to Assessment User
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {status === "failed" && (
+                      <Card className="border-destructive bg-destructive/5">
+                        <CardContent className="flex items-center gap-4 p-6">
+                          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
+                            <XCircle className="h-6 w-6 text-destructive" />
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-destructive">Assessment HR Failed</h3>
+                            <p className="text-sm text-muted-foreground">
+                              This candidate has been rejected in the HR assessment and cannot proceed further.
+                            </p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {/* Scoring Section */}
+                    <Card>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-lg">Scoring</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-4">
+                          {HR_SCORING_CRITERIA.map((criteria, index) => (
+                            <div key={criteria.key} className="flex items-center justify-between py-2 border-b last:border-b-0">
+                              <span className="text-sm font-medium">
+                                {index + 1}. {criteria.label}
+                              </span>
+                              <div className="flex gap-1">
+                                {SCORE_OPTIONS.map((option) => (
+                                  <button
+                                    key={option.value}
+                                    type="button"
+                                    disabled={isCompleted}
+                                    onClick={() => setHrScoring(prev => ({
+                                      ...prev,
+                                      [criteria.key]: option.value
+                                    }))}
+                                    className={cn(
+                                      "px-3 py-1.5 text-xs font-medium rounded border transition-colors min-w-[70px]",
+                                      hrScoring[criteria.key] === option.value
+                                        ? "bg-accent text-accent-foreground border-accent"
+                                        : "bg-background hover:bg-secondary border-border",
+                                      isCompleted && "opacity-60 cursor-not-allowed"
+                                    )}
+                                  >
+                                    {option.label}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Additional Information Section */}
+                    <Card>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-lg">Additional Information</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="space-y-2">
+                          <Label>
+                            Key Competencies Required by the Department / Company
+                          </Label>
+                          {isCompleted ? (
+                            <div className="rounded-md border border-input bg-muted/30 p-3 text-sm min-h-20 opacity-60">
+                              {hrKeyCompetencies || <span className="text-muted-foreground">No content</span>}
+                            </div>
+                          ) : (
+                            <LexicalEditor
+                              value={hrKeyCompetencies}
+                              onChange={setHrKeyCompetencies}
+                              placeholder="Enter key competencies required..."
+                            />
+                          )}
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label>User Notes</Label>
+                          {isCompleted ? (
+                            <div className="rounded-md border border-input bg-muted/30 p-3 text-sm min-h-20 opacity-60">
+                              {hrUserNotes || <span className="text-muted-foreground">No content</span>}
+                            </div>
+                          ) : (
+                            <LexicalEditor
+                              value={hrUserNotes}
+                              onChange={setHrUserNotes}
+                              placeholder="Enter your notes..."
+                            />
+                          )}
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label>Interview Result Conclusion</Label>
+                          <div className="flex gap-2 pt-1">
+                            {[
+                              { value: "proceed" as const, label: "Proceed", color: "emerald" },
+                              { value: "recommended" as const, label: "Recommended", color: "blue" },
+                              { value: "rejected" as const, label: "Rejected", color: "red" },
+                            ].map((option) => (
+                              <button
+                                key={option.value}
+                                type="button"
+                                disabled={isCompleted}
+                                onClick={() => setHrConclusion(option.value)}
+                                className={cn(
+                                  "flex-1 px-4 py-3 text-sm font-medium rounded-lg border-2 transition-all",
+                                  hrConclusion === option.value
+                                    ? option.color === "emerald"
+                                      ? "bg-emerald-50 border-emerald-500 text-emerald-700"
+                                      : option.color === "blue"
+                                      ? "bg-blue-50 border-blue-500 text-blue-700"
+                                      : "bg-red-50 border-red-500 text-red-700"
+                                    : "bg-background border-border hover:border-muted-foreground/50",
+                                  isCompleted && "opacity-60 cursor-not-allowed"
+                                )}
+                              >
+                                <div className="flex items-center justify-center gap-2">
+                                  <div
+                                    className={cn(
+                                      "h-4 w-4 rounded-full border-2 flex items-center justify-center",
+                                      hrConclusion === option.value
+                                        ? option.color === "emerald"
+                                          ? "border-emerald-500"
+                                          : option.color === "blue"
+                                          ? "border-blue-500"
+                                          : "border-red-500"
+                                        : "border-muted-foreground/30"
+                                    )}
+                                  >
+                                    {hrConclusion === option.value && (
+                                      <div
+                                        className={cn(
+                                          "h-2 w-2 rounded-full",
+                                          option.color === "emerald"
+                                            ? "bg-emerald-500"
+                                            : option.color === "blue"
+                                            ? "bg-blue-500"
+                                            : "bg-red-500"
+                                        )}
+                                      />
+                                    )}
+                                  </div>
+                                  {option.label}
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Action Buttons */}
+                    {!isCompleted && (
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          onClick={() => setShowHRPreview(true)}
+                        >
+                          Preview
+                        </Button>
+                        <Button
+                          onClick={handleHRAssessmentSubmit}
+                          disabled={isSubmittingHR}
+                        >
+                          {isSubmittingHR ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Submitting...
+                            </>
+                          ) : (
+                            "Submit"
+                          )}
+                        </Button>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+            </TabsContent>
+
+            {/* Assessment User Tab */}
+            <TabsContent value="assessment-user" className="space-y-6 mt-6">
+              {/* Assessment User - Interview 2 & MCU */}
               <div className="space-y-4">
-                {ASSESSMENT_STAGES.map((stage, index) => {
+                {ASSESSMENT_STAGES.filter(stage => stage.key === "interview2" || stage.key === "mcu").map((stage, index) => {
                   const { status, locked } = getStageStatus(stage.key);
                   const Icon = stage.icon;
                   const isActive = !locked && status === "pending";
@@ -606,7 +981,7 @@ export default function CandidateDetailPage() {
                           <div className="flex items-center gap-2 text-sm text-muted-foreground bg-secondary/50 rounded-lg p-3">
                             <Lock className="h-4 w-4" />
                             <span>
-                              Complete {index === 1 ? "Interview 1" : "Interview 2"} first to unlock this stage
+                              Complete {stage.key === "interview2" ? "Interview 1 (Assessment HR)" : "Interview 2"} first to unlock this stage
                             </span>
                           </div>
                         </CardContent>
@@ -648,7 +1023,7 @@ export default function CandidateDetailPage() {
                         </p>
                       </div>
                     </div>
-                    <Button onClick={() => setActiveTab("onboarding")}>
+                    <Button onClick={() => handleTabChange("onboarding")}>
                       Start Onboarding
                       <PartyPopper className="ml-2 h-4 w-4" />
                     </Button>
@@ -706,6 +1081,123 @@ export default function CandidateDetailPage() {
           </Tabs>
         </div>
       </PageContainer>
+
+      {/* HR Assessment Preview Dialog */}
+      <Dialog open={showHRPreview} onOpenChange={setShowHRPreview}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Assessment HR Preview</DialogTitle>
+            <DialogDescription>
+              Review the assessment details before submitting
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            {/* Candidate Info */}
+            {candidate && (
+              <div className="flex items-center gap-3 p-3 bg-secondary/30 rounded-lg">
+                <Avatar className="h-10 w-10">
+                  <AvatarFallback className="bg-accent/10 text-accent text-sm">
+                    {getInitials(candidate.fullname)}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="font-medium">{candidate.fullname}</p>
+                  <p className="text-sm text-muted-foreground">{candidate.jobTitle?.name}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Scoring Preview */}
+            <div className="space-y-3">
+              <h4 className="font-semibold text-sm">Scoring</h4>
+              <div className="border rounded-lg divide-y">
+                {HR_SCORING_CRITERIA.map((criteria, index) => {
+                  const score = hrScoring[criteria.key];
+                  const scoreLabel = score ? SCORE_OPTIONS.find(opt => opt.value === score)?.label : null;
+                  return (
+                    <div key={criteria.key} className="flex items-center justify-between px-3 py-2">
+                      <span className="text-sm">{index + 1}. {criteria.label}</span>
+                      {scoreLabel ? (
+                        <Badge variant="secondary">{scoreLabel} ({score}/5)</Badge>
+                      ) : (
+                        <span className="text-xs text-muted-foreground italic">Not filled</span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Additional Information Preview */}
+            <div className="space-y-3">
+              <h4 className="font-semibold text-sm">Additional Information</h4>
+
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground uppercase tracking-wider">Key Competencies</p>
+                <div className="border rounded-lg p-3 text-sm min-h-16 bg-secondary/20">
+                  {hrKeyCompetencies ? (
+                    <LexicalRenderer value={hrKeyCompetencies} />
+                  ) : (
+                    <span className="text-muted-foreground italic">Not filled</span>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground uppercase tracking-wider">User Notes</p>
+                <div className="border rounded-lg p-3 text-sm min-h-16 bg-secondary/20">
+                  {hrUserNotes ? (
+                    <LexicalRenderer value={hrUserNotes} />
+                  ) : (
+                    <span className="text-muted-foreground italic">Not filled</span>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground uppercase tracking-wider">Interview Result Conclusion</p>
+                {hrConclusion ? (
+                  <Badge
+                    className={cn(
+                      "text-sm",
+                      hrConclusion === "proceed" && "bg-emerald-100 text-emerald-700 border-emerald-300",
+                      hrConclusion === "recommended" && "bg-blue-100 text-blue-700 border-blue-300",
+                      hrConclusion === "rejected" && "bg-red-100 text-red-700 border-red-300"
+                    )}
+                  >
+                    {hrConclusion === "proceed" ? "Proceed" : hrConclusion === "recommended" ? "Recommended" : "Rejected"}
+                  </Badge>
+                ) : (
+                  <span className="text-sm text-muted-foreground italic">Not selected</span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowHRPreview(false)}>
+              Close
+            </Button>
+            <Button
+              onClick={() => {
+                setShowHRPreview(false);
+                handleHRAssessmentSubmit();
+              }}
+              disabled={isSubmittingHR}
+            >
+              {isSubmittingHR ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Submitting...
+                </>
+              ) : (
+                "Submit Assessment"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Confirmation Dialog */}
       <AlertDialog

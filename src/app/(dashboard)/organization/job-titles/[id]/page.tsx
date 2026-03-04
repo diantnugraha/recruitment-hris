@@ -32,7 +32,7 @@ import {
 
 import { jobTitleService } from "@/services/job-title.service";
 import { jobLevelService } from "@/services/job-level.service";
-import { SlateRenderer, hasSlateContent } from "@/components/shared/slate-renderer";
+import { LexicalRenderer, hasLexicalContent } from "@/components/shared/lexical-renderer";
 import { showToast } from "@/lib/utils/toast-messages";
 import { JobTitle, JobLevel } from "@/types";
 import { formatShortDate } from "@/lib/utils";
@@ -271,8 +271,8 @@ export default function JobTitleDetailPage() {
                     General Job Purpose
                   </h2>
                 </div>
-                {hasSlateContent(jobTitle.purpose) ? (
-                  <SlateRenderer value={jobTitle.purpose} />
+                {hasLexicalContent(jobTitle.purpose) ? (
+                  <LexicalRenderer value={jobTitle.purpose} />
                 ) : (
                   <p className="text-sm text-muted-foreground italic">No Data</p>
                 )}
@@ -289,8 +289,8 @@ export default function JobTitleDetailPage() {
                     Job Description
                   </h2>
                 </div>
-                {hasSlateContent(jobTitle.description) ? (
-                  <SlateRenderer value={jobTitle.description} />
+                {hasLexicalContent(jobTitle.description) ? (
+                  <LexicalRenderer value={jobTitle.description} />
                 ) : (
                   <p className="text-sm text-muted-foreground italic">No Data</p>
                 )}
@@ -307,8 +307,8 @@ export default function JobTitleDetailPage() {
                     Job Requirements
                   </h2>
                 </div>
-                {hasSlateContent(jobTitle.requirement) ? (
-                  <SlateRenderer value={jobTitle.requirement} />
+                {hasLexicalContent(jobTitle.requirement) ? (
+                  <LexicalRenderer value={jobTitle.requirement} />
                 ) : (
                   <p className="text-sm text-muted-foreground italic">No Data</p>
                 )}

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import isHotkey from "is-hotkey";
 import { createEditor, Editor, Transforms, Element as SlateElement, Descendant, BaseEditor } from "slate";
 import { Slate, Editable, withReact, useSlate, ReactEditor, RenderElementProps, RenderLeafProps } from "slate-react";
@@ -267,8 +267,21 @@ interface SlateEditorProps {
   className?: string;
 }
 
-export function SlateEditor({ value, onChange, placeholder, className }: SlateEditorProps) {
-  const editor = useMemo(() => withHistory(withReact(createEditor())), []);
+/**
+ * Slate.js WYSIWYG editor component.
+ *
+ * Note: React Strict Mode must be disabled in next.config.ts for Slate.js to work.
+ * See: https://github.com/ianstormtaylor/slate/issues/4081
+ */
+export function SlateEditor({
+  value,
+  onChange,
+  placeholder,
+  className
+}: SlateEditorProps) {
+  // Create editor instance - useState ensures it's created once per component
+  const [editor] = useState(() => withHistory(withReact(createEditor())));
+
   const renderElement = useCallback((props: RenderElementProps) => <EditorElement {...props} />, []);
   const renderLeaf = useCallback((props: RenderLeafProps) => <EditorLeaf {...props} />, []);
 

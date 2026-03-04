@@ -29,14 +29,11 @@ interface ApiEmployeeRequest {
   employment_type?: string;
   education?: string;
   experience?: string;
-  skills?: string;
-  certification?: string;
   gender_preference?: string;
   age_min?: number;
   age_max?: number;
   job_placement?: string;
-  budget_min?: number;
-  budget_max?: number;
+  headcount?: number;
   expected_onboard_date?: string;
   job_description?: string;
   job_requirement?: string;
@@ -115,15 +112,13 @@ function mapEmployeeRequest(api: ApiEmployeeRequest): EmployeeRequestWithRelatio
     employmentType: (api.employment_type || "permanent") as EmployeeRequest["employmentType"],
     education: (api.education || "s1") as EmployeeRequest["education"],
     experience: api.experience || "",
-    skills: api.skills,
-    certification: api.certification,
     genderPreference: (api.gender_preference || "any") as EmployeeRequest["genderPreference"],
     ageMin: api.age_min,
     ageMax: api.age_max,
     jobPlacement: api.job_placement,
-    budgetMin: api.budget_min,
-    budgetMax: api.budget_max,
+    headcount: api.headcount || 1,
     expectedOnboardDate: api.expected_onboard_date,
+    generalJobPurpose: api.general_job_purpose,
     jobDescription: api.job_description,
     jobRequirement: api.job_requirement,
     status, // Use the computed status variable

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Check, ChevronDown } from "lucide-react";
+import { Check, ChevronsUpDown } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -27,12 +27,12 @@ export interface SearchableSelectOption {
 interface SearchableSelectProps {
   options: SearchableSelectOption[];
   value?: string;
-  onValueChange?: (value: string) => void;
+  onValueChange: (value: string) => void;
   placeholder?: string;
   searchPlaceholder?: string;
   emptyText?: string;
-  disabled?: boolean;
   className?: string;
+  disabled?: boolean;
 }
 
 export function SearchableSelect({
@@ -42,15 +42,12 @@ export function SearchableSelect({
   placeholder = "Select...",
   searchPlaceholder = "Search...",
   emptyText = "No results found.",
-  disabled = false,
   className,
+  disabled = false,
 }: SearchableSelectProps) {
   const [open, setOpen] = React.useState(false);
 
-  const selectedOption = React.useMemo(
-    () => options.find((option) => option.value === value),
-    [options, value]
-  );
+  const selectedOption = options.find((option) => option.value === value);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -61,35 +58,19 @@ export function SearchableSelect({
           aria-expanded={open}
           disabled={disabled}
           className={cn(
-            "w-full justify-between font-normal gap-2",
+            "w-full justify-between font-normal",
             !value && "text-muted-foreground",
             className
           )}
         >
-          <span
-            className="text-left"
-            style={{
-              flexGrow: 1,
-              width: 0,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-            title={selectedOption?.label}
-          >
-            {selectedOption ? selectedOption.label : placeholder}
-          </span>
-          <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+          {selectedOption ? selectedOption.label : placeholder}
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent
-        className="w-auto p-0"
-        style={{ width: "var(--radix-popover-trigger-width)", maxWidth: "100vw" }}
-        align="start"
-      >
+      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
         <Command>
           <CommandInput placeholder={searchPlaceholder} />
-          <CommandList className="max-h-[250px] pt-3">
+          <CommandList>
             <CommandEmpty>{emptyText}</CommandEmpty>
             <CommandGroup>
               {options.map((option) => (
@@ -97,27 +78,17 @@ export function SearchableSelect({
                   key={option.value}
                   value={option.label}
                   onSelect={() => {
-                    onValueChange?.(option.value);
+                    onValueChange(option.value);
                     setOpen(false);
                   }}
-                  className="flex items-center gap-2"
-                  title={option.label}
                 >
                   <Check
                     className={cn(
-                      "h-4 w-4 shrink-0",
+                      "mr-2 h-4 w-4",
                       value === option.value ? "opacity-100" : "opacity-0"
                     )}
                   />
-                  <span
-                    style={{
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {option.label}
-                  </span>
+                  {option.label}
                 </CommandItem>
               ))}
             </CommandGroup>

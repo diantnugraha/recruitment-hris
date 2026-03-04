@@ -23,8 +23,6 @@ export interface EmployeeRequest {
   // Requirements
   education: EducationLevel;
   experience: string; // e.g., "2-3 years"
-  skills?: string;
-  certification?: string;
 
   // Preferences
   genderPreference: GenderPreference;
@@ -32,12 +30,12 @@ export interface EmployeeRequest {
   ageMax?: number;
   jobPlacement?: string; // Work location
 
-  // Budget & Timeline
-  budgetMin?: number;
-  budgetMax?: number;
+  // Headcount & Timeline
+  headcount: number;
   expectedOnboardDate?: string;
 
   // Job Description
+  generalJobPurpose?: string;
   jobDescription?: string;
   jobRequirement?: string;
 
@@ -91,15 +89,13 @@ export interface CreateEmployeeRequestDTO {
   employment_type: string;
   education: string;
   experience: string;
-  skills?: string;
-  certification?: string;
   gender_preference: string;
   age_min?: number;
   age_max?: number;
   job_placement?: string;
-  budget_min?: number;
-  budget_max?: number;
+  headcount: number;
   expected_onboard_date?: string;
+  general_job_purpose?: string;
   job_description?: string;
   job_requirement?: string;
   status?: string;

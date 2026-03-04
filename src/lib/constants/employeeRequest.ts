@@ -180,6 +180,30 @@ export const GENDER_PREFERENCE_OPTIONS = [
   { value: GENDER_PREFERENCE.FEMALE, label: 'Female Only' },
 ] as const;
 
+// Work Location / Placement
+export const WORK_LOCATION = {
+  HEAD_OFFICE_JAKARTA: 'head_office_jakarta',
+  CIKARANG: 'cikarang',
+  SURABAYA: 'surabaya',
+  MEDAN: 'medan',
+} as const;
+
+export type WorkLocation = typeof WORK_LOCATION[keyof typeof WORK_LOCATION];
+
+export const WORK_LOCATION_LABELS: Record<WorkLocation, string> = {
+  head_office_jakarta: 'Head Office Jakarta',
+  cikarang: 'Cikarang',
+  surabaya: 'Surabaya',
+  medan: 'Medan',
+};
+
+export const WORK_LOCATION_OPTIONS = [
+  { value: WORK_LOCATION.HEAD_OFFICE_JAKARTA, label: 'Head Office Jakarta' },
+  { value: WORK_LOCATION.CIKARANG, label: 'Cikarang' },
+  { value: WORK_LOCATION.SURABAYA, label: 'Surabaya' },
+  { value: WORK_LOCATION.MEDAN, label: 'Medan' },
+] as const;
+
 // Workflow transitions - who can do what
 export const WORKFLOW_TRANSITIONS: Record<EmployeeRequestStatus, {
   nextStatuses: EmployeeRequestStatus[];

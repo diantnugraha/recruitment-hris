@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Descendant } from "slate";
 import {
   ArrowLeft,
   Loader2,
@@ -26,8 +25,7 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
-
-import { SlateEditor } from "@/components/shared/slate-editor";
+import { LexicalEditor } from "@/components/shared/lexical-editor";
 import { showToast } from "@/lib/utils/toast-messages";
 import { jobTitleService, UpdateJobTitleRequest } from "@/services/job-title.service";
 import { jobLevelService } from "@/services/job-level.service";
@@ -42,14 +40,10 @@ interface FormData {
   divisionId: string;
   directReportId: string;
   departmentIds: string[];
-  purpose: Descendant[];
-  description: Descendant[];
-  requirement: Descendant[];
+  purpose: string;
+  description: string;
+  requirement: string;
 }
-
-const EMPTY_SLATE: Descendant[] = [
-  { type: "paragraph", children: [{ text: "" }] },
-];
 
 const initialFormData: FormData = {
   name: "",
@@ -58,9 +52,9 @@ const initialFormData: FormData = {
   divisionId: "",
   directReportId: "",
   departmentIds: [],
-  purpose: EMPTY_SLATE,
-  description: EMPTY_SLATE,
-  requirement: EMPTY_SLATE,
+  purpose: "",
+  description: "",
+  requirement: "",
 };
 
 export default function JobTitleEditPage() {
@@ -118,11 +112,6 @@ export default function JobTitleEditPage() {
       const jt = titleRes.data;
       setJobTitle(jt);
 
-      // Parse rich text fields — could be JSON string, array, or plain text
-      const parsePurpose = parseSlateField(jt.purpose);
-      const parseDescription = parseSlateField(jt.description);
-      const parseRequirement = parseSlateField(jt.requirement);
-
       // Extract department IDs from many-to-many relation
       const deptIds = jt.departments
         ? jt.departments.map((d) => String(d.department.id))
@@ -135,9 +124,10 @@ export default function JobTitleEditPage() {
         divisionId: jt.divisionId ? String(jt.divisionId) : "",
         directReportId: jt.directReportId ? String(jt.directReportId) : "",
         departmentIds: deptIds,
-        purpose: parsePurpose,
-        description: parseDescription,
-        requirement: parseRequirement,
+        // Rich text fields - pass as-is, LexicalEditor handles parsing
+        purpose: typeof jt.purpose === "string" ? jt.purpose : JSON.stringify(jt.purpose || ""),
+        description: typeof jt.description === "string" ? jt.description : JSON.stringify(jt.description || ""),
+        requirement: typeof jt.requirement === "string" ? jt.requirement : JSON.stringify(jt.requirement || ""),
       });
     } else {
       setError(titleRes.message || "Failed to fetch job title");
@@ -160,9 +150,9 @@ export default function JobTitleEditPage() {
       type: formData.type === "Administration" || formData.type === "Technical" ? formData.type : undefined,
       division_id: formData.divisionId ? Number(formData.divisionId) : undefined,
       direct_report_id: formData.directReportId ? Number(formData.directReportId) : undefined,
-      purpose: JSON.stringify(formData.purpose),
-      description: JSON.stringify(formData.description),
-      requirement: JSON.stringify(formData.requirement),
+      purpose: formData.purpose,
+      description: formData.description,
+      requirement: formData.requirement,
       department_sync: formData.departmentIds.map(Number),
     };
 
@@ -427,7 +417,7 @@ export default function JobTitleEditPage() {
                 <h2 className="text-sm font-semibold uppercase tracking-wide mb-4">
                   General Job Purpose
                 </h2>
-                <SlateEditor
+                <LexicalEditor
                   value={formData.purpose}
                   onChange={(val) => setFormData((prev) => ({ ...prev, purpose: val }))}
                   placeholder="Describe the general purpose of this job..."
@@ -439,7 +429,7 @@ export default function JobTitleEditPage() {
                 <h2 className="text-sm font-semibold uppercase tracking-wide mb-4">
                   Job Description
                 </h2>
-                <SlateEditor
+                <LexicalEditor
                   value={formData.description}
                   onChange={(val) => setFormData((prev) => ({ ...prev, description: val }))}
                   placeholder="Describe the job responsibilities..."
@@ -451,7 +441,7 @@ export default function JobTitleEditPage() {
                 <h2 className="text-sm font-semibold uppercase tracking-wide mb-4">
                   Job Requirements
                 </h2>
-                <SlateEditor
+                <LexicalEditor
                   value={formData.requirement}
                   onChange={(val) => setFormData((prev) => ({ ...prev, requirement: val }))}
                   placeholder="Describe the job requirements..."
@@ -487,40 +477,4 @@ export default function JobTitleEditPage() {
       </PageContainer>
     </>
   );
-}
-
-/**
- * Parse a value from the API into Slate Descendant[].
- * Handles: JSON string, array, plain text, or undefined.
- */
-function parseSlateField(value: unknown): Descendant[] {
-  const empty: Descendant[] = [{ type: "paragraph", children: [{ text: "" }] }];
-
-  if (!value) return empty;
-
-  if (Array.isArray(value) && value.length > 0) {
-    return value as Descendant[];
-  }
-
-  if (typeof value === "string") {
-    const trimmed = value.trim();
-    if (trimmed.startsWith("[")) {
-      try {
-        const parsed = JSON.parse(trimmed);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed as Descendant[];
-        }
-      } catch {
-        // fall through
-      }
-    }
-    if (trimmed) {
-      return trimmed.split("\n").map((line) => ({
-        type: "paragraph",
-        children: [{ text: line }],
-      }));
-    }
-  }
-
-  return empty;
 }
