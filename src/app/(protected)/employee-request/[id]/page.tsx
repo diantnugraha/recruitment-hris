@@ -80,9 +80,9 @@ import type { EmployeeRequestWithRelations } from "@/types/employee-request";
 const WORKFLOW_STEPS = [
   { key: "draft", label: "Draft", icon: Pencil },
   { key: "created", label: "Submitted", icon: Send },
-  { key: "hod_review", label: "HOD Review", icon: UserCircle },
+  { key: "hod_reviewed", label: "HOD Review", icon: UserCircle },
   { key: "reviewed", label: "HR Review", icon: CheckCircle },
-  { key: "approved", label: "Approved", icon: Sparkles },
+  { key: "approved", label: "Management", icon: Sparkles },
   { key: "in_recruitment", label: "Recruiting", icon: Users },
   { key: "completed", label: "Completed", icon: Check },
 ];
@@ -100,7 +100,7 @@ export default function EmployeeRequestDetailPage() {
   // Dialog states
   const [showDeleteDialog, setShowDeleteDialog] = React.useState(false);
   const [showActionDialog, setShowActionDialog] = React.useState(false);
-  const [actionType, setActionType] = React.useState<"review" | "approve" | "reject" | "revise" | "start_recruitment" | null>(null);
+  const [actionType, setActionType] = React.useState<"hod_review" | "hr_review" | "approve" | "reject" | "revise" | null>(null);
   const [actionComment, setActionComment] = React.useState("");
   const [isProcessing, setIsProcessing] = React.useState(false);
 
@@ -139,13 +139,17 @@ export default function EmployeeRequestDetailPage() {
       let message = "";
 
       switch (actionType) {
-        case "review":
+        case "hod_review":
+          newStatus = "hod_reviewed";
+          message = "Request reviewed by HOD, forwarded to HR";
+          break;
+        case "hr_review":
           newStatus = "reviewed";
-          message = "Request reviewed and forwarded for approval";
+          message = "Request reviewed by HR, forwarded to Management";
           break;
         case "approve":
           newStatus = "approved";
-          message = "Request approved successfully";
+          message = "Request approved by Management";
           break;
         case "reject":
           newStatus = "rejected";
@@ -154,10 +158,6 @@ export default function EmployeeRequestDetailPage() {
         case "revise":
           newStatus = "revise";
           message = "Request returned for revision";
-          break;
-        case "start_recruitment":
-          newStatus = "in_recruitment";
-          message = "Recruitment process started";
           break;
       }
 
@@ -196,6 +196,28 @@ export default function EmployeeRequestDetailPage() {
     }
   };
 
+  const handleStartRecruitment = async () => {
+    if (!request) return;
+
+    setIsProcessing(true);
+    try {
+      const response = await employeeRequestService.updateStatus(id, {
+        status: "in_recruitment",
+      });
+
+      if (response.success && response.data) {
+        setRequest(response.data);
+        showToast.success("Recruitment process started");
+      } else {
+        showToast.error(response.message || "Failed to start recruitment");
+      }
+    } catch (err) {
+      showToast.error("Failed to start recruitment");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const openActionDialog = (type: typeof actionType) => {
     setActionType(type);
     setShowActionDialog(true);
@@ -212,16 +234,23 @@ export default function EmployeeRequestDetailPage() {
 
   const getActionDialogContent = () => {
     switch (actionType) {
-      case "review":
+      case "hod_review":
         return {
-          title: "Review Request",
-          description: "Mark this request as reviewed and forward to management for approval.",
-          buttonText: "Mark as Reviewed",
+          title: "HOD Review",
+          description: "Mark this request as reviewed by HOD and forward to HR for review.",
+          buttonText: "Approve & Forward to HR",
+          buttonVariant: "default" as const,
+        };
+      case "hr_review":
+        return {
+          title: "HR Review",
+          description: "Mark this request as reviewed by HR and forward to Management for approval.",
+          buttonText: "Approve & Forward to Management",
           buttonVariant: "default" as const,
         };
       case "approve":
         return {
-          title: "Approve Request",
+          title: "Management Approval",
           description: "Approve this employee request. Recruitment can begin after approval.",
           buttonText: "Approve",
           buttonVariant: "default" as const,
@@ -239,13 +268,6 @@ export default function EmployeeRequestDetailPage() {
           description: "Return this request for revision. Please specify what needs to be changed.",
           buttonText: "Request Revision",
           buttonVariant: "outline" as const,
-        };
-      case "start_recruitment":
-        return {
-          title: "Start Recruitment",
-          description: "Start the recruitment process. You can then invite candidates to apply.",
-          buttonText: "Start Recruitment",
-          buttonVariant: "default" as const,
         };
       default:
         return { title: "", description: "", buttonText: "", buttonVariant: "default" as const };
@@ -305,18 +327,33 @@ export default function EmployeeRequestDetailPage() {
               Back to Requests
             </Button>
             <div className="flex items-center gap-2">
+              {/* HOD Review - status: created */}
               {request.status === "created" && (
                 <>
                   <Button variant="outline" onClick={() => openActionDialog("revise")}>
                     <RotateCcw className="mr-2 h-4 w-4" />
                     Request Revision
                   </Button>
-                  <Button onClick={() => openActionDialog("review")}>
+                  <Button onClick={() => openActionDialog("hod_review")}>
                     <CheckCircle className="mr-2 h-4 w-4" />
-                    Mark as Reviewed
+                    HOD Approve
                   </Button>
                 </>
               )}
+              {/* HR Review - status: hod_reviewed */}
+              {request.status === "hod_reviewed" && (
+                <>
+                  <Button variant="outline" onClick={() => openActionDialog("revise")}>
+                    <RotateCcw className="mr-2 h-4 w-4" />
+                    Request Revision
+                  </Button>
+                  <Button onClick={() => openActionDialog("hr_review")}>
+                    <CheckCircle className="mr-2 h-4 w-4" />
+                    HR Approve
+                  </Button>
+                </>
+              )}
+              {/* Management Approval - status: reviewed */}
               {request.status === "reviewed" && (
                 <>
                   <Button variant="destructive" onClick={() => openActionDialog("reject")}>
@@ -325,13 +362,13 @@ export default function EmployeeRequestDetailPage() {
                   </Button>
                   <Button onClick={() => openActionDialog("approve")}>
                     <CheckCircle className="mr-2 h-4 w-4" />
-                    Approve
+                    Management Approve
                   </Button>
                 </>
               )}
               {request.status === "approved" && (
-                <Button onClick={() => openActionDialog("start_recruitment")}>
-                  <PlayCircle className="mr-2 h-4 w-4" />
+                <Button onClick={handleStartRecruitment} disabled={isProcessing}>
+                  {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlayCircle className="mr-2 h-4 w-4" />}
                   Start Recruitment
                 </Button>
               )}

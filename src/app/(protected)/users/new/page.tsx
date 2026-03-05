@@ -21,7 +21,8 @@ import { SearchableSelect } from "@/components/ui/searchable-select";
 
 import userService from "@/services/user.service";
 import employeeService from "@/services/employee.service";
-import { USER_ROLE_OPTIONS } from "@/lib/constants/user";
+import roleService from "@/services/role.service";
+import { Role } from "@/types/role";
 import { EmployeeWithRelations } from "@/types";
 import { showToast } from "@/lib/utils/toast-messages";
 
@@ -52,16 +53,25 @@ export default function NewUserPage() {
 
   const [form, setForm] = React.useState<FormState>(initialForm);
   const [employees, setEmployees] = React.useState<EmployeeWithRelations[]>([]);
+  const [roles, setRoles] = React.useState<Role[]>([]);
   const [isLoading, setIsLoading] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [showPassword, setShowPassword] = React.useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = React.useState(false);
   const [errors, setErrors] = React.useState<Record<string, string>>({});
 
-  // Fetch employees for dropdown
+  // Fetch employees and roles for dropdown
   React.useEffect(() => {
-    const fetchEmployees = async () => {
+    const fetchData = async () => {
       setIsLoading(true);
+
+      // Fetch roles
+      const rolesRes = await roleService.fetchAll();
+      if (rolesRes.success && rolesRes.data) {
+        setRoles(rolesRes.data);
+      }
+
+      // Fetch employees
       const allEmployees: EmployeeWithRelations[] = [];
       let page = 1;
       let totalPages = 1;
@@ -80,7 +90,7 @@ export default function NewUserPage() {
       setEmployees(allEmployees);
       setIsLoading(false);
     };
-    fetchEmployees();
+    fetchData();
   }, []);
 
   const handleChange = (field: keyof FormState, value: string) => {
@@ -225,9 +235,9 @@ export default function NewUserPage() {
                         <SelectValue placeholder="Select role" />
                       </SelectTrigger>
                       <SelectContent>
-                        {USER_ROLE_OPTIONS.map((role) => (
-                          <SelectItem key={role.value} value={String(role.value)}>
-                            {role.label}
+                        {roles.map((role) => (
+                          <SelectItem key={role.roleId} value={String(role.roleId)}>
+                            {role.roleName || `Role ${role.roleId}`}
                           </SelectItem>
                         ))}
                       </SelectContent>

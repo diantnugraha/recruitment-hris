@@ -93,13 +93,12 @@ export default function UserDetailPage() {
     }
   };
 
-  // Get role badge
+  // Get role badge - use actual role name from database, config only for styling
   const getRoleBadge = (roleId: number, roleName?: string | null) => {
     const config = USER_ROLE_CONFIG[roleId];
-    if (config) {
-      return <Badge variant={config.variant}>{config.label}</Badge>;
-    }
-    return <Badge variant="outline">{roleName || `Role ${roleId}`}</Badge>;
+    const displayLabel = roleName || config?.label || `Role ${roleId}`;
+    const variant = config?.variant || "outline";
+    return <Badge variant={variant}>{displayLabel}</Badge>;
   };
 
   // Loading state
@@ -226,7 +225,7 @@ export default function UserDetailPage() {
                 <Separator />
                 <DetailField
                   label="Role"
-                  value={USER_ROLE_CONFIG[user.roleId]?.label || user.role?.roleName || `Role ${user.roleId}`}
+                  value={user.role?.roleName || USER_ROLE_CONFIG[user.roleId]?.label || `Role ${user.roleId}`}
                   icon={Shield}
                 />
               </CardContent>

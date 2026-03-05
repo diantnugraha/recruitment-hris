@@ -17,6 +17,7 @@ import {
   Wallet,
   ClipboardList,
   UserCog,
+  Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/stores/app-store";
@@ -103,6 +104,11 @@ const navigation: NavSection[] = [
         title: "Users",
         href: "/users",
         icon: UserCog,
+      },
+      {
+        title: "Roles Access",
+        href: "/roles-access",
+        icon: Shield,
       },
     ],
   },

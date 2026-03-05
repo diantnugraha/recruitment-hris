@@ -54,8 +54,10 @@ import { candidateService, type CandidateWithRelations } from "@/services/candid
 import {
   EMPLOYEE_REQUEST_STATUS_CONFIG,
   EMPLOYMENT_TYPE_LABELS,
+  WORK_LOCATION_LABELS,
   type EmployeeRequestStatus,
   type EmploymentType,
+  type WorkLocation,
 } from "@/lib/constants/employeeRequest";
 import {
   CANDIDATE_STATUS,
@@ -507,7 +509,7 @@ export default function RecruitmentRequestDetailPage() {
                 </div>
                 <div className="lg:px-4">
                   <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-1">Location</p>
-                  <p className="text-sm font-semibold truncate">{request.jobPlacement || "—"}</p>
+                  <p className="text-sm font-semibold truncate">{request.jobPlacement ? (WORK_LOCATION_LABELS[request.jobPlacement as WorkLocation] || request.jobPlacement) : "—"}</p>
                 </div>
                 <div className="lg:px-4">
                   <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-1">Openings</p>

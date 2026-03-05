@@ -74,8 +74,9 @@ interface ApiEmployeeRequest {
 
 const STATUS_MAP: Record<number, EmployeeRequestStatus> = {
   0: "draft",
-  1: "created",
-  2: "reviewed",
+  1: "created",           // Waiting for HOD Review
+  8: "hod_reviewed",      // HOD Reviewed, waiting for HR Review
+  2: "reviewed",          // HR Reviewed, waiting for Management Approval
   3: "approved",
   4: "rejected",
   5: "revise",

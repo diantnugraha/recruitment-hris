@@ -1,8 +1,9 @@
 // Employee Request Status - Workflow states
 export const EMPLOYEE_REQUEST_STATUS = {
   DRAFT: 'draft',
-  CREATED: 'created',
-  REVIEWED: 'reviewed',
+  CREATED: 'created',           // Waiting for HOD Review
+  HOD_REVIEWED: 'hod_reviewed', // HOD Reviewed, waiting for HR Review
+  REVIEWED: 'reviewed',         // HR Reviewed, waiting for Management Approval
   APPROVED: 'approved',
   REJECTED: 'rejected',
   REVISE: 'revise',
@@ -14,8 +15,9 @@ export type EmployeeRequestStatus = typeof EMPLOYEE_REQUEST_STATUS[keyof typeof 
 
 export const EMPLOYEE_REQUEST_STATUS_LABELS: Record<EmployeeRequestStatus, string> = {
   draft: 'Draft',
-  created: 'Created',
-  reviewed: 'Reviewed by HR',
+  created: 'Submitted',
+  hod_reviewed: 'HOD Reviewed',
+  reviewed: 'HR Reviewed',
   approved: 'Approved',
   rejected: 'Rejected',
   revise: 'Need Revision',
@@ -34,29 +36,34 @@ export const EMPLOYEE_REQUEST_STATUS_CONFIG: Record<EmployeeRequestStatus, {
     description: 'Request saved as draft, not yet submitted'
   },
   created: {
-    label: 'Created',
+    label: 'Submitted',
     variant: 'default',
-    description: 'Request submitted, waiting for HR review'
+    description: 'Request submitted, waiting for HOD review'
+  },
+  hod_reviewed: {
+    label: 'HOD Reviewed',
+    variant: 'default',
+    description: 'Reviewed by HOD, waiting for HR review'
   },
   reviewed: {
-    label: 'Reviewed',
+    label: 'HR Reviewed',
     variant: 'outline',
-    description: 'Reviewed by HR, waiting for management approval'
+    description: 'Reviewed by HR, waiting for Management approval'
   },
   approved: {
     label: 'Approved',
     variant: 'success',
-    description: 'Approved by management, ready for recruitment'
+    description: 'Approved by Management, ready for recruitment'
   },
   rejected: {
     label: 'Rejected',
     variant: 'destructive',
-    description: 'Request rejected by management'
+    description: 'Request rejected by Management'
   },
   revise: {
     label: 'Need Revision',
     variant: 'outline',
-    description: 'HR requested revision on this request'
+    description: 'Revision requested on this request'
   },
   in_recruitment: {
     label: 'Recruiting',
@@ -72,8 +79,9 @@ export const EMPLOYEE_REQUEST_STATUS_CONFIG: Record<EmployeeRequestStatus, {
 
 export const EMPLOYEE_REQUEST_STATUS_OPTIONS = [
   { value: EMPLOYEE_REQUEST_STATUS.DRAFT, label: 'Draft' },
-  { value: EMPLOYEE_REQUEST_STATUS.CREATED, label: 'Created' },
-  { value: EMPLOYEE_REQUEST_STATUS.REVIEWED, label: 'Reviewed by HR' },
+  { value: EMPLOYEE_REQUEST_STATUS.CREATED, label: 'Submitted' },
+  { value: EMPLOYEE_REQUEST_STATUS.HOD_REVIEWED, label: 'HOD Reviewed' },
+  { value: EMPLOYEE_REQUEST_STATUS.REVIEWED, label: 'HR Reviewed' },
   { value: EMPLOYEE_REQUEST_STATUS.APPROVED, label: 'Approved' },
   { value: EMPLOYEE_REQUEST_STATUS.REJECTED, label: 'Rejected' },
   { value: EMPLOYEE_REQUEST_STATUS.REVISE, label: 'Need Revision' },
@@ -214,10 +222,17 @@ export const WORKFLOW_TRANSITIONS: Record<EmployeeRequestStatus, {
     allowedRoles: ['manager', 'head', 'admin'],
   },
   created: {
+    // HOD Review: HOD can approve to hod_reviewed or request revise
+    nextStatuses: ['hod_reviewed', 'revise'],
+    allowedRoles: ['hod', 'head', 'admin'],
+  },
+  hod_reviewed: {
+    // HR Review: HR can approve to reviewed or request revise
     nextStatuses: ['reviewed', 'revise'],
     allowedRoles: ['hr', 'admin'],
   },
   reviewed: {
+    // Management Approval: Management can approve or reject
     nextStatuses: ['approved', 'rejected'],
     allowedRoles: ['management', 'admin'],
   },

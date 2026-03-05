@@ -78,6 +78,10 @@ import {
 } from "@/services/candidate.service";
 import { formatShortDate, getInitials, cn } from "@/lib/utils";
 import { showToast } from "@/lib/utils/toast-messages";
+import {
+  WORK_LOCATION_LABELS,
+  type WorkLocation,
+} from "@/lib/constants/employeeRequest";
 
 // Facility conditions and statuses
 const FACILITY_CONDITIONS = ["New", "Good", "Used", "Refurbished"] as const;
@@ -1084,7 +1088,7 @@ export default function OnboardingDetailPage() {
                 <span className="font-medium">Ready to convert</span>
               </div>
               <ul className="mt-2 text-sm text-emerald-600 dark:text-emerald-400 space-y-1">
-                <li>Job placement: {onboarding?.jobPlacement}</li>
+                <li>Job placement: {onboarding?.jobPlacement ? (WORK_LOCATION_LABELS[onboarding.jobPlacement as WorkLocation] || onboarding.jobPlacement) : "—"}</li>
                 <li>{onboarding?.facilities.length} facilities assigned</li>
                 <li>{onboarding?.programs.length} programs scheduled</li>
               </ul>

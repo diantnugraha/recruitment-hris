@@ -24,6 +24,14 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 import { jobTitleService } from "@/services/job-title.service";
 import { departmentService } from "@/services/department.service";
@@ -45,7 +53,6 @@ const employeeRequestSchema = z.object({
   departmentId: z.string().min(1, "Department is required"),
   reason: z.string().min(1, "Reason is required"),
   purpose: z.string().min(10, "Purpose must be at least 10 characters"),
-  quantity: z.coerce.number().min(1, "At least 1 position required"),
   employmentType: z.string().min(1, "Employment type is required"),
   education: z.string().min(1, "Education level is required"),
   experience: z.coerce.number().min(0, "Experience is required"),
@@ -69,6 +76,9 @@ export default function NewEmployeeRequestPage() {
   const [jobTitles, setJobTitles] = React.useState<JobTitle[]>([]);
   const [departments, setDepartments] = React.useState<Department[]>([]);
   const [isLoadingData, setIsLoadingData] = React.useState(true);
+  const [isSubmitDialogOpen, setIsSubmitDialogOpen] = React.useState(false);
+  const [submitComment, setSubmitComment] = React.useState("");
+  const [pendingFormData, setPendingFormData] = React.useState<EmployeeRequestFormData | null>(null);
 
   const {
     register,
@@ -79,7 +89,6 @@ export default function NewEmployeeRequestPage() {
   } = useForm<EmployeeRequestFormData>({
     resolver: zodResolver(employeeRequestSchema),
     defaultValues: {
-      quantity: 1,
       headcount: 1,
       genderPreference: "any",
     },
@@ -122,15 +131,32 @@ export default function NewEmployeeRequestPage() {
     fetchData();
   }, []);
 
+  // Auto-populate department when job title is selected
+  React.useEffect(() => {
+    if (!watchedJobTitleId) return;
+
+    const selectedJobTitle = jobTitles.find(
+      (jt) => String(jt.id) === watchedJobTitleId
+    );
+
+    if (selectedJobTitle?.departments && selectedJobTitle.departments.length > 0) {
+      const firstDepartment = selectedJobTitle.departments[0].department;
+      if (firstDepartment?.id) {
+        setValue("departmentId", String(firstDepartment.id));
+      }
+    }
+  }, [watchedJobTitleId, jobTitles, setValue]);
+
   // Handlers
-  const onSubmit = async (data: EmployeeRequestFormData, status: "draft" | "created") => {
+  const onSubmit = async (data: EmployeeRequestFormData, status: "draft" | "created", comment?: string) => {
     try {
       const payload = {
         job_title_id: Number(data.jobTitleId),
         department_id: Number(data.departmentId),
-        reason: data.reason,
-        purpose: data.purpose,
-        quantity: data.quantity,
+        // DB purpose = dropdown (new/replacement), DB reason = free text justification
+        purpose: data.reason,    // FE "Reason" dropdown → DB purpose
+        reason: data.purpose,    // FE "Purpose/Justification" textarea → DB reason
+        quantity: data.headcount,
         employment_type: data.employmentType,
         education: data.education,
         experience: String(data.experience),
@@ -148,7 +174,12 @@ export default function NewEmployeeRequestPage() {
 
       const response = await employeeRequestService.create(payload);
 
-      if (response.success) {
+      if (response.success && response.data) {
+        // Add comment if provided
+        if (comment && comment.trim()) {
+          await employeeRequestService.addComment(response.data.id, comment.trim());
+        }
+
         showToast.success(
           status === "draft"
             ? "Request saved as draft"
@@ -165,7 +196,22 @@ export default function NewEmployeeRequestPage() {
   };
 
   const handleSaveDraft = handleSubmit((data) => onSubmit(data, "draft"));
-  const handleSubmitRequest = handleSubmit((data) => onSubmit(data, "created"));
+
+  // Open dialog for submit with comment
+  const handleOpenSubmitDialog = handleSubmit((data) => {
+    setPendingFormData(data);
+    setSubmitComment("");
+    setIsSubmitDialogOpen(true);
+  });
+
+  // Confirm submit with comment
+  const handleConfirmSubmit = async () => {
+    if (!pendingFormData) return;
+    setIsSubmitDialogOpen(false);
+    await onSubmit(pendingFormData, "created", submitComment);
+    setPendingFormData(null);
+    setSubmitComment("");
+  };
 
   if (isLoadingData) {
     return (
@@ -204,7 +250,7 @@ export default function NewEmployeeRequestPage() {
                 )}
                 Save as Draft
               </Button>
-              <Button onClick={handleSubmitRequest} disabled={isSubmitting}>
+              <Button onClick={handleOpenSubmitDialog} disabled={isSubmitting}>
                 {isSubmitting ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
@@ -267,7 +313,7 @@ export default function NewEmployeeRequestPage() {
                   </div>
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-3">
+                <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="reason">
                       Reason <span className="text-destructive">*</span>
@@ -313,24 +359,6 @@ export default function NewEmployeeRequestPage() {
                     </Select>
                     {errors.employmentType && (
                       <p className="text-sm text-destructive">{errors.employmentType.message}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="quantity">
-                      Quantity <span className="text-destructive">*</span>
-                    </Label>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="number"
-                        min={1}
-                        className="w-24"
-                        {...register("quantity")}
-                      />
-                      <span className="text-sm text-muted-foreground">headcount</span>
-                    </div>
-                    {errors.quantity && (
-                      <p className="text-sm text-destructive">{errors.quantity.message}</p>
                     )}
                   </div>
                 </div>
@@ -549,6 +577,46 @@ export default function NewEmployeeRequestPage() {
           </form>
         </div>
       </PageContainer>
+
+      {/* Submit Confirmation Dialog */}
+      <Dialog open={isSubmitDialogOpen} onOpenChange={setIsSubmitDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Submit Employee Request</DialogTitle>
+            <DialogDescription>
+              Add a comment to describe your request. This will be recorded in the activity history.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="submitComment">Comment</Label>
+              <Textarea
+                id="submitComment"
+                placeholder="Enter your comment here..."
+                rows={4}
+                value={submitComment}
+                onChange={(e) => setSubmitComment(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsSubmitDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleConfirmSubmit} disabled={isSubmitting}>
+              {isSubmitting ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="mr-2 h-4 w-4" />
+              )}
+              Submit Request
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

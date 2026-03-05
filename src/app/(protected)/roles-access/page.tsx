@@ -3,24 +3,21 @@
 import * as React from "react";
 import {
   Plus,
-  Eye,
   Pencil,
   Trash2,
-  Users,
   Loader2,
   MoreHorizontal,
-  UserCog,
-  ShieldCheck,
-  UserCheck,
+  Shield,
+  Users,
 } from "lucide-react";
 
 import { Header } from "@/components/layout/header";
 import { PageContainer } from "@/components/layout/page-container";
 import { DataTable } from "@/components/shared/data-table";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,6 +25,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -39,76 +44,68 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-import { UserDetailDialog, UserFormDialog } from "@/components/users";
-import userService from "@/services/user.service";
-import { UserManagement } from "@/types/user-management";
-import { USER_ROLE_CONFIG } from "@/lib/constants/user";
-import { getInitials, formatShortDate } from "@/lib/utils";
+import roleService from "@/services/role.service";
+import { Role } from "@/types/role";
 import { showToast } from "@/lib/utils/toast-messages";
 
-export default function UsersPage() {
+export default function RolesAccessPage() {
   // Local state
-  const [users, setUsers] = React.useState<UserManagement[]>([]);
+  const [roles, setRoles] = React.useState<Role[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [currentPage, setCurrentPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(10);
   const [searchQuery, setSearchQuery] = React.useState("");
 
-  // Delete dialog states
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
-  const [selectedUser, setSelectedUser] = React.useState<UserManagement | null>(null);
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
-
-  // Detail dialog states
-  const [isDetailDialogOpen, setIsDetailDialogOpen] = React.useState(false);
-  const [selectedUserId, setSelectedUserId] = React.useState<number | null>(null);
-
   // Form dialog states
   const [isFormDialogOpen, setIsFormDialogOpen] = React.useState(false);
-  const [editUser, setEditUser] = React.useState<UserManagement | null>(null);
+  const [editingRole, setEditingRole] = React.useState<Role | null>(null);
+  const [roleName, setRoleName] = React.useState("");
+  const [formError, setFormError] = React.useState("");
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
 
-  // Fetch all users
-  const fetchUsers = React.useCallback(async () => {
+  // Delete dialog states
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
+  const [selectedRole, setSelectedRole] = React.useState<Role | null>(null);
+  const [isDeleting, setIsDeleting] = React.useState(false);
+
+  // Fetch all roles
+  const fetchRoles = React.useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
-    const response = await userService.fetchAll();
+    const response = await roleService.fetchAll();
 
     if (!response.success || !response.data) {
-      setError(response.message || "Failed to fetch users");
-      setUsers([]);
+      setError(response.message || "Failed to fetch roles");
+      setRoles([]);
       setIsLoading(false);
-      showToast.fetchError("users", response.message);
+      showToast.fetchError("roles", response.message);
       return;
     }
 
-    setUsers(response.data);
+    setRoles(response.data);
     setIsLoading(false);
   }, []);
 
   // Initial fetch
   React.useEffect(() => {
-    fetchUsers();
-  }, [fetchUsers]);
+    fetchRoles();
+  }, [fetchRoles]);
 
   // Filter and pagination
   const filteredData = React.useMemo(() => {
-    let result = users;
+    let result = roles;
 
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      result = result.filter(
-        (user) =>
-          user.displayName?.toLowerCase().includes(query) ||
-          user.email?.toLowerCase().includes(query) ||
-          user.name?.toLowerCase().includes(query) ||
-          user.role?.roleName?.toLowerCase().includes(query)
+      result = result.filter((role) =>
+        role.roleName?.toLowerCase().includes(query)
       );
     }
 
     return result;
-  }, [searchQuery, users]);
+  }, [searchQuery, roles]);
 
   const paginatedData = React.useMemo(() => {
     const start = (currentPage - 1) * pageSize;
@@ -117,154 +114,144 @@ export default function UsersPage() {
 
   // Stats
   const stats = React.useMemo(() => {
-    const totalCount = users.length;
-    const adminCount = users.filter((u) => u.roleId === 1).length;
-    const hrCount = users.filter((u) => u.roleId === 2).length;
-    const managerCount = users.filter((u) => u.roleId === 3).length;
+    const totalCount = roles.length;
 
     return [
       {
-        label: "Total Users",
+        label: "Total Roles",
         value: totalCount,
-        icon: Users,
-        description: "All system users",
+        icon: Shield,
+        description: "All system roles",
         accent: true,
       },
       {
-        label: "Administrators",
-        value: adminCount,
-        icon: ShieldCheck,
-        description: "Full access users",
-        accent: false,
-      },
-      {
-        label: "HR Personnel",
-        value: hrCount,
-        icon: UserCog,
-        description: "HR department",
-        accent: false,
-      },
-      {
-        label: "Managers",
-        value: managerCount,
-        icon: UserCheck,
-        description: "Manager level",
+        label: "Active Roles",
+        value: totalCount,
+        icon: Users,
+        description: "Currently in use",
         accent: false,
       },
     ];
-  }, [users]);
+  }, [roles]);
 
-  // Delete handler
-  const handleDelete = async () => {
-    if (!selectedUser) return;
+  // Form handlers
+  const handleOpenCreate = () => {
+    setEditingRole(null);
+    setRoleName("");
+    setFormError("");
+    setIsFormDialogOpen(true);
+  };
+
+  const handleOpenEdit = (role: Role) => {
+    setEditingRole(role);
+    setRoleName(role.roleName || "");
+    setFormError("");
+    setIsFormDialogOpen(true);
+  };
+
+  const handleCloseForm = () => {
+    setIsFormDialogOpen(false);
+    setEditingRole(null);
+    setRoleName("");
+    setFormError("");
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!roleName.trim()) {
+      setFormError("Role name is required");
+      return;
+    }
+
     setIsSubmitting(true);
 
-    const response = await userService.delete(selectedUser.id);
+    if (editingRole) {
+      // Update
+      const res = await roleService.update(editingRole.roleId, {
+        roleName: roleName.trim(),
+      });
 
-    if (response.success) {
-      setUsers((prev) => prev.filter((u) => u.id !== selectedUser.id));
-      setIsDeleteDialogOpen(false);
-      setSelectedUser(null);
-      showToast.deleted("User");
+      if (res.success && res.data) {
+        setRoles((prev) =>
+          prev.map((r) => (r.roleId === editingRole.roleId ? res.data! : r))
+        );
+        showToast.updated("Role");
+        handleCloseForm();
+      } else {
+        showToast.updateError("role", res.message);
+      }
     } else {
-      showToast.deleteError("user", response.message);
+      // Create
+      const res = await roleService.create({
+        roleName: roleName.trim(),
+      });
+
+      if (res.success && res.data) {
+        setRoles((prev) => [...prev, res.data!]);
+        showToast.created("Role");
+        handleCloseForm();
+      } else {
+        showToast.createError("role", res.message);
+      }
     }
 
     setIsSubmitting(false);
   };
 
-  const handleDeleteClick = (user: UserManagement) => {
-    setSelectedUser(user);
+  // Delete handler
+  const handleDelete = async () => {
+    if (!selectedRole) return;
+    setIsDeleting(true);
+
+    const response = await roleService.delete(selectedRole.roleId);
+
+    if (response.success) {
+      setRoles((prev) => prev.filter((r) => r.roleId !== selectedRole.roleId));
+      setIsDeleteDialogOpen(false);
+      setSelectedRole(null);
+      showToast.deleted("Role");
+    } else {
+      showToast.deleteError("role", response.message);
+    }
+
+    setIsDeleting(false);
+  };
+
+  const handleDeleteClick = (role: Role) => {
+    setSelectedRole(role);
     setIsDeleteDialogOpen(true);
-  };
-
-  // View detail handler
-  const handleViewDetail = (user: UserManagement) => {
-    setSelectedUserId(user.id);
-    setIsDetailDialogOpen(true);
-  };
-
-  // Edit handler - opens form dialog
-  const handleEdit = (user: UserManagement) => {
-    setEditUser(user);
-    setIsFormDialogOpen(true);
-  };
-
-  // Add new user handler
-  const handleAddUser = () => {
-    setEditUser(null);
-    setIsFormDialogOpen(true);
-  };
-
-  // Get role badge - use actual role name from database, config only for styling
-  const getRoleBadge = (roleId: number, roleName?: string | null) => {
-    const config = USER_ROLE_CONFIG[roleId];
-    const displayLabel = roleName || config?.label || `Role ${roleId}`;
-    const variant = config?.variant || "outline";
-    return <Badge variant={variant}>{displayLabel}</Badge>;
   };
 
   // Table columns
   const columns = [
     {
-      key: "user",
-      label: "User",
-      render: (_: unknown, row: UserManagement) => (
+      key: "roleId",
+      label: "ID",
+      className: "w-[80px]",
+      render: (_: unknown, row: Role) => (
+        <span className="text-sm font-medium text-muted-foreground">
+          #{row.roleId}
+        </span>
+      ),
+    },
+    {
+      key: "roleName",
+      label: "Role Name",
+      render: (_: unknown, row: Role) => (
         <div className="flex items-center gap-3">
-          <Avatar className="h-9 w-9 border border-border">
-            <AvatarFallback className="bg-accent/10 text-xs font-semibold text-accent">
-              {getInitials(row.displayName || row.name || row.email)}
-            </AvatarFallback>
-          </Avatar>
-          <div>
-            <p className="font-medium">{row.displayName || row.name || "—"}</p>
-            <p className="text-xs text-muted-foreground">{row.email}</p>
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent/10">
+            <Shield className="h-4 w-4 text-accent" />
           </div>
+          <span className="font-medium">{row.roleName || "—"}</span>
         </div>
-      ),
-    },
-    {
-      key: "role",
-      label: "Role",
-      render: (_: unknown, row: UserManagement) =>
-        getRoleBadge(row.roleId, row.role?.roleName),
-    },
-    {
-      key: "employee",
-      label: "Linked Employee",
-      render: (_: unknown, row: UserManagement) => (
-        <span className="text-sm text-muted-foreground">
-          {row.employee?.employeeName || "—"}
-        </span>
-      ),
-    },
-    {
-      key: "emailVerified",
-      label: "Email Verified",
-      render: (_: unknown, row: UserManagement) => (
-        <span className="text-sm">
-          {row.emailVerifiedAt ? (
-            <Badge variant="success">Verified</Badge>
-          ) : (
-            <Badge variant="outline">Not Verified</Badge>
-          )}
-        </span>
-      ),
-    },
-    {
-      key: "createdAt",
-      label: "Created",
-      render: (_: unknown, row: UserManagement) => (
-        <span className="text-sm text-muted-foreground">
-          {row.created_at ? formatShortDate(row.created_at) : "—"}
-        </span>
       ),
     },
     {
       key: "actions",
       label: "",
       className: "w-[50px]",
-      render: (_: unknown, row: UserManagement) => (
+      render: (_: unknown, row: Role) => (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -276,11 +263,7 @@ export default function UsersPage() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => handleViewDetail(row)}>
-              <Eye className="mr-2 h-4 w-4" />
-              View Detail
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleEdit(row)}>
+            <DropdownMenuItem onClick={() => handleOpenEdit(row)}>
               <Pencil className="mr-2 h-4 w-4" />
               Edit
             </DropdownMenuItem>
@@ -300,11 +283,11 @@ export default function UsersPage() {
 
   return (
     <>
-      <Header title="User Management" />
+      <Header title="Roles Access" />
       <PageContainer>
         <div className="space-y-6">
           {/* Stats */}
-          <div className="grid gap-4 sm:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2">
             {stats.map((stat) => (
               <Card
                 key={stat.label}
@@ -360,7 +343,7 @@ export default function UsersPage() {
                     variant="outline"
                     size="sm"
                     className="mt-4"
-                    onClick={fetchUsers}
+                    onClick={fetchRoles}
                   >
                     Try Again
                   </Button>
@@ -371,7 +354,7 @@ export default function UsersPage() {
                 data={paginatedData}
                 columns={columns}
                 searchable
-                searchPlaceholder="Search by name, email, or role..."
+                searchPlaceholder="Search by role name..."
                 onSearch={(value) => {
                   setSearchQuery(value);
                   setCurrentPage(1);
@@ -385,11 +368,11 @@ export default function UsersPage() {
                   setPageSize(size);
                   setCurrentPage(1);
                 }}
-                emptyMessage="No users found"
+                emptyMessage="No roles found"
                 actions={
-                  <Button size="sm" onClick={handleAddUser}>
+                  <Button size="sm" onClick={handleOpenCreate}>
                     <Plus className="mr-2 h-4 w-4" />
-                    Add User
+                    Add Role
                   </Button>
                 }
               />
@@ -398,52 +381,94 @@ export default function UsersPage() {
         </div>
       </PageContainer>
 
-      {/* User Detail Dialog */}
-      <UserDetailDialog
-        open={isDetailDialogOpen}
-        onOpenChange={setIsDetailDialogOpen}
-        userId={selectedUserId}
-        onEdit={handleEdit}
-        onDeleted={fetchUsers}
-      />
-
-      {/* User Form Dialog (Add/Edit) */}
-      <UserFormDialog
-        open={isFormDialogOpen}
-        onOpenChange={setIsFormDialogOpen}
-        user={editUser}
-        onSuccess={fetchUsers}
-      />
+      {/* Form Dialog (Create/Edit) */}
+      <Dialog open={isFormDialogOpen} onOpenChange={setIsFormDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>
+              {editingRole ? "Edit Role" : "Add New Role"}
+            </DialogTitle>
+            <DialogDescription>
+              {editingRole
+                ? "Update the role information below."
+                : "Enter the role name to create a new role."}
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSubmit}>
+            <div className="grid gap-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="roleName">
+                  Role Name <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="roleName"
+                  value={roleName}
+                  onChange={(e) => {
+                    setRoleName(e.target.value);
+                    if (formError) setFormError("");
+                  }}
+                  placeholder="Enter role name"
+                  className={formError ? "border-destructive" : ""}
+                  disabled={isSubmitting}
+                />
+                {formError && (
+                  <p className="text-xs text-destructive">{formError}</p>
+                )}
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleCloseForm}
+                disabled={isSubmitting}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {editingRole ? "Saving..." : "Creating..."}
+                  </>
+                ) : editingRole ? (
+                  "Save Changes"
+                ) : (
+                  "Create Role"
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete User</AlertDialogTitle>
+            <AlertDialogTitle>Delete Role</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to delete{" "}
-              <span className="font-semibold">
-                {selectedUser?.displayName || selectedUser?.email}
-              </span>
-              ? This action cannot be undone.
+              <span className="font-semibold">{selectedRole?.roleName}</span>?
+              This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel
               onClick={() => {
                 setIsDeleteDialogOpen(false);
-                setSelectedUser(null);
+                setSelectedRole(null);
               }}
-              disabled={isSubmitting}
+              disabled={isDeleting}
             >
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
-              disabled={isSubmitting}
+              disabled={isDeleting}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {isSubmitting ? (
+              {isDeleting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Deleting...

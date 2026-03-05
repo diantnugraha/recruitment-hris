@@ -126,6 +126,7 @@ type HRConclusion = "proceed" | "recommended" | "rejected" | null;
 
 // LocalStorage key for HR assessment form data
 const HR_FORM_STORAGE_KEY = (id: string) => `hr-assessment-form-${id}`;
+const USER_FORM_STORAGE_KEY = (id: string) => `user-assessment-form-${id}`;
 
 export default function CandidateDetailPage() {
   const params = useParams();
@@ -173,6 +174,23 @@ export default function CandidateDetailPage() {
   const [isSubmittingHR, setIsSubmittingHR] = React.useState(false);
   const [showHRPreview, setShowHRPreview] = React.useState(false);
 
+  // User Assessment Form State (Interview 2)
+  const [userScoring, setUserScoring] = React.useState<Record<HRScoringKey, number | null>>({
+    relevanceOfExperience: null,
+    trainingUndertaken: null,
+    technicalSkills: null,
+    nonTechnicalSkills: null,
+    communicationSkills: null,
+    emotionalMaturity: null,
+    understandingOfPosition: null,
+    teamworkAbility: null,
+  });
+  const [userKeyCompetencies, setUserKeyCompetencies] = React.useState("");
+  const [userUserNotes, setUserUserNotes] = React.useState("");
+  const [userConclusion, setUserConclusion] = React.useState<HRConclusion>(null);
+  const [isSubmittingUser, setIsSubmittingUser] = React.useState(false);
+  const [showUserPreview, setShowUserPreview] = React.useState(false);
+
   // Handle tab change and update URL
   const handleTabChange = React.useCallback((tab: string) => {
     setActiveTab(tab);
@@ -216,6 +234,43 @@ export default function CandidateDetailPage() {
   const clearHRFormStorage = React.useCallback(() => {
     if (!id) return;
     localStorage.removeItem(HR_FORM_STORAGE_KEY(id));
+  }, [id]);
+
+  // Restore User form data from localStorage on mount
+  React.useEffect(() => {
+    if (!id) return;
+    const storageKey = USER_FORM_STORAGE_KEY(id);
+    const savedData = localStorage.getItem(storageKey);
+    if (savedData) {
+      try {
+        const parsed = JSON.parse(savedData);
+        if (parsed.userScoring) setUserScoring(parsed.userScoring);
+        if (parsed.userKeyCompetencies) setUserKeyCompetencies(parsed.userKeyCompetencies);
+        if (parsed.userUserNotes) setUserUserNotes(parsed.userUserNotes);
+        if (parsed.userConclusion) setUserConclusion(parsed.userConclusion);
+      } catch (e) {
+        console.warn("Failed to restore User form data:", e);
+      }
+    }
+  }, [id]);
+
+  // Save User form data to localStorage when it changes
+  React.useEffect(() => {
+    if (!id) return;
+    const storageKey = USER_FORM_STORAGE_KEY(id);
+    const dataToSave = {
+      userScoring,
+      userKeyCompetencies,
+      userUserNotes,
+      userConclusion,
+    };
+    localStorage.setItem(storageKey, JSON.stringify(dataToSave));
+  }, [id, userScoring, userKeyCompetencies, userUserNotes, userConclusion]);
+
+  // Clear User localStorage after successful submit
+  const clearUserFormStorage = React.useCallback(() => {
+    if (!id) return;
+    localStorage.removeItem(USER_FORM_STORAGE_KEY(id));
   }, [id]);
 
   // Fetch candidate and assessment data
@@ -356,6 +411,65 @@ export default function CandidateDetailPage() {
       showToast.error("Failed to submit HR Assessment");
     } finally {
       setIsSubmittingHR(false);
+    }
+  };
+
+  // User Assessment Submit Handler (Interview 2)
+  const handleUserAssessmentSubmit = async () => {
+    if (!userConclusion) {
+      showToast.error("Please select Interview Result Conclusion");
+      return;
+    }
+
+    // Check if all scores are filled
+    const allScoresFilled = Object.values(userScoring).every(score => score !== null);
+    if (!allScoresFilled) {
+      showToast.error("Please fill in all scoring criteria");
+      return;
+    }
+
+    setIsSubmittingUser(true);
+
+    try {
+      // Map conclusion to action
+      const action: "PASSED" | "FAILED" = userConclusion === "rejected" ? "FAILED" : "PASSED";
+
+      // Compose notes with all form data
+      const formattedNotes = [
+        "=== SCORING ===",
+        ...HR_SCORING_CRITERIA.map(criteria => {
+          const score = userScoring[criteria.key];
+          const scoreLabel = SCORE_OPTIONS.find(opt => opt.value === score)?.label || "-";
+          return `${criteria.label}: ${scoreLabel} (${score}/5)`;
+        }),
+        "",
+        "=== ADDITIONAL INFORMATION ===",
+        `Key Competencies: ${userKeyCompetencies || "-"}`,
+        `User Notes: ${userUserNotes || "-"}`,
+        `Conclusion: ${userConclusion?.toUpperCase() || "-"}`,
+      ].join("\n");
+
+      const response = await candidateService.updateInterview2(id, action, formattedNotes);
+
+      if (response?.success && response.data) {
+        setProgress(response.data);
+        showToast.success("User Assessment submitted successfully");
+
+        // Clear localStorage after successful submit
+        clearUserFormStorage();
+
+        // Refresh candidate data
+        const candidateRes = await candidateService.getById(id);
+        if (candidateRes.success && candidateRes.data) {
+          setCandidate(candidateRes.data);
+        }
+      } else {
+        showToast.error(response?.message || "Failed to submit User Assessment");
+      }
+    } catch (err) {
+      showToast.error("Failed to submit User Assessment");
+    } finally {
+      setIsSubmittingUser(false);
     }
   };
 
@@ -551,10 +665,11 @@ export default function CandidateDetailPage() {
 
           {/* Tabs */}
           <Tabs value={activeTab} onValueChange={handleTabChange}>
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="profile">Profile</TabsTrigger>
               <TabsTrigger value="assessment-hr">Assessment HR</TabsTrigger>
               <TabsTrigger value="assessment-user">Assessment User</TabsTrigger>
+              <TabsTrigger value="mcu">MCU</TabsTrigger>
               <TabsTrigger value="onboarding" disabled={!canStartOnboarding}>
                 {canStartOnboarding ? (
                   <>
@@ -924,9 +1039,241 @@ export default function CandidateDetailPage() {
 
             {/* Assessment User Tab */}
             <TabsContent value="assessment-user" className="space-y-6 mt-6">
-              {/* Assessment User - Interview 2 & MCU */}
+              {(() => {
+                const { status, locked } = getStageStatus("interview2");
+                const isCompleted = status === "passed" || status === "failed";
+
+                return (
+                  <>
+                    {/* Locked State */}
+                    {locked && (
+                      <Card className="opacity-60">
+                        <CardContent className="flex flex-col items-center justify-center py-16">
+                          <Lock className="h-16 w-16 text-muted-foreground/30" />
+                          <h3 className="mt-4 text-lg font-medium">Assessment User Locked</h3>
+                          <p className="text-muted-foreground text-center max-w-md mt-2">
+                            Complete Interview 1 (Assessment HR) first to unlock this stage.
+                          </p>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {/* Status Banner */}
+                    {!locked && status === "passed" && (
+                      <Card className="border-emerald-500 bg-emerald-500/5">
+                        <CardContent className="flex items-center justify-between p-6">
+                          <div className="flex items-center gap-4">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/10">
+                              <CheckCircle2 className="h-6 w-6 text-emerald-600" />
+                            </div>
+                            <div>
+                              <h3 className="font-semibold text-emerald-600">Assessment User Completed!</h3>
+                              <p className="text-sm text-muted-foreground">
+                                This candidate has passed the User assessment. Proceed to MCU for the next stage.
+                              </p>
+                            </div>
+                          </div>
+                          <Button onClick={() => handleTabChange("mcu")}>
+                            Proceed to MCU
+                            <Stethoscope className="ml-2 h-4 w-4" />
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {!locked && status === "failed" && (
+                      <Card className="border-destructive bg-destructive/5">
+                        <CardContent className="flex items-center gap-4 p-6">
+                          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
+                            <XCircle className="h-6 w-6 text-destructive" />
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-destructive">Assessment User Failed</h3>
+                            <p className="text-sm text-muted-foreground">
+                              This candidate has been rejected in the User assessment and cannot proceed further.
+                            </p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {/* Form Content - Only show if not locked */}
+                    {!locked && (
+                      <>
+                        {/* Scoring Section */}
+                        <Card>
+                          <CardHeader className="pb-3">
+                            <CardTitle className="text-lg">Scoring</CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="space-y-4">
+                              {HR_SCORING_CRITERIA.map((criteria, index) => (
+                                <div key={criteria.key} className="flex items-center justify-between py-2 border-b last:border-b-0">
+                                  <span className="text-sm font-medium">
+                                    {index + 1}. {criteria.label}
+                                  </span>
+                                  <div className="flex gap-1">
+                                    {SCORE_OPTIONS.map((option) => (
+                                      <button
+                                        key={option.value}
+                                        type="button"
+                                        disabled={isCompleted}
+                                        onClick={() => setUserScoring(prev => ({
+                                          ...prev,
+                                          [criteria.key]: option.value
+                                        }))}
+                                        className={cn(
+                                          "px-3 py-1.5 text-xs font-medium rounded border transition-colors min-w-[70px]",
+                                          userScoring[criteria.key] === option.value
+                                            ? "bg-accent text-accent-foreground border-accent"
+                                            : "bg-background hover:bg-secondary border-border",
+                                          isCompleted && "opacity-60 cursor-not-allowed"
+                                        )}
+                                      >
+                                        {option.label}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </CardContent>
+                        </Card>
+
+                        {/* Additional Information Section */}
+                        <Card>
+                          <CardHeader className="pb-3">
+                            <CardTitle className="text-lg">Additional Information</CardTitle>
+                          </CardHeader>
+                          <CardContent className="space-y-4">
+                            <div className="space-y-2">
+                              <Label>
+                                Key Competencies Required by the Department / Company
+                              </Label>
+                              {isCompleted ? (
+                                <div className="rounded-md border border-input bg-muted/30 p-3 text-sm min-h-20 opacity-60">
+                                  {userKeyCompetencies || <span className="text-muted-foreground">No content</span>}
+                                </div>
+                              ) : (
+                                <LexicalEditor
+                                  value={userKeyCompetencies}
+                                  onChange={setUserKeyCompetencies}
+                                  placeholder="Enter key competencies required..."
+                                />
+                              )}
+                            </div>
+
+                            <div className="space-y-2">
+                              <Label>User Notes</Label>
+                              {isCompleted ? (
+                                <div className="rounded-md border border-input bg-muted/30 p-3 text-sm min-h-20 opacity-60">
+                                  {userUserNotes || <span className="text-muted-foreground">No content</span>}
+                                </div>
+                              ) : (
+                                <LexicalEditor
+                                  value={userUserNotes}
+                                  onChange={setUserUserNotes}
+                                  placeholder="Enter your notes..."
+                                />
+                              )}
+                            </div>
+
+                            <div className="space-y-2">
+                              <Label>Interview Result Conclusion</Label>
+                              <div className="flex gap-2 pt-1">
+                                {[
+                                  { value: "proceed" as const, label: "Proceed", color: "emerald" },
+                                  { value: "recommended" as const, label: "Recommended", color: "blue" },
+                                  { value: "rejected" as const, label: "Rejected", color: "red" },
+                                ].map((option) => (
+                                  <button
+                                    key={option.value}
+                                    type="button"
+                                    disabled={isCompleted}
+                                    onClick={() => setUserConclusion(option.value)}
+                                    className={cn(
+                                      "flex-1 px-4 py-3 text-sm font-medium rounded-lg border-2 transition-all",
+                                      userConclusion === option.value
+                                        ? option.color === "emerald"
+                                          ? "bg-emerald-50 border-emerald-500 text-emerald-700"
+                                          : option.color === "blue"
+                                          ? "bg-blue-50 border-blue-500 text-blue-700"
+                                          : "bg-red-50 border-red-500 text-red-700"
+                                        : "bg-background border-border hover:border-muted-foreground/50",
+                                      isCompleted && "opacity-60 cursor-not-allowed"
+                                    )}
+                                  >
+                                    <div className="flex items-center justify-center gap-2">
+                                      <div
+                                        className={cn(
+                                          "h-4 w-4 rounded-full border-2 flex items-center justify-center",
+                                          userConclusion === option.value
+                                            ? option.color === "emerald"
+                                              ? "border-emerald-500"
+                                              : option.color === "blue"
+                                              ? "border-blue-500"
+                                              : "border-red-500"
+                                            : "border-muted-foreground/30"
+                                        )}
+                                      >
+                                        {userConclusion === option.value && (
+                                          <div
+                                            className={cn(
+                                              "h-2 w-2 rounded-full",
+                                              option.color === "emerald"
+                                                ? "bg-emerald-500"
+                                                : option.color === "blue"
+                                                ? "bg-blue-500"
+                                                : "bg-red-500"
+                                            )}
+                                          />
+                                        )}
+                                      </div>
+                                      {option.label}
+                                    </div>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+
+                        {/* Action Buttons */}
+                        {!isCompleted && (
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              variant="outline"
+                              onClick={() => setShowUserPreview(true)}
+                            >
+                              Preview
+                            </Button>
+                            <Button
+                              onClick={handleUserAssessmentSubmit}
+                              disabled={isSubmittingUser}
+                            >
+                              {isSubmittingUser ? (
+                                <>
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                  Submitting...
+                                </>
+                              ) : (
+                                "Submit"
+                              )}
+                            </Button>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </>
+                );
+              })()}
+            </TabsContent>
+
+            {/* MCU Tab */}
+            <TabsContent value="mcu" className="space-y-6 mt-6">
+              {/* MCU - Medical Check-Up */}
               <div className="space-y-4">
-                {ASSESSMENT_STAGES.filter(stage => stage.key === "interview2" || stage.key === "mcu").map((stage, index) => {
+                {ASSESSMENT_STAGES.filter(stage => stage.key === "mcu").map((stage) => {
                   const { status, locked } = getStageStatus(stage.key);
                   const Icon = stage.icon;
                   const isActive = !locked && status === "pending";
@@ -1057,7 +1404,7 @@ export default function CandidateDetailPage() {
                           <div className="flex items-center gap-2 text-sm text-muted-foreground bg-secondary/50 rounded-lg p-3">
                             <Lock className="h-4 w-4" />
                             <span>
-                              Complete {stage.key === "interview2" ? "Interview 1 (Assessment HR)" : "Interview 2"} first to unlock this stage
+                              Complete Interview 2 (Assessment User) first to unlock MCU
                             </span>
                           </div>
                         </CardContent>
@@ -1263,6 +1610,123 @@ export default function CandidateDetailPage() {
               disabled={isSubmittingHR}
             >
               {isSubmittingHR ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Submitting...
+                </>
+              ) : (
+                "Submit Assessment"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* User Assessment Preview Dialog */}
+      <Dialog open={showUserPreview} onOpenChange={setShowUserPreview}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Assessment User Preview</DialogTitle>
+            <DialogDescription>
+              Review the assessment details before submitting
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            {/* Candidate Info */}
+            {candidate && (
+              <div className="flex items-center gap-3 p-3 bg-secondary/30 rounded-lg">
+                <Avatar className="h-10 w-10">
+                  <AvatarFallback className="bg-accent/10 text-accent text-sm">
+                    {getInitials(candidate.fullname)}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="font-medium">{candidate.fullname}</p>
+                  <p className="text-sm text-muted-foreground">{candidate.jobTitle?.name}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Scoring Preview */}
+            <div className="space-y-3">
+              <h4 className="font-semibold text-sm">Scoring</h4>
+              <div className="border rounded-lg divide-y">
+                {HR_SCORING_CRITERIA.map((criteria, index) => {
+                  const score = userScoring[criteria.key];
+                  const scoreLabel = score ? SCORE_OPTIONS.find(opt => opt.value === score)?.label : null;
+                  return (
+                    <div key={criteria.key} className="flex items-center justify-between px-3 py-2">
+                      <span className="text-sm">{index + 1}. {criteria.label}</span>
+                      {scoreLabel ? (
+                        <Badge variant="secondary">{scoreLabel} ({score}/5)</Badge>
+                      ) : (
+                        <span className="text-xs text-muted-foreground italic">Not filled</span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Additional Information Preview */}
+            <div className="space-y-3">
+              <h4 className="font-semibold text-sm">Additional Information</h4>
+
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground uppercase tracking-wider">Key Competencies</p>
+                <div className="border rounded-lg p-3 text-sm min-h-16 bg-secondary/20">
+                  {userKeyCompetencies ? (
+                    <LexicalRenderer value={userKeyCompetencies} />
+                  ) : (
+                    <span className="text-muted-foreground italic">Not filled</span>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground uppercase tracking-wider">User Notes</p>
+                <div className="border rounded-lg p-3 text-sm min-h-16 bg-secondary/20">
+                  {userUserNotes ? (
+                    <LexicalRenderer value={userUserNotes} />
+                  ) : (
+                    <span className="text-muted-foreground italic">Not filled</span>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground uppercase tracking-wider">Interview Result Conclusion</p>
+                {userConclusion ? (
+                  <Badge
+                    className={cn(
+                      "text-sm",
+                      userConclusion === "proceed" && "bg-emerald-100 text-emerald-700 border-emerald-300",
+                      userConclusion === "recommended" && "bg-blue-100 text-blue-700 border-blue-300",
+                      userConclusion === "rejected" && "bg-red-100 text-red-700 border-red-300"
+                    )}
+                  >
+                    {userConclusion === "proceed" ? "Proceed" : userConclusion === "recommended" ? "Recommended" : "Rejected"}
+                  </Badge>
+                ) : (
+                  <span className="text-sm text-muted-foreground italic">Not selected</span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowUserPreview(false)}>
+              Close
+            </Button>
+            <Button
+              onClick={() => {
+                setShowUserPreview(false);
+                handleUserAssessmentSubmit();
+              }}
+              disabled={isSubmittingUser}
+            >
+              {isSubmittingUser ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Submitting...
