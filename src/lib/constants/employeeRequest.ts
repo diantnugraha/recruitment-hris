@@ -47,7 +47,7 @@ export const EMPLOYEE_REQUEST_STATUS_CONFIG: Record<EmployeeRequestStatus, {
   },
   reviewed: {
     label: 'HR Reviewed',
-    variant: 'outline',
+    variant: 'default',
     description: 'Reviewed by HR, waiting for Management approval'
   },
   approved: {
