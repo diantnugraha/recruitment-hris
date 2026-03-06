@@ -365,7 +365,7 @@ export default function RecruitmentRequestDetailPage() {
               </Button>
               <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h1 className="font-mono font-semibold text-accent text-lg leading-none">
+                  <h1 className="font-semibold text-accent text-lg leading-none">
                     {request.recruitmentCode
                       ? request.recruitmentCode.replace("REC-", "RC.").replace(/-/g, "")
                       : request.code}
@@ -590,7 +590,7 @@ export default function RecruitmentRequestDetailPage() {
                           onClick={() => router.push(`/recruitment/${candidate.id}`)}
                         >
                           <TableCell className="pl-6 py-4">
-                            <span className="font-mono text-sm text-accent font-medium">
+                            <span className="text-sm text-accent font-medium">
                               {candidate.detail?.candidateCode || `CND-${candidate.id}`}
                             </span>
                           </TableCell>

@@ -144,7 +144,7 @@ export function Sidebar() {
             {!sidebarCollapsed && (
               <div className="flex flex-col">
                 <span className="text-sm font-bold text-gray-900">HRIS System</span>
-                <span className="text-xs text-gray-400">Human Resource</span>
+                <span className="text-xs text-gray-400">PT TÜV Nord Indonesia</span>
               </div>
             )}
           </Link>

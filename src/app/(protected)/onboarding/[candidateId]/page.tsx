@@ -593,7 +593,7 @@ export default function OnboardingDetailPage() {
                       <TableBody>
                         {onboarding.facilities.map((facility) => (
                           <TableRow key={facility.id}>
-                            <TableCell className="font-mono text-sm">
+                            <TableCell className="text-sm">
                               {facility.inventoryNo || "—"}
                             </TableCell>
                             <TableCell className="font-medium">{facility.item}</TableCell>

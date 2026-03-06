@@ -704,8 +704,7 @@ export default function EmployeeBudgetDetailPage() {
                             <TableCell>
                               <Badge
                                 variant={budget.year === CURRENT_YEAR ? "default" : "outline"}
-                                className="font-mono"
-                              >
+                                                              >
                                 {budget.year}
                                 {budget.year === CURRENT_YEAR && " (Current)"}
                               </Badge>
@@ -717,7 +716,7 @@ export default function EmployeeBudgetDetailPage() {
                               {budget.admin}
                             </TableCell>
                             <TableCell className="text-center">
-                              <Badge variant="secondary" className="font-mono">
+                              <Badge variant="secondary">
                                 {currentTotal}
                               </Badge>
                             </TableCell>

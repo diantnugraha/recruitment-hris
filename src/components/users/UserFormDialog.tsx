@@ -233,8 +233,8 @@ export function UserFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] flex flex-col gap-0 p-0">
+        <DialogHeader className="p-6 pb-4">
           <DialogTitle className="flex items-center gap-2">
             <UserPlus className="h-5 w-5" />
             {isEdit ? "Edit User" : "Add New User"}
@@ -251,7 +251,8 @@ export function UserFormDialog({
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+            <div className="flex-1 overflow-y-auto px-6 space-y-4">
             {/* Display Name */}
             <div className="space-y-2">
               <Label htmlFor="displayName">
@@ -416,8 +417,9 @@ export function UserFormDialog({
                 emptyText="No employee found"
               />
             </div>
+            </div>
 
-            <DialogFooter>
+            <DialogFooter className="p-6 pt-4 border-t">
               <Button
                 type="button"
                 variant="outline"

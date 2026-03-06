@@ -137,6 +137,33 @@
   background-clip: padding-box;
 }
 
+/* Transparent scrollbar in dialogs and scroll areas */
+[data-radix-scroll-area-viewport]::-webkit-scrollbar-track,
+[data-radix-dialog-content] ::-webkit-scrollbar-track,
+[role="dialog"] ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+[data-radix-scroll-area-viewport],
+[data-radix-scroll-area-viewport] > div {
+  background: transparent !important;
+}
+
+/* Fix dialog corner clipping */
+[data-radix-dialog-content] {
+  -webkit-mask-image: -webkit-radial-gradient(white, black);
+  mask-image: radial-gradient(white, black);
+}
+
+[data-radix-dialog-content]::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: inherit;
+  z-index: -1;
+}
+
 /* Elegant focus states */
 @layer utilities {
   .focus-ring {

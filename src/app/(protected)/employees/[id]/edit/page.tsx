@@ -384,7 +384,7 @@ export default function EmployeeEditPage() {
                       <Input
                         value={form.nik}
                         disabled
-                        className="bg-muted font-mono"
+                        className="bg-muted"
                       />
                     </div>
                   </div>

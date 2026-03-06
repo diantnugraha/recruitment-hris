@@ -387,7 +387,8 @@ export const candidateService = {
 
   async sendInvitation(id: string | number): Promise<ApiResponse<{ success: boolean; message: string }>> {
     try {
-      const portalBaseUrl = typeof window !== "undefined" ? window.location.origin : "";
+      // Use candidate portal URL (not current HRIS URL)
+      const portalBaseUrl = process.env.NEXT_PUBLIC_CANDIDATE_PORTAL_URL || "http://localhost:3002";
       const response = await post<unknown, { portal_base_url: string }>(
         `/v1/candidate/${id}/send-invitation`,
         { portal_base_url: portalBaseUrl }

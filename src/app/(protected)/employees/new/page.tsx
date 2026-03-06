@@ -385,7 +385,7 @@ export default function EmployeeNewPage() {
                         placeholder="Auto-generated from Join Date"
                         value={form.nik}
                         disabled
-                        className="bg-muted font-mono"
+                        className="bg-muted"
                       />
                     </div>
                   </div>

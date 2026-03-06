@@ -26,6 +26,9 @@ import {
   Sparkles,
   Send,
   Check,
+  FileText,
+  Activity,
+  User,
 } from "lucide-react";
 
 import { Header } from "@/components/layout/header";
@@ -491,7 +494,7 @@ export default function EmployeeRequestDetailPage() {
                     {request.recruitmentCode && (
                       <div className="text-right">
                         <p className="text-xs text-muted-foreground uppercase tracking-wider">Recruitment Code</p>
-                        <p className="font-mono font-semibold text-accent mt-1">{request.recruitmentCode}</p>
+                        <p className="font-semibold text-accent mt-1">{request.recruitmentCode}</p>
                       </div>
                     )}
                   </div>
@@ -510,9 +513,15 @@ export default function EmployeeRequestDetailPage() {
               {/* Requirements */}
               <Card>
                 <CardHeader>
-                  <CardTitle>Requirements</CardTitle>
+                  <CardTitle className="flex items-center gap-2">
+                    <div className="h-8 w-8 rounded-lg bg-accent/10 flex items-center justify-center">
+                      <Sparkles className="h-4 w-4 text-accent" />
+                    </div>
+                    Requirements
+                  </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-6">
+                <Separator />
+                <CardContent className="pt-6 space-y-6">
                   <div className="grid gap-6 sm:grid-cols-2">
                     <div className="flex items-start gap-3">
                       <div className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
@@ -567,24 +576,30 @@ export default function EmployeeRequestDetailPage() {
               {(hasLexicalContent(request.generalJobPurpose) || hasLexicalContent(request.jobDescription) || hasLexicalContent(request.jobRequirement)) && (
                 <Card>
                   <CardHeader>
-                    <CardTitle>Job Description</CardTitle>
+                    <CardTitle className="flex items-center gap-2">
+                      <div className="h-8 w-8 rounded-lg bg-accent/10 flex items-center justify-center">
+                        <FileText className="h-4 w-4 text-accent" />
+                      </div>
+                      Job Description
+                    </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-6">
+                  <Separator />
+                  <CardContent className="pt-6 space-y-6">
                     {hasLexicalContent(request.generalJobPurpose) && (
                       <div>
-                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">General Job Purpose</p>
+                        <p className="text-sm font-semibold text-foreground mb-2">General Job Purpose</p>
                         <LexicalRenderer value={request.generalJobPurpose} />
                       </div>
                     )}
                     {hasLexicalContent(request.jobDescription) && (
                       <div>
-                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Job Description</p>
+                        <p className="text-sm font-semibold text-foreground mb-2">Job Description</p>
                         <LexicalRenderer value={request.jobDescription} />
                       </div>
                     )}
                     {hasLexicalContent(request.jobRequirement) && (
                       <div>
-                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Job Requirement</p>
+                        <p className="text-sm font-semibold text-foreground mb-2">Job Requirement</p>
                         <LexicalRenderer value={request.jobRequirement} />
                       </div>
                     )}
@@ -596,11 +611,14 @@ export default function EmployeeRequestDetailPage() {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <MessageSquare className="h-5 w-5" />
+                    <div className="h-8 w-8 rounded-lg bg-accent/10 flex items-center justify-center">
+                      <Activity className="h-4 w-4 text-accent" />
+                    </div>
                     Activity History
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
+                <Separator />
+                <CardContent className="pt-6">
                   {request.comments && request.comments.length > 0 ? (
                     <div className="space-y-6">
                       {request.comments.map((comment, index) => (
@@ -646,10 +664,16 @@ export default function EmployeeRequestDetailPage() {
             <div className="space-y-6">
               {/* Status card */}
               <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base">Status</CardTitle>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <div className="h-8 w-8 rounded-lg bg-accent/10 flex items-center justify-center">
+                      <CheckCircle className="h-4 w-4 text-accent" />
+                    </div>
+                    Status
+                  </CardTitle>
                 </CardHeader>
-                <CardContent>
+                <Separator />
+                <CardContent className="pt-6">
                   <div className="text-center py-4">
                     {getStatusBadge(request.status)}
                     <p className="mt-3 text-sm text-muted-foreground">{statusConfig?.description}</p>
@@ -659,10 +683,16 @@ export default function EmployeeRequestDetailPage() {
 
               {/* Headcount & Timeline */}
               <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base">Headcount & Timeline</CardTitle>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <div className="h-8 w-8 rounded-lg bg-accent/10 flex items-center justify-center">
+                      <Calendar className="h-4 w-4 text-accent" />
+                    </div>
+                    Headcount & Timeline
+                  </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <Separator />
+                <CardContent className="pt-6 space-y-4">
                   <div className="flex items-start gap-3">
                     <div className="h-9 w-9 rounded-lg bg-secondary flex items-center justify-center">
                       <Hash className="h-4 w-4 text-muted-foreground" />
@@ -699,10 +729,16 @@ export default function EmployeeRequestDetailPage() {
 
               {/* Requester Info */}
               <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base">Requester</CardTitle>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <div className="h-8 w-8 rounded-lg bg-accent/10 flex items-center justify-center">
+                      <User className="h-4 w-4 text-accent" />
+                    </div>
+                    Requester
+                  </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <Separator />
+                <CardContent className="pt-6 space-y-4">
                   <div className="flex items-center gap-3">
                     <Avatar className="h-10 w-10 border">
                       <AvatarFallback className="bg-accent/10 text-accent font-medium">

@@ -235,7 +235,7 @@ export default function EmployeeDetailPage() {
                     <h1 className="text-lg font-bold">{fullName || "—"}</h1>
                     <Badge variant={statusCfg.variant}>{statusCfg.label}</Badge>
                   </div>
-                  <p className="mt-0.5 font-mono text-sm font-medium text-primary">
+                  <p className="mt-0.5 text-sm font-medium text-primary">
                     {employee.employeeNik || "No NIK"}
                   </p>
                   {subtitle && (

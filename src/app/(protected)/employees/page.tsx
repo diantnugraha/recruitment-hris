@@ -298,7 +298,7 @@ export default function EmployeesPage() {
             <p className="font-medium">
               {row.firstName || ""} {row.lastName || ""}
             </p>
-            <p className="font-mono text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               {row.employeeNik || "No Data"}
             </p>
           </div>

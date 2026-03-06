@@ -765,15 +765,15 @@ export default function CandidateDetailPage() {
                   <CardContent className="space-y-4">
                     <div>
                       <p className="text-xs text-muted-foreground uppercase tracking-wider">ID Number (KTP)</p>
-                      <p className="font-medium font-mono">{candidate.idNo || "—"}</p>
+                      <p className="font-medium">{candidate.idNo || "—"}</p>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground uppercase tracking-wider">Tax ID (NPWP)</p>
-                      <p className="font-medium font-mono">{candidate.taxId || "—"}</p>
+                      <p className="font-medium">{candidate.taxId || "—"}</p>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground uppercase tracking-wider">BPJS ID</p>
-                      <p className="font-medium font-mono">{candidate.bpjsId || "—"}</p>
+                      <p className="font-medium">{candidate.bpjsId || "—"}</p>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground uppercase tracking-wider">Driving License</p>
@@ -794,7 +794,7 @@ export default function CandidateDetailPage() {
                     {candidate.detail && (
                       <div>
                         <p className="text-xs text-muted-foreground uppercase tracking-wider">Candidate Code</p>
-                        <p className="font-medium font-mono">{candidate.detail.candidateCode}</p>
+                        <p className="font-medium">{candidate.detail.candidateCode}</p>
                       </div>
                     )}
                     {candidate.employeeRequest && (

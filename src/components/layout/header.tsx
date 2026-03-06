@@ -2,9 +2,8 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Bell, Search, Menu, LogOut } from "lucide-react";
+import { Menu, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -81,53 +80,23 @@ export function Header({ title, subtitle }: HeaderProps) {
       </div>
 
       <div className="flex items-center gap-2">
-        {/* Search */}
-        <div className="relative hidden md:block">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-          <Input
-            placeholder="Search..."
-            className="h-9 w-60 pl-9 text-sm border-gray-200 bg-gray-50 focus:bg-white"
-          />
-        </div>
-
-        {/* Notifications */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="relative h-9 w-9">
-              <Bell className="h-5 w-5 text-gray-500" />
-              <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-accent" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-72">
-            <DropdownMenuLabel>Notifications</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem className="flex flex-col items-start gap-1 py-2">
-              <span className="font-medium text-sm">New application received</span>
-              <span className="text-xs text-gray-500">John Doe applied for Senior Developer</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem className="flex flex-col items-start gap-1 py-2">
-              <span className="font-medium text-sm">Interview scheduled</span>
-              <span className="text-xs text-gray-500">Tomorrow at 2:00 PM</span>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem className="justify-center text-sm text-gray-500">
-              View all
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-
         {/* User */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-9 gap-2 px-2">
-              <Avatar className="h-7 w-7">
+            <Button variant="ghost" className="h-auto gap-2 px-2 py-1.5">
+              <Avatar className="h-8 w-8">
                 <AvatarFallback className="bg-accent text-xs text-white">
                   {getUserInitials()}
                 </AvatarFallback>
               </Avatar>
-              <span className="hidden text-sm font-medium md:inline-block">
-                {user?.name || "User"}
-              </span>
+              <div className="hidden flex-col items-start md:flex">
+                <span className="text-sm font-medium">
+                  {user?.name || "User"}
+                </span>
+                <span className="text-xs text-gray-500">
+                  {user?.email || ""}
+                </span>
+              </div>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-52">
@@ -150,6 +119,16 @@ export function Header({ title, subtitle }: HeaderProps) {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+
+        {/* Logout Button */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-9 w-9 text-gray-500 hover:text-red-600"
+          onClick={() => setShowLogoutDialog(true)}
+        >
+          <LogOut className="h-5 w-5" />
+        </Button>
 
         {/* Logout Dialog */}
         <Dialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>

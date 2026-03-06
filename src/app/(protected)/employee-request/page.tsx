@@ -4,12 +4,7 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import {
   Plus,
-  MoreHorizontal,
-  Eye,
-  Pencil,
-  Trash2,
   FileText,
-  Users,
   CheckCircle,
   Clock,
   XCircle,
@@ -25,13 +20,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -52,7 +40,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-import { formatShortDate } from "@/lib/utils";
 import { showToast } from "@/lib/utils/toast-messages";
 import { useDebounce } from "@/hooks/use-debounce";
 import {
@@ -192,23 +179,20 @@ export default function EmployeeRequestPage() {
   // Loading skeleton for table
   const TableSkeletonRows = () => (
     <Card>
-      <Table>
+      <Table className="table-fixed w-full">
         <TableHeader>
           <TableRow className="hover:bg-transparent">
             <TableHead className="w-[140px]">Code</TableHead>
-            <TableHead className="w-[100px]">Status</TableHead>
             <TableHead>Position</TableHead>
-            <TableHead className="w-[100px]">Type</TableHead>
-            <TableHead className="w-[80px] text-center">Qty</TableHead>
-            <TableHead className="w-[120px]">Created</TableHead>
-            <TableHead className="w-[60px]"></TableHead>
+            <TableHead className="w-[120px]">Type</TableHead>
+            <TableHead className="w-[140px] text-center">Qty</TableHead>
+            <TableHead className="w-[140px]">Status</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {[1, 2, 3, 4, 5].map((i) => (
             <TableRow key={i}>
               <TableCell><Skeleton className="h-5 w-28" /></TableCell>
-              <TableCell><Skeleton className="h-5 w-20" /></TableCell>
               <TableCell>
                 <div className="space-y-1">
                   <Skeleton className="h-4 w-40" />
@@ -217,8 +201,7 @@ export default function EmployeeRequestPage() {
               </TableCell>
               <TableCell><Skeleton className="h-5 w-20" /></TableCell>
               <TableCell><Skeleton className="h-5 w-8 mx-auto" /></TableCell>
-              <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-              <TableCell><Skeleton className="h-8 w-8" /></TableCell>
+              <TableCell><Skeleton className="h-5 w-24" /></TableCell>
             </TableRow>
           ))}
         </TableBody>
@@ -339,28 +322,26 @@ export default function EmployeeRequestPage() {
           </div>
 
           {/* Table */}
-          <div>
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground">*HC = Headcount</p>
               {isLoading ? (
                 <TableSkeletonRows />
               ) : (
                 <Card>
-                  <Table>
+                  <Table className="table-fixed w-full">
                     <TableHeader>
                       <TableRow className="hover:bg-transparent">
                         <TableHead className="w-[140px]">Code</TableHead>
-                        <TableHead className="w-[100px]">Status</TableHead>
                         <TableHead>Position / Department</TableHead>
-                        <TableHead className="w-[100px]">Type</TableHead>
-                        <TableHead className="w-[80px] text-center">Qty</TableHead>
-                        <TableHead className="w-[150px]">Requested By</TableHead>
-                        <TableHead className="w-[100px]">Created</TableHead>
-                        <TableHead className="w-[60px]"></TableHead>
+                        <TableHead className="w-[120px]">Type</TableHead>
+                        <TableHead className="w-[140px] text-center">Qty</TableHead>
+                        <TableHead className="w-[140px]">Status</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {filteredRequests.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={8} className="h-32 text-center">
+                          <TableCell colSpan={5} className="h-32 text-center">
                             <div className="flex flex-col items-center justify-center gap-2">
                               <FileText className="h-10 w-10 text-muted-foreground/30" />
                               <p className="text-muted-foreground">
@@ -389,14 +370,9 @@ export default function EmployeeRequestPage() {
                           >
                             {/* Code */}
                             <TableCell>
-                              <span className="font-mono text-sm font-medium text-accent">
+                              <span className="text-sm font-medium text-accent">
                                 {request.code}
                               </span>
-                            </TableCell>
-
-                            {/* Status */}
-                            <TableCell>
-                              {getStatusBadge(request.status)}
                             </TableCell>
 
                             {/* Position / Department */}
@@ -424,68 +400,12 @@ export default function EmployeeRequestPage() {
 
                             {/* Quantity */}
                             <TableCell className="text-center">
-                              <span className="font-medium">{request.quantity}</span>
+                              <span className="font-medium">{request.quantity} HC</span>
                             </TableCell>
 
-                            {/* Requested By */}
+                            {/* Status */}
                             <TableCell>
-                              <div className="space-y-0.5">
-                                <p className="text-sm">{request.requestedByName}</p>
-                                {request.candidateCount !== undefined && request.candidateCount > 0 && (
-                                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                    <Users className="h-3 w-3" />
-                                    {request.candidateCount} candidates
-                                  </div>
-                                )}
-                              </div>
-                            </TableCell>
-
-                            {/* Created Date */}
-                            <TableCell>
-                              <span className="text-sm text-muted-foreground whitespace-nowrap">
-                                {formatShortDate(request.createdAt)}
-                              </span>
-                            </TableCell>
-
-                            {/* Actions */}
-                            <TableCell onClick={(e) => e.stopPropagation()}>
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
-                                  >
-                                    <MoreHorizontal className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem
-                                    onClick={() => router.push(`/employee-request/${request.id}`)}
-                                  >
-                                    <Eye className="mr-2 h-4 w-4" />
-                                    View Details
-                                  </DropdownMenuItem>
-                                  {["draft", "revise"].includes(request.status) && (
-                                    <DropdownMenuItem
-                                      onClick={() => router.push(`/employee-request/${request.id}/edit`)}
-                                    >
-                                      <Pencil className="mr-2 h-4 w-4" />
-                                      Edit
-                                    </DropdownMenuItem>
-                                  )}
-                                  <DropdownMenuSeparator />
-                                  {["draft"].includes(request.status) && (
-                                    <DropdownMenuItem
-                                      className="text-destructive focus:text-destructive"
-                                      onClick={() => setDeleteRequest(request)}
-                                    >
-                                      <Trash2 className="mr-2 h-4 w-4" />
-                                      Delete
-                                    </DropdownMenuItem>
-                                  )}
-                                </DropdownMenuContent>
-                              </DropdownMenu>
+                              {getStatusBadge(request.status)}
                             </TableCell>
                           </TableRow>
                         ))

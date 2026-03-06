@@ -407,7 +407,7 @@ export default function RecruitmentPage() {
                     >
                       {/* Recruitment Code */}
                       <TableCell>
-                        <div className="font-mono text-sm font-medium text-accent">
+                        <div className="text-sm font-medium text-accent">
                           {request.recruitmentCode
                             ? request.recruitmentCode
                                 .replace("REC-", "RC.")
