@@ -93,6 +93,7 @@ const ASSESSMENT_STAGES = [
 
 // Workflow progress steps for visual stepper
 const RECRUITMENT_WORKFLOW_STEPS = [
+  { key: "biodata", label: "Biodata", icon: FileText },
   { key: "interview1", label: "Interview 1", icon: ClipboardCheck },
   { key: "interview2", label: "Interview 2", icon: Users },
   { key: "mcu", label: "MCU", icon: Stethoscope },
@@ -488,13 +489,17 @@ export default function CandidateDetailPage() {
   };
 
   // Get current recruitment workflow step index
+  // Steps: 0=Biodata, 1=Interview1, 2=Interview2, 3=MCU, 4=Completed
   const getCurrentStepIndex = () => {
-    if (!progress) return 0;
+    // If candidate hasn't completed biodata, stay at biodata step
+    if (candidate && candidate.verify !== "VERIFIED") return 0;
+
+    if (!progress) return 1; // Biodata done, waiting for interview 1
     if (progress.anyFailed) return -1;
-    if (progress.allPassed) return 3;
-    if (progress.interview2.passed) return 2;
-    if (progress.interview1.passed) return 1;
-    return 0;
+    if (progress.allPassed) return 4;
+    if (progress.interview2.passed) return 3;
+    if (progress.interview1.passed) return 2;
+    return 1;
   };
 
   const currentStepIndex = getCurrentStepIndex();

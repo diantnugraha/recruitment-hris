@@ -5,6 +5,14 @@
 
 export const RECRUITMENT_PIPELINE_STAGES = [
   {
+    key: "waiting_biodata",
+    label: "Waiting Biodata",
+    shortLabel: "Biodata",
+    color: "bg-amber-500",
+    textColor: "text-amber-600",
+    bgLight: "bg-amber-500/10",
+  },
+  {
     key: "interview1",
     label: "Interview 1",
     shortLabel: "Int 1",

@@ -12,6 +12,7 @@ import type {
  * Pipeline stage keys for candidate-centric view
  */
 export type CandidatePipelineStage =
+  | "waiting_biodata"
   | "interview1"
   | "interview2"
   | "mcu"
@@ -21,11 +22,16 @@ export type CandidatePipelineStage =
 /**
  * Determine the current pipeline stage for a single candidate
  * @param assessment - Candidate's assessment data
+ * @param verified - Whether the candidate has completed biodata (verify === "VERIFIED")
  * @returns The current stage key
  */
 export function getCandidateCurrentStage(
-  assessment: CandidateAssessment | null | undefined
+  assessment: CandidateAssessment | null | undefined,
+  verified: boolean = true
 ): CandidatePipelineStage {
+  // If candidate hasn't completed biodata yet
+  if (!verified) return "waiting_biodata";
+
   if (!assessment) return "interview1";
 
   // Check for any failures first
@@ -58,6 +64,7 @@ export function getCandidateCurrentStage(
  * Pipeline statistics for a single employee request
  */
 export interface PipelineStats {
+  waiting_biodata: number; // Candidates waiting to fill biodata
   interview1: number; // Candidates currently at Interview 1 stage
   interview2: number; // Candidates currently at Interview 2 stage
   mcu: number; // Candidates currently at MCU stage
@@ -75,6 +82,7 @@ export function calculatePipelineStats(
   candidates: CandidateWithRelations[]
 ): PipelineStats {
   const stats: PipelineStats = {
+    waiting_biodata: 0,
     interview1: 0,
     interview2: 0,
     mcu: 0,
@@ -84,9 +92,15 @@ export function calculatePipelineStats(
   };
 
   candidates.forEach((candidate) => {
+    // If candidate hasn't completed biodata yet
+    if (candidate.verify !== "VERIFIED") {
+      stats.waiting_biodata++;
+      return;
+    }
+
     const assessment = candidate.assessment;
 
-    // No assessment yet = at Interview 1 stage
+    // No assessment yet = at Interview 1 stage (biodata completed)
     if (!assessment) {
       stats.interview1++;
       return;
@@ -144,7 +158,7 @@ export function getProgressPercentage(
  * @returns Number of active candidates
  */
 export function getActiveCandidates(stats: PipelineStats): number {
-  return stats.interview1 + stats.interview2 + stats.mcu + stats.passed;
+  return stats.waiting_biodata + stats.interview1 + stats.interview2 + stats.mcu + stats.passed;
 }
 
 /**
@@ -156,13 +170,13 @@ export function getPipelineSegments(stats: PipelineStats) {
   if (stats.total === 0) return [];
 
   const segments: Array<{
-    key: "interview1" | "interview2" | "mcu" | "passed" | "failed";
+    key: CandidatePipelineStage;
     count: number;
     percentage: number;
   }> = [];
 
   const addSegment = (
-    key: "interview1" | "interview2" | "mcu" | "passed" | "failed",
+    key: CandidatePipelineStage,
     count: number
   ) => {
     if (count > 0) {
@@ -174,7 +188,8 @@ export function getPipelineSegments(stats: PipelineStats) {
     }
   };
 
-  // Add segments in order (interview1 → interview2 → mcu → passed → failed)
+  // Add segments in order (waiting_biodata → interview1 → interview2 → mcu → passed → failed)
+  addSegment("waiting_biodata", stats.waiting_biodata);
   addSegment("interview1", stats.interview1);
   addSegment("interview2", stats.interview2);
   addSegment("mcu", stats.mcu);

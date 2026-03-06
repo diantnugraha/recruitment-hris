@@ -16,10 +16,11 @@ import {
   type PipelineStats,
   getPipelineSegments,
 } from "@/lib/utils/recruitmentHelpers";
-import { ClipboardCheck, Stethoscope, CheckCircle2, XCircle } from "lucide-react";
+import { ClipboardCheck, Stethoscope, CheckCircle2, XCircle, FileText } from "lucide-react";
 
 // Icons for each stage
 const STAGE_ICONS: Record<RecruitmentPipelineStageKey, React.ComponentType<{ className?: string }>> = {
+  waiting_biodata: FileText,
   interview1: ClipboardCheck,
   interview2: ClipboardCheck,
   mcu: Stethoscope,

@@ -268,8 +268,12 @@ export default function RecruitmentRequestDetailPage() {
   };
 
   const deriveCandidateStatus = (candidate: CandidateWithRelations): CandidateStatus => {
+    // If candidate hasn't completed biodata yet, show waiting status
+    if (candidate.verify !== "VERIFIED") return CANDIDATE_STATUS.WAITING_BIODATA;
+
     const assessment = candidate.assessment;
-    if (!assessment) return CANDIDATE_STATUS.APPLIED;
+
+    if (!assessment) return CANDIDATE_STATUS.INTERVIEW_1;
 
     if (assessment.mcuStatus === "PASSED") return CANDIDATE_STATUS.HIRED;
     if (assessment.mcuStatus === "FAILED") return CANDIDATE_STATUS.REJECTED;
@@ -283,7 +287,7 @@ export default function RecruitmentRequestDetailPage() {
     if (assessment.interview1Status === "FAILED") return CANDIDATE_STATUS.REJECTED;
     if (assessment.interview1Status && assessment.interview1Status !== "PENDING") return CANDIDATE_STATUS.INTERVIEW_1;
 
-    return CANDIDATE_STATUS.SCREENING;
+    return CANDIDATE_STATUS.INTERVIEW_1;
   };
 
   const getActionDialogContent = () => {
