@@ -35,12 +35,13 @@ export interface CandidateDetail {
 }
 
 export interface AssessmentProgress {
-  interview1: { status: string; passed: boolean; failed: boolean; pending: boolean };
+  interview1: { status: string; passed: boolean; failed: boolean; pending: boolean; locked?: boolean };
   interview2: { status: string; passed: boolean; failed: boolean; pending: boolean; locked: boolean };
   mcu: { status: string; passed: boolean; failed: boolean; pending: boolean; locked: boolean };
   allPassed: boolean;
   anyFailed: boolean;
-  currentStage: "interview1" | "interview2" | "mcu" | "completed" | "failed";
+  currentStage: "waiting" | "interview1" | "interview2" | "mcu" | "completed" | "failed";
+  interviewStarted?: boolean;
 }
 
 export interface CandidateAssessment {
@@ -91,6 +92,70 @@ export interface Onboarding {
   documentCandidate: string;
   facilities: Facility[];
   programs: OnboardingProgram[];
+}
+
+// --- Biodata Types ---
+
+export interface EducationalBackground {
+  id: number;
+  schoolUniversity: string;
+  city: string;
+  degree: string;
+  major: string;
+  yearGraduate: number;
+}
+
+export interface WorkExperience {
+  id: number;
+  company: string;
+  city: string;
+  jobTitle: string;
+  period: string;
+  lengthOfWorking: string;
+}
+
+export interface FamilyMember {
+  id: number;
+  name: string;
+  relation: string;
+  age: number;
+  education: string;
+  work: string;
+}
+
+export interface CourseTraining {
+  id: number;
+  courseTopic: string;
+  provider: string;
+  year: number;
+  city: string;
+  certificate: string;
+}
+
+export interface SelfAssessment {
+  id: number;
+  reasonLeavingLastJob: string;
+  lastJobDescription: string;
+  reasonApplying: string;
+  relevantSkills: string;
+  lastSalary: string;
+  expectedSalary: string;
+  activeLanguage: string;
+  willingToTransfer: string;
+  willingToDoubleWork: string;
+  knownEmployees: string;
+  readyToWork: string;
+  employeeRelationship: string;
+  referenceContactName: string;
+  referenceContactPhone: string;
+}
+
+export interface CandidateBiodata {
+  education: EducationalBackground[];
+  workExperience: WorkExperience[];
+  family: FamilyMember[];
+  training: CourseTraining[];
+  selfAssessment: SelfAssessment | null;
 }
 
 // --- DTOs ---
@@ -309,6 +374,129 @@ export const candidateService = {
     }
   },
 
+  async getBiodata(id: string | number): Promise<ApiResponse<CandidateBiodata>> {
+    try {
+      const response = await get<unknown>(`/v1/candidate/${id}/biodata`);
+      const res = response as {
+        success?: boolean;
+        data?: {
+          education: Array<{
+            id: number;
+            school_university: string;
+            city: string;
+            degree: string;
+            major: string;
+            year_graduate: number;
+          }>;
+          work_experience: Array<{
+            id: number;
+            company: string;
+            city: string;
+            job_title: string;
+            period: string;
+            length_of_working: string;
+          }>;
+          family: Array<{
+            id: number;
+            name: string;
+            relation: string;
+            age: number;
+            education: string;
+            work: string;
+          }>;
+          training: Array<{
+            id: number;
+            course_topic: string;
+            provider: string;
+            year: number;
+            city: string;
+            certificate: string;
+          }>;
+          self_assessment: {
+            id: number;
+            reason_leaving_last_job: string;
+            last_job_description: string;
+            reason_applying: string;
+            relevant_skills: string;
+            last_salary: string;
+            expected_salary: string;
+            active_language: string;
+            willing_to_transfer: string;
+            willing_to_double_work: string;
+            known_employees: string;
+            ready_to_work: string;
+            employee_relationship: string;
+            reference_contact_name: string;
+            reference_contact_phone: string;
+          } | null;
+        };
+      };
+
+      if (res.success && res.data) {
+        return {
+          success: true,
+          data: {
+            education: res.data.education.map((item) => ({
+              id: item.id,
+              schoolUniversity: item.school_university,
+              city: item.city,
+              degree: item.degree,
+              major: item.major,
+              yearGraduate: item.year_graduate,
+            })),
+            workExperience: res.data.work_experience.map((item) => ({
+              id: item.id,
+              company: item.company,
+              city: item.city,
+              jobTitle: item.job_title,
+              period: item.period,
+              lengthOfWorking: item.length_of_working,
+            })),
+            family: res.data.family.map((item) => ({
+              id: item.id,
+              name: item.name,
+              relation: item.relation,
+              age: item.age,
+              education: item.education,
+              work: item.work,
+            })),
+            training: res.data.training.map((item) => ({
+              id: item.id,
+              courseTopic: item.course_topic,
+              provider: item.provider,
+              year: item.year,
+              city: item.city,
+              certificate: item.certificate,
+            })),
+            selfAssessment: res.data.self_assessment
+              ? {
+                  id: res.data.self_assessment.id,
+                  reasonLeavingLastJob: res.data.self_assessment.reason_leaving_last_job,
+                  lastJobDescription: res.data.self_assessment.last_job_description,
+                  reasonApplying: res.data.self_assessment.reason_applying,
+                  relevantSkills: res.data.self_assessment.relevant_skills,
+                  lastSalary: res.data.self_assessment.last_salary,
+                  expectedSalary: res.data.self_assessment.expected_salary,
+                  activeLanguage: res.data.self_assessment.active_language,
+                  willingToTransfer: res.data.self_assessment.willing_to_transfer,
+                  willingToDoubleWork: res.data.self_assessment.willing_to_double_work,
+                  knownEmployees: res.data.self_assessment.known_employees,
+                  readyToWork: res.data.self_assessment.ready_to_work,
+                  employeeRelationship: res.data.self_assessment.employee_relationship,
+                  referenceContactName: res.data.self_assessment.reference_contact_name,
+                  referenceContactPhone: res.data.self_assessment.reference_contact_phone,
+                }
+              : null,
+          },
+        };
+      }
+
+      return { success: false, message: "Unexpected response format" };
+    } catch (error: unknown) {
+      return { success: false, message: "Failed to fetch candidate biodata" };
+    }
+  },
+
   async getByEmployeeRequest(
     employeeRequestId: number,
     page: number = 1,
@@ -430,6 +618,25 @@ export const candidateService = {
   },
 
   // ==================== Assessment Pipeline ====================
+
+  async startInterview(candidateId: string | number): Promise<ApiResponse<AssessmentProgress>> {
+    try {
+      const response = await post<unknown, Record<string, never>>(
+        `/v1/candidate/${candidateId}/assessment/start`,
+        {}
+      );
+      const res = response as { success?: boolean; data?: AssessmentProgress; message?: string };
+
+      if (res.success && res.data) {
+        return { success: true, data: res.data };
+      }
+
+      return { success: false, message: res.message || "Unexpected response format" };
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      return { success: false, message: err.response?.data?.message || "Failed to start interview" };
+    }
+  },
 
   async getAssessmentProgress(candidateId: string | number): Promise<ApiResponse<AssessmentProgress>> {
     try {

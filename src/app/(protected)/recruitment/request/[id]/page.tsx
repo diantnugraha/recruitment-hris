@@ -273,21 +273,35 @@ export default function RecruitmentRequestDetailPage() {
 
     const assessment = candidate.assessment;
 
-    if (!assessment) return CANDIDATE_STATUS.INTERVIEW_1;
+    // If no assessment or all statuses are empty/PENDING, show SCREENING (ready for interview)
+    if (!assessment) return CANDIDATE_STATUS.SCREENING;
 
+    // Check if any interview has actually started (has non-PENDING status)
+    const interview1Started = assessment.interview1Status && assessment.interview1Status !== "PENDING";
+    const interview2Started = assessment.interview2Status && assessment.interview2Status !== "PENDING";
+    const mcuStarted = assessment.mcuStatus && assessment.mcuStatus !== "PENDING";
+
+    // If nothing has started yet, show SCREENING
+    if (!interview1Started && !interview2Started && !mcuStarted) {
+      return CANDIDATE_STATUS.SCREENING;
+    }
+
+    // MCU completed
     if (assessment.mcuStatus === "PASSED") return CANDIDATE_STATUS.HIRED;
     if (assessment.mcuStatus === "FAILED") return CANDIDATE_STATUS.REJECTED;
-    if (assessment.mcuStatus && assessment.mcuStatus !== "PENDING") return CANDIDATE_STATUS.MCU;
+    if (mcuStarted) return CANDIDATE_STATUS.MCU;
 
+    // Interview 2 completed
     if (assessment.interview2Status === "PASSED") return CANDIDATE_STATUS.MCU;
     if (assessment.interview2Status === "FAILED") return CANDIDATE_STATUS.REJECTED;
-    if (assessment.interview2Status && assessment.interview2Status !== "PENDING") return CANDIDATE_STATUS.INTERVIEW_2;
+    if (interview2Started) return CANDIDATE_STATUS.INTERVIEW_2;
 
+    // Interview 1 completed
     if (assessment.interview1Status === "PASSED") return CANDIDATE_STATUS.INTERVIEW_2;
     if (assessment.interview1Status === "FAILED") return CANDIDATE_STATUS.REJECTED;
-    if (assessment.interview1Status && assessment.interview1Status !== "PENDING") return CANDIDATE_STATUS.INTERVIEW_1;
+    if (interview1Started) return CANDIDATE_STATUS.INTERVIEW_1;
 
-    return CANDIDATE_STATUS.INTERVIEW_1;
+    return CANDIDATE_STATUS.SCREENING;
   };
 
   const getActionDialogContent = () => {

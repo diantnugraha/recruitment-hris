@@ -28,6 +28,9 @@ import {
   Send,
   Save,
   Check,
+  GraduationCap,
+  Award,
+  ClipboardList,
 } from "lucide-react";
 
 import { Header } from "@/components/layout/header";
@@ -63,6 +66,7 @@ import {
   candidateService,
   type CandidateWithRelations,
   type AssessmentProgress,
+  type CandidateBiodata,
 } from "@/services/candidate.service";
 import { formatShortDate, getInitials, cn } from "@/lib/utils";
 import { showToast } from "@/lib/utils/toast-messages";
@@ -141,7 +145,9 @@ export default function CandidateDetailPage() {
   // State
   const [candidate, setCandidate] = React.useState<CandidateWithRelations | null>(null);
   const [progress, setProgress] = React.useState<AssessmentProgress | null>(null);
+  const [biodata, setBiodata] = React.useState<CandidateBiodata | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
+  const [isBiodataLoading, setIsBiodataLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [activeTab, setActiveTab] = React.useState(initialTab);
 
@@ -191,6 +197,9 @@ export default function CandidateDetailPage() {
   const [userConclusion, setUserConclusion] = React.useState<HRConclusion>(null);
   const [isSubmittingUser, setIsSubmittingUser] = React.useState(false);
   const [showUserPreview, setShowUserPreview] = React.useState(false);
+
+  // Start Interview state
+  const [isStartingInterview, setIsStartingInterview] = React.useState(false);
 
   // Handle tab change and update URL
   const handleTabChange = React.useCallback((tab: string) => {
@@ -280,9 +289,10 @@ export default function CandidateDetailPage() {
     setError(null);
 
     try {
-      const [candidateRes, progressRes] = await Promise.all([
+      const [candidateRes, progressRes, biodataRes] = await Promise.all([
         candidateService.getById(id),
         candidateService.getAssessmentProgress(id),
+        candidateService.getBiodata(id),
       ]);
 
       if (candidateRes.success && candidateRes.data) {
@@ -303,6 +313,10 @@ export default function CandidateDetailPage() {
 
       if (progressRes.success && progressRes.data) {
         setProgress(progressRes.data);
+      }
+
+      if (biodataRes.success && biodataRes.data) {
+        setBiodata(biodataRes.data);
       }
     } catch (err) {
       console.error("Failed to fetch data:", err);
@@ -477,9 +491,47 @@ export default function CandidateDetailPage() {
   // Check if onboarding is available
   const canStartOnboarding = progress?.allPassed === true;
 
+  // Check if interview has started
+  // Interview is considered "started" only when:
+  // 1. Backend explicitly sets interviewStarted: true
+  // 2. OR interview1.locked is explicitly false (not undefined)
+  // 3. OR interview1 already has results (passed or failed)
+  // 4. OR any subsequent stage has results
+  const interviewStarted =
+    progress?.interviewStarted === true ||
+    progress?.interview1?.locked === false ||
+    progress?.interview1?.passed === true ||
+    progress?.interview1?.failed === true ||
+    progress?.interview2?.passed === true ||
+    progress?.interview2?.failed === true ||
+    progress?.mcu?.passed === true ||
+    progress?.mcu?.failed === true;
+
+  // Handle Start Interview
+  const handleStartInterview = async () => {
+    setIsStartingInterview(true);
+    try {
+      const response = await candidateService.startInterview(id);
+      if (response.success && response.data) {
+        setProgress(response.data);
+        showToast.success("Interview process started! You can now proceed with Assessment HR.");
+        handleTabChange("assessment-hr");
+      } else {
+        showToast.error(response.message || "Failed to start interview");
+      }
+    } catch (err) {
+      showToast.error("Failed to start interview");
+    } finally {
+      setIsStartingInterview(false);
+    }
+  };
+
   // Get stage status
   const getStageStatus = (stage: AssessmentStageKey) => {
-    if (!progress) return { status: "pending", locked: stage !== "interview1" };
+    // If no progress or interview not started, all stages are locked
+    if (!progress || !interviewStarted) {
+      return { status: "pending", locked: true };
+    }
 
     const stageData = progress[stage];
     return {
@@ -493,6 +545,9 @@ export default function CandidateDetailPage() {
   const getCurrentStepIndex = () => {
     // If candidate hasn't completed biodata, stay at biodata step
     if (candidate && candidate.verify !== "VERIFIED") return 0;
+
+    // If interview hasn't started yet, stay at biodata (waiting for start)
+    if (!interviewStarted) return 0;
 
     if (!progress) return 1; // Biodata done, waiting for interview 1
     if (progress.anyFailed) return -1;
@@ -649,6 +704,35 @@ export default function CandidateDetailPage() {
             </Card>
           )}
 
+          {/* Start Interview Banner - Show when biodata is verified but interview not started */}
+          {candidate.verify === "VERIFIED" && !interviewStarted && !progress?.anyFailed && (
+            <Card className="border-accent/30 bg-accent/5">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="h-12 w-12 rounded-full bg-accent/10 flex items-center justify-center">
+                      <ClipboardCheck className="h-6 w-6 text-accent" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-accent">Ready for Interview</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Candidate biodata is verified. Click the button to start the interview process.
+                      </p>
+                    </div>
+                  </div>
+                  <Button onClick={handleStartInterview} disabled={isStartingInterview}>
+                    {isStartingInterview ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <ClipboardCheck className="mr-2 h-4 w-4" />
+                    )}
+                    Start Interview
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Failed Banner */}
           {progress?.anyFailed && (
             <Card className="border-destructive/50 bg-destructive/5">
@@ -672,9 +756,36 @@ export default function CandidateDetailPage() {
           <Tabs value={activeTab} onValueChange={handleTabChange}>
             <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="profile">Profile</TabsTrigger>
-              <TabsTrigger value="assessment-hr">Assessment HR</TabsTrigger>
-              <TabsTrigger value="assessment-user">Assessment User</TabsTrigger>
-              <TabsTrigger value="mcu">MCU</TabsTrigger>
+              <TabsTrigger value="assessment-hr" disabled={!interviewStarted}>
+                {interviewStarted ? (
+                  "Assessment HR"
+                ) : (
+                  <>
+                    <Lock className="mr-2 h-4 w-4" />
+                    Assessment HR
+                  </>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="assessment-user" disabled={!interviewStarted || getStageStatus("interview2").locked}>
+                {interviewStarted && !getStageStatus("interview2").locked ? (
+                  "Assessment User"
+                ) : (
+                  <>
+                    <Lock className="mr-2 h-4 w-4" />
+                    Assessment User
+                  </>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="mcu" disabled={!interviewStarted || getStageStatus("mcu").locked}>
+                {interviewStarted && !getStageStatus("mcu").locked ? (
+                  "MCU"
+                ) : (
+                  <>
+                    <Lock className="mr-2 h-4 w-4" />
+                    MCU
+                  </>
+                )}
+              </TabsTrigger>
               <TabsTrigger value="onboarding" disabled={!canStartOnboarding}>
                 {canStartOnboarding ? (
                   <>
@@ -691,140 +802,541 @@ export default function CandidateDetailPage() {
             </TabsList>
 
             {/* Profile Tab */}
-            <TabsContent value="profile" className="space-y-6 mt-6">
-              <div className="grid gap-6 md:grid-cols-2">
-                {/* Personal Information */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <User className="h-5 w-5" />
-                      Personal Information
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <p className="text-xs text-muted-foreground uppercase tracking-wider">Gender</p>
-                        <p className="font-medium">{candidate.gender === "M" ? "Male" : "Female"}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground uppercase tracking-wider">Birth Date</p>
-                        <p className="font-medium">{candidate.birthDate ? formatShortDate(candidate.birthDate) : "—"}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground uppercase tracking-wider">Birth Place</p>
-                        <p className="font-medium">{candidate.birthPlace || "—"}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground uppercase tracking-wider">Religion</p>
-                        <p className="font-medium">{candidate.religion || "—"}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground uppercase tracking-wider">Marital Status</p>
-                        <p className="font-medium">{candidate.marritalStatus || "—"}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground uppercase tracking-wider">Citizenship</p>
-                        <p className="font-medium">{candidate.citizenship || "—"}</p>
-                      </div>
+            <TabsContent value="profile" className="mt-6 space-y-8">
+              {/* Application Details */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-sm">
+                    <div className="h-8 w-8 rounded-lg bg-accent/10 flex items-center justify-center">
+                      <Briefcase className="h-4 w-4 text-accent" />
                     </div>
-                  </CardContent>
-                </Card>
-
-                {/* Contact Information */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <MapPin className="h-5 w-5" />
-                      Contact Information
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div>
-                      <p className="text-xs text-muted-foreground uppercase tracking-wider">Address</p>
-                      <p className="font-medium">{candidate.address || "—"}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground uppercase tracking-wider">Resident Status</p>
-                      <p className="font-medium">{candidate.residentStatus || "—"}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground uppercase tracking-wider">Mobile Phone</p>
-                      <p className="font-medium">{candidate.mobilePhone || "—"}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground uppercase tracking-wider">Email</p>
-                      <p className="font-medium">{candidate.email}</p>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Identity Documents */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <IdCard className="h-5 w-5" />
-                      Identity Documents
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div>
-                      <p className="text-xs text-muted-foreground uppercase tracking-wider">ID Number (KTP)</p>
-                      <p className="font-medium">{candidate.idNo || "—"}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground uppercase tracking-wider">Tax ID (NPWP)</p>
-                      <p className="font-medium">{candidate.taxId || "—"}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground uppercase tracking-wider">BPJS ID</p>
-                      <p className="font-medium">{candidate.bpjsId || "—"}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground uppercase tracking-wider">Driving License</p>
-                      <p className="font-medium">{candidate.drivingLicense || "—"}</p>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Application Details */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <Briefcase className="h-5 w-5" />
-                      Application Details
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
+                    Application Details
+                  </CardTitle>
+                </CardHeader>
+                <Separator />
+                <CardContent className="pt-6">
+                  <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
                     {candidate.detail && (
-                      <div>
-                        <p className="text-xs text-muted-foreground uppercase tracking-wider">Candidate Code</p>
-                        <p className="font-medium">{candidate.detail.candidateCode}</p>
+                      <div className="flex items-start gap-3">
+                        <div className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
+                          <FileText className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Candidate Code</p>
+                          <p className="text-xs mt-1">{candidate.detail.candidateCode}</p>
+                        </div>
                       </div>
                     )}
                     {candidate.employeeRequest && (
-                      <div>
-                        <p className="text-xs text-muted-foreground uppercase tracking-wider">Employee Request</p>
-                        <p className="font-medium">{candidate.employeeRequest.code}</p>
+                      <div className="flex items-start gap-3">
+                        <div className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
+                          <Briefcase className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Employee Request</p>
+                          <p className="text-xs mt-1">{candidate.employeeRequest.code}</p>
+                        </div>
                       </div>
                     )}
                     {candidate.jobTitle && (
-                      <div>
-                        <p className="text-xs text-muted-foreground uppercase tracking-wider">Position Applied</p>
-                        <p className="font-medium">{candidate.jobTitle.name}</p>
+                      <div className="flex items-start gap-3">
+                        <div className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
+                          <Briefcase className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Position Applied</p>
+                          <p className="text-xs mt-1">{candidate.jobTitle.name}</p>
+                        </div>
                       </div>
                     )}
-                    <div>
-                      <p className="text-xs text-muted-foreground uppercase tracking-wider">Verification Status</p>
-                      <Badge variant={candidate.verify === "VERIFIED" ? "default" : "secondary"}>
-                        {candidate.verify}
-                      </Badge>
+                    <div className="flex items-start gap-3">
+                      <div className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
+                        <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Verification Status</p>
+                        <Badge variant={candidate.verify === "VERIFIED" ? "default" : "secondary"} className="mt-1">
+                          {candidate.verify}
+                        </Badge>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground uppercase tracking-wider">Applied Date</p>
-                      <p className="font-medium">{candidate.createdAt ? formatShortDate(candidate.createdAt) : "—"}</p>
+                    <div className="flex items-start gap-3">
+                      <div className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Applied Date</p>
+                        <p className="text-xs mt-1">{candidate.createdAt ? formatShortDate(candidate.createdAt) : "—"}</p>
+                      </div>
                     </div>
-                  </CardContent>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Personal Information */}
+              <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2 text-sm">
+                        <div className="h-8 w-8 rounded-lg bg-accent/10 flex items-center justify-center">
+                          <User className="h-4 w-4 text-accent" />
+                        </div>
+                        Personal Information
+                      </CardTitle>
+                    </CardHeader>
+                    <Separator />
+                    <CardContent className="pt-6">
+                      <div className="grid gap-6 sm:grid-cols-2">
+                        <div className="flex items-start gap-3">
+                          <div className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
+                            <User className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Gender</p>
+                            <p className="text-xs mt-1">{candidate.gender === "M" ? "Male" : "Female"}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-3">
+                          <div className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
+                            <Calendar className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Birth Date</p>
+                            <p className="text-xs mt-1">{candidate.birthDate ? formatShortDate(candidate.birthDate) : "—"}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-3">
+                          <div className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
+                            <MapPin className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Birth Place</p>
+                            <p className="text-xs mt-1">{candidate.birthPlace || "—"}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-3">
+                          <div className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
+                            <Heart className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Religion</p>
+                            <p className="text-xs mt-1">{candidate.religion || "—"}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-3">
+                          <div className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
+                            <Users className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Marital Status</p>
+                            <p className="text-xs mt-1">{candidate.marritalStatus || "—"}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-3">
+                          <div className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
+                            <Building2 className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Citizenship</p>
+                            <p className="text-xs mt-1">{candidate.citizenship || "—"}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Contact Information */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2 text-sm">
+                        <div className="h-8 w-8 rounded-lg bg-accent/10 flex items-center justify-center">
+                          <MapPin className="h-4 w-4 text-accent" />
+                        </div>
+                        Contact Information
+                      </CardTitle>
+                    </CardHeader>
+                    <Separator />
+                    <CardContent className="pt-6 space-y-4">
+                      <div className="flex items-start gap-3">
+                        <div className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
+                          <MapPin className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Address</p>
+                          <p className="text-xs mt-1">{candidate.address || "—"}</p>
+                        </div>
+                      </div>
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <div className="flex items-start gap-3">
+                          <div className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
+                            <Building2 className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Resident Status</p>
+                            <p className="text-xs mt-1">{candidate.residentStatus || "—"}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-3">
+                          <div className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
+                            <Phone className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Mobile Phone</p>
+                            <p className="text-xs mt-1">{candidate.mobilePhone || "—"}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-3 sm:col-span-2">
+                          <div className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
+                            <Mail className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Email</p>
+                            <p className="text-xs mt-1">{candidate.email}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Identity Documents */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2 text-sm">
+                        <div className="h-8 w-8 rounded-lg bg-accent/10 flex items-center justify-center">
+                          <IdCard className="h-4 w-4 text-accent" />
+                        </div>
+                        Identity Documents
+                      </CardTitle>
+                    </CardHeader>
+                    <Separator />
+                    <CardContent className="pt-6">
+                      <div className="grid gap-6 sm:grid-cols-2">
+                        <div className="flex items-start gap-3">
+                          <div className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
+                            <IdCard className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">ID Number (KTP)</p>
+                            <p className="text-xs mt-1">{candidate.idNo || "—"}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-3">
+                          <div className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
+                            <CreditCard className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Tax ID (NPWP)</p>
+                            <p className="text-xs mt-1">{candidate.taxId || "—"}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-3">
+                          <div className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
+                            <CreditCard className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">BPJS ID</p>
+                            <p className="text-xs mt-1">{candidate.bpjsId || "—"}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-3">
+                          <div className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
+                            <CreditCard className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Driving License</p>
+                            <p className="text-xs mt-1">{candidate.drivingLicense || "—"}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+              {/* Biodata Section - Full width cards */}
+              <div className="space-y-8">
+                {/* Educational Background */}
+                <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-sm">
+                    <div className="h-8 w-8 rounded-lg bg-accent/10 flex items-center justify-center">
+                      <GraduationCap className="h-4 w-4 text-accent" />
+                    </div>
+                    Educational Background
+                  </CardTitle>
+                </CardHeader>
+                <Separator />
+                <CardContent className="pt-6">
+                  {biodata?.education && biodata.education.length > 0 ? (
+                    <div className="overflow-x-auto rounded-lg border">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="bg-muted/50 border-b">
+                            <th className="text-left py-3 px-4 font-medium text-muted-foreground text-xs uppercase tracking-wider">School / University</th>
+                            <th className="text-left py-3 px-4 font-medium text-muted-foreground text-xs uppercase tracking-wider">City</th>
+                            <th className="text-left py-3 px-4 font-medium text-muted-foreground text-xs uppercase tracking-wider">Degree</th>
+                            <th className="text-left py-3 px-4 font-medium text-muted-foreground text-xs uppercase tracking-wider">Major</th>
+                            <th className="text-left py-3 px-4 font-medium text-muted-foreground text-xs uppercase tracking-wider">Year</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {biodata.education.map((edu, index) => (
+                            <tr key={edu.id} className={cn("border-b last:border-b-0", index % 2 === 0 ? "bg-transparent" : "bg-muted/30")}>
+                              <td className="py-3 px-4 font-medium">{edu.schoolUniversity}</td>
+                              <td className="py-3 px-4 text-muted-foreground">{edu.city}</td>
+                              <td className="py-3 px-4 text-muted-foreground">{edu.degree}</td>
+                              <td className="py-3 px-4 text-muted-foreground">{edu.major}</td>
+                              <td className="py-3 px-4 text-muted-foreground">{edu.yearGraduate}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center py-8 text-muted-foreground">
+                      <p className="text-sm">No educational background data available</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Work Experience */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-sm">
+                    <div className="h-8 w-8 rounded-lg bg-accent/10 flex items-center justify-center">
+                      <Building2 className="h-4 w-4 text-accent" />
+                    </div>
+                    Work Experience
+                  </CardTitle>
+                </CardHeader>
+                <Separator />
+                <CardContent className="pt-6">
+                  {biodata?.workExperience && biodata.workExperience.length > 0 ? (
+                    <div className="overflow-x-auto rounded-lg border">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="bg-muted/50 border-b">
+                            <th className="text-left py-3 px-4 font-medium text-muted-foreground text-xs uppercase tracking-wider">Company</th>
+                            <th className="text-left py-3 px-4 font-medium text-muted-foreground text-xs uppercase tracking-wider">City</th>
+                            <th className="text-left py-3 px-4 font-medium text-muted-foreground text-xs uppercase tracking-wider">Job Title</th>
+                            <th className="text-left py-3 px-4 font-medium text-muted-foreground text-xs uppercase tracking-wider">Period</th>
+                            <th className="text-left py-3 px-4 font-medium text-muted-foreground text-xs uppercase tracking-wider">Length</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {biodata.workExperience.map((exp, index) => (
+                            <tr key={exp.id} className={cn("border-b last:border-b-0", index % 2 === 0 ? "bg-transparent" : "bg-muted/30")}>
+                              <td className="py-3 px-4 font-medium">{exp.company}</td>
+                              <td className="py-3 px-4 text-muted-foreground">{exp.city}</td>
+                              <td className="py-3 px-4 text-muted-foreground">{exp.jobTitle}</td>
+                              <td className="py-3 px-4 text-muted-foreground">{exp.period}</td>
+                              <td className="py-3 px-4 text-muted-foreground">{exp.lengthOfWorking}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center py-8 text-muted-foreground">
+                      <p className="text-sm">No work experience data available</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Family Members */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-sm">
+                    <div className="h-8 w-8 rounded-lg bg-accent/10 flex items-center justify-center">
+                      <Users className="h-4 w-4 text-accent" />
+                    </div>
+                    Family Members
+                  </CardTitle>
+                </CardHeader>
+                <Separator />
+                <CardContent className="pt-6">
+                  {biodata?.family && biodata.family.length > 0 ? (
+                    <div className="overflow-x-auto rounded-lg border">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="bg-muted/50 border-b">
+                            <th className="text-left py-3 px-4 font-medium text-muted-foreground text-xs uppercase tracking-wider">Name</th>
+                            <th className="text-left py-3 px-4 font-medium text-muted-foreground text-xs uppercase tracking-wider">Relation</th>
+                            <th className="text-left py-3 px-4 font-medium text-muted-foreground text-xs uppercase tracking-wider">Age</th>
+                            <th className="text-left py-3 px-4 font-medium text-muted-foreground text-xs uppercase tracking-wider">Education</th>
+                            <th className="text-left py-3 px-4 font-medium text-muted-foreground text-xs uppercase tracking-wider">Work</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {biodata.family.map((member, index) => (
+                            <tr key={member.id} className={cn("border-b last:border-b-0", index % 2 === 0 ? "bg-transparent" : "bg-muted/30")}>
+                              <td className="py-3 px-4 font-medium">{member.name}</td>
+                              <td className="py-3 px-4 text-muted-foreground">{member.relation}</td>
+                              <td className="py-3 px-4 text-muted-foreground">{member.age}</td>
+                              <td className="py-3 px-4 text-muted-foreground">{member.education}</td>
+                              <td className="py-3 px-4 text-muted-foreground">{member.work}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center py-8 text-muted-foreground">
+                      <p className="text-sm">No family member data available</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Course / Training Experience */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-sm">
+                    <div className="h-8 w-8 rounded-lg bg-accent/10 flex items-center justify-center">
+                      <Award className="h-4 w-4 text-accent" />
+                    </div>
+                    Course / Training Experience
+                  </CardTitle>
+                </CardHeader>
+                <Separator />
+                <CardContent className="pt-6">
+                  {biodata?.training && biodata.training.length > 0 ? (
+                    <div className="overflow-x-auto rounded-lg border">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="bg-muted/50 border-b">
+                            <th className="text-left py-3 px-4 font-medium text-muted-foreground text-xs uppercase tracking-wider">Course Topic</th>
+                            <th className="text-left py-3 px-4 font-medium text-muted-foreground text-xs uppercase tracking-wider">Provider</th>
+                            <th className="text-left py-3 px-4 font-medium text-muted-foreground text-xs uppercase tracking-wider">Year</th>
+                            <th className="text-left py-3 px-4 font-medium text-muted-foreground text-xs uppercase tracking-wider">City</th>
+                            <th className="text-left py-3 px-4 font-medium text-muted-foreground text-xs uppercase tracking-wider">Certificate</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {biodata.training.map((course, index) => (
+                            <tr key={course.id} className={cn("border-b last:border-b-0", index % 2 === 0 ? "bg-transparent" : "bg-muted/30")}>
+                              <td className="py-3 px-4 font-medium">{course.courseTopic}</td>
+                              <td className="py-3 px-4 text-muted-foreground">{course.provider}</td>
+                              <td className="py-3 px-4 text-muted-foreground">{course.year}</td>
+                              <td className="py-3 px-4 text-muted-foreground">{course.city}</td>
+                              <td className="py-3 px-4 text-muted-foreground">{course.certificate}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center py-8 text-muted-foreground">
+                      <p className="text-sm">No course/training data available</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Self Assessment */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-sm">
+                    <div className="h-8 w-8 rounded-lg bg-accent/10 flex items-center justify-center">
+                      <ClipboardList className="h-4 w-4 text-accent" />
+                    </div>
+                    Self Assessment
+                  </CardTitle>
+                </CardHeader>
+                <Separator />
+                <CardContent className="pt-6">
+                  {biodata?.selfAssessment ? (
+                    <div className="grid gap-6 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <p className="text-sm font-semibold text-foreground">What caused you to leave your last job?</p>
+                        <div className="bg-secondary/50 rounded-lg p-4 min-h-[80px]">
+                          <p className="text-sm text-foreground/80 leading-relaxed">{biodata.selfAssessment.reasonLeavingLastJob || "—"}</p>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <p className="text-sm font-semibold text-foreground">Describe your last job description!</p>
+                        <div className="bg-secondary/50 rounded-lg p-4 min-h-[80px]">
+                          <p className="text-sm text-foreground/80 leading-relaxed">{biodata.selfAssessment.lastJobDescription || "—"}</p>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <p className="text-sm font-semibold text-foreground">What is your reason/purpose for applying to this company?</p>
+                        <div className="bg-secondary/50 rounded-lg p-4 min-h-[80px]">
+                          <p className="text-sm text-foreground/80 leading-relaxed">{biodata.selfAssessment.reasonApplying || "—"}</p>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <p className="text-sm font-semibold text-foreground">What tasks/jobs are you good at, related to the position you are applying for?</p>
+                        <div className="bg-secondary/50 rounded-lg p-4 min-h-[80px]">
+                          <p className="text-sm text-foreground/80 leading-relaxed">{biodata.selfAssessment.relevantSkills || "—"}</p>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <p className="text-sm font-semibold text-foreground">Last salary received?</p>
+                        <div className="bg-secondary/50 rounded-lg p-4">
+                          <p className="text-sm text-foreground/80">{biodata.selfAssessment.lastSalary || "—"}</p>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <p className="text-sm font-semibold text-foreground">What salary do you expect?</p>
+                        <div className="bg-secondary/50 rounded-lg p-4">
+                          <p className="text-sm text-foreground/80">{biodata.selfAssessment.expectedSalary || "—"}</p>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <p className="text-sm font-semibold text-foreground">Active language?</p>
+                        <div className="bg-secondary/50 rounded-lg p-4">
+                          <p className="text-sm text-foreground/80">{biodata.selfAssessment.activeLanguage || "—"}</p>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <p className="text-sm font-semibold text-foreground">Are you willing to transfer/rotate at work?</p>
+                        <div className="bg-secondary/50 rounded-lg p-4">
+                          <p className="text-sm text-foreground/80">{biodata.selfAssessment.willingToTransfer || "—"}</p>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <p className="text-sm font-semibold text-foreground">Are you willing to do double work for the company due to limited personnel?</p>
+                        <div className="bg-secondary/50 rounded-lg p-4">
+                          <p className="text-sm text-foreground/80">{biodata.selfAssessment.willingToDoubleWork || "—"}</p>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <p className="text-sm font-semibold text-foreground">Who are the employees you know at this company?</p>
+                        <div className="bg-secondary/50 rounded-lg p-4">
+                          <p className="text-sm text-foreground/80">{biodata.selfAssessment.knownEmployees || "—"}</p>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <p className="text-sm font-semibold text-foreground">When are you ready to work?</p>
+                        <div className="bg-secondary/50 rounded-lg p-4">
+                          <p className="text-sm text-foreground/80">{biodata.selfAssessment.readyToWork || "—"}</p>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <p className="text-sm font-semibold text-foreground">What is your relationship with the employee?</p>
+                        <div className="bg-secondary/50 rounded-lg p-4">
+                          <p className="text-sm text-foreground/80">{biodata.selfAssessment.employeeRelationship || "—"}</p>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <p className="text-sm font-semibold text-foreground">Your reference contact name</p>
+                        <div className="bg-secondary/50 rounded-lg p-4">
+                          <p className="text-sm text-foreground/80">{biodata.selfAssessment.referenceContactName || "—"}</p>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <p className="text-sm font-semibold text-foreground">Your reference contact phone no</p>
+                        <div className="bg-secondary/50 rounded-lg p-4">
+                          <p className="text-sm text-foreground/80">{biodata.selfAssessment.referenceContactPhone || "—"}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center py-8 text-muted-foreground">
+                      <p className="text-sm">No self assessment data available</p>
+                    </div>
+                  )}
+                </CardContent>
                 </Card>
               </div>
             </TabsContent>
@@ -1466,7 +1978,7 @@ export default function CandidateDetailPage() {
                 <div className="space-y-6">
                   <Card>
                     <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
+                      <CardTitle className="flex items-center gap-2 text-sm">
                         <PartyPopper className="h-5 w-5" />
                         Onboarding
                       </CardTitle>
@@ -1530,7 +2042,7 @@ export default function CandidateDetailPage() {
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <p className="font-medium">{candidate.fullname}</p>
+                  <p className="text-xs font-medium">{candidate.fullname}</p>
                   <p className="text-sm text-muted-foreground">{candidate.jobTitle?.name}</p>
                 </div>
               </div>
@@ -1647,7 +2159,7 @@ export default function CandidateDetailPage() {
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <p className="font-medium">{candidate.fullname}</p>
+                  <p className="text-xs font-medium">{candidate.fullname}</p>
                   <p className="text-sm text-muted-foreground">{candidate.jobTitle?.name}</p>
                 </div>
               </div>
