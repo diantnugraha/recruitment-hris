@@ -248,7 +248,7 @@ export default function EmployeeDetailPage() {
 
               {/* ========== SECTION: BIODATA ========== */}
               <div>
-                <h2 className="text-sm font-semibold uppercase tracking-wide mb-4">
+                <h2 className="text-base font-semibold uppercase tracking-wide mb-4">
                   Biodata
                 </h2>
                 <div className="grid grid-cols-2 gap-x-8 gap-y-4">
@@ -265,7 +265,7 @@ export default function EmployeeDetailPage() {
 
               {/* ========== SECTION: WORK DETAILS ========== */}
               <div>
-                <h2 className="text-sm font-semibold uppercase tracking-wide mb-4">
+                <h2 className="text-base font-semibold uppercase tracking-wide mb-4">
                   Work Details
                 </h2>
                 <div className="grid grid-cols-2 gap-x-8 gap-y-4">
@@ -297,7 +297,7 @@ export default function EmployeeDetailPage() {
 
               {/* ========== SECTION: FAMILY ========== */}
               <div>
-                <h2 className="text-sm font-semibold uppercase tracking-wide mb-4">
+                <h2 className="text-base font-semibold uppercase tracking-wide mb-4">
                   Family
                 </h2>
                 <div className="grid grid-cols-2 gap-x-8 gap-y-4">

@@ -374,7 +374,7 @@ export default function EmployeeEditPage() {
             <CardContent className="p-6 space-y-8">
               {/* ========== SECTION: BIODATA ========== */}
               <div>
-                <h2 className="text-sm font-semibold uppercase tracking-wide mb-4">
+                <h2 className="text-base font-semibold uppercase tracking-wide mb-4">
                   Biodata
                 </h2>
                 <div className="space-y-4">
@@ -475,7 +475,7 @@ export default function EmployeeEditPage() {
 
               {/* ========== SECTION: WORK DETAILS ========== */}
               <div>
-                <h2 className="text-sm font-semibold uppercase tracking-wide mb-4">
+                <h2 className="text-base font-semibold uppercase tracking-wide mb-4">
                   Work Details
                 </h2>
                 <div className="space-y-4">
@@ -727,7 +727,7 @@ export default function EmployeeEditPage() {
 
               {/* ========== SECTION: FAMILY ========== */}
               <div>
-                <h2 className="text-sm font-semibold uppercase tracking-wide mb-4">
+                <h2 className="text-base font-semibold uppercase tracking-wide mb-4">
                   Family
                 </h2>
                 <div className="space-y-4">

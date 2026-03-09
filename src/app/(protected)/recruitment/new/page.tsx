@@ -176,7 +176,7 @@ export default function CandidateNewPage() {
             <CardContent className="p-6 space-y-8">
               {/* ========== SECTION: PERSONAL INFO ========== */}
               <div>
-                <h2 className="text-sm font-semibold uppercase tracking-wide mb-4">
+                <h2 className="text-base font-semibold uppercase tracking-wide mb-4">
                   Personal Information
                 </h2>
                 <div className="space-y-4">
@@ -229,7 +229,7 @@ export default function CandidateNewPage() {
 
               {/* ========== SECTION: APPLICATION INFO ========== */}
               <div>
-                <h2 className="text-sm font-semibold uppercase tracking-wide mb-4">
+                <h2 className="text-base font-semibold uppercase tracking-wide mb-4">
                   Application Details
                 </h2>
                 <div className="space-y-4">
@@ -291,7 +291,7 @@ export default function CandidateNewPage() {
 
               {/* ========== SECTION: CURRENT POSITION ========== */}
               <div>
-                <h2 className="text-sm font-semibold uppercase tracking-wide mb-4">
+                <h2 className="text-base font-semibold uppercase tracking-wide mb-4">
                   Current Position
                 </h2>
                 <div className="space-y-4">
@@ -344,7 +344,7 @@ export default function CandidateNewPage() {
 
               {/* ========== SECTION: LINKS ========== */}
               <div>
-                <h2 className="text-sm font-semibold uppercase tracking-wide mb-4">
+                <h2 className="text-base font-semibold uppercase tracking-wide mb-4">
                   Links
                 </h2>
                 <div className="space-y-4">
@@ -385,7 +385,7 @@ export default function CandidateNewPage() {
 
               {/* ========== SECTION: NOTES ========== */}
               <div>
-                <h2 className="text-sm font-semibold uppercase tracking-wide mb-4">
+                <h2 className="text-base font-semibold uppercase tracking-wide mb-4">
                   Notes
                 </h2>
                 <div className="space-y-1.5">

@@ -273,18 +273,13 @@ export default function RecruitmentRequestDetailPage() {
 
     const assessment = candidate.assessment;
 
-    // If no assessment or all statuses are empty/PENDING, show SCREENING (ready for interview)
+    // If no assessment, show SCREENING (ready for interview)
     if (!assessment) return CANDIDATE_STATUS.SCREENING;
 
-    // Check if any interview has actually started (has non-PENDING status)
+    // Check if any interview has progressed beyond PENDING
     const interview1Started = assessment.interview1Status && assessment.interview1Status !== "PENDING";
     const interview2Started = assessment.interview2Status && assessment.interview2Status !== "PENDING";
     const mcuStarted = assessment.mcuStatus && assessment.mcuStatus !== "PENDING";
-
-    // If nothing has started yet, show SCREENING
-    if (!interview1Started && !interview2Started && !mcuStarted) {
-      return CANDIDATE_STATUS.SCREENING;
-    }
 
     // MCU completed
     if (assessment.mcuStatus === "PASSED") return CANDIDATE_STATUS.HIRED;
@@ -301,7 +296,8 @@ export default function RecruitmentRequestDetailPage() {
     if (assessment.interview1Status === "FAILED") return CANDIDATE_STATUS.REJECTED;
     if (interview1Started) return CANDIDATE_STATUS.INTERVIEW_1;
 
-    return CANDIDATE_STATUS.SCREENING;
+    // Assessment exists but all statuses are PENDING — interview process was started
+    return CANDIDATE_STATUS.INTERVIEW_1;
   };
 
   const getActionDialogContent = () => {

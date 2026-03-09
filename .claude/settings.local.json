@@ -3,7 +3,11 @@
     "allow": [
       "Bash(npx create-next-app@latest . --typescript --tailwind --eslint --app --src-dir --no-git --import-alias \"@/*\" --use-npm)",
       "Bash(find \"c:\\\\Users\\\\diann\\\\Documents\\\\Project Quo\\\\recruitment-hris\\\\src\\\\app\\\\\\(dashboard\\)\\\\recruitment\" -type f -name \"*.tsx\")",
-      "Bash(ls -la \"c:\\\\Users\\\\diann\\\\Documents\\\\Project Quo\\\\recruitment-hris\\\\src\\\\app\\\\\\(dashboard\\)\\\\recruitment\\\\[id]\")"
+      "Bash(ls -la \"c:\\\\Users\\\\diann\\\\Documents\\\\Project Quo\\\\recruitment-hris\\\\src\\\\app\\\\\\(dashboard\\)\\\\recruitment\\\\[id]\")",
+      "Bash(npx prisma migrate dev --name add_assessment_scoring --create-only)",
+      "Bash(npx prisma migrate deploy)",
+      "Bash(npx prisma generate)",
+      "Bash(npx tsc --noEmit --pretty)"
     ]
   }
 }

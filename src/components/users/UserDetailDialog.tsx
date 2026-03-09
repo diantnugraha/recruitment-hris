@@ -186,7 +186,7 @@ export function UserDetailDialog({
 
               {/* Account Information */}
               <div className="space-y-3">
-                <h4 className="text-sm font-medium">Account Information</h4>
+                <h4 className="text-base font-medium">Account Information</h4>
                 <div className="grid gap-3">
                   <DetailField label="Display Name" value={user.displayName} icon={User} />
                   <DetailField label="Username" value={user.name || ""} icon={User} />
@@ -203,7 +203,7 @@ export function UserDetailDialog({
 
               {/* Related Information */}
               <div className="space-y-3">
-                <h4 className="text-sm font-medium">Related Information</h4>
+                <h4 className="text-base font-medium">Related Information</h4>
                 <div className="grid gap-3">
                   <DetailField
                     label="Linked Employee"

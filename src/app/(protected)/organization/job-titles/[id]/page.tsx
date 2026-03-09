@@ -226,7 +226,7 @@ export default function JobTitleDetailPage() {
 
               {/* General Information */}
               <div>
-                <h2 className="text-sm font-semibold uppercase tracking-wide mb-4">
+                <h2 className="text-base font-semibold uppercase tracking-wide mb-4">
                   General Information
                 </h2>
                 <div className="grid grid-cols-2 gap-x-8 gap-y-4">
@@ -267,7 +267,7 @@ export default function JobTitleDetailPage() {
                   <div className="h-6 w-6 rounded-md bg-blue-100 flex items-center justify-center">
                     <ClipboardList className="h-3.5 w-3.5 text-blue-600" />
                   </div>
-                  <h2 className="text-sm font-semibold uppercase tracking-wide">
+                  <h2 className="text-base font-semibold uppercase tracking-wide">
                     General Job Purpose
                   </h2>
                 </div>
@@ -285,7 +285,7 @@ export default function JobTitleDetailPage() {
                   <div className="h-6 w-6 rounded-md bg-gray-100 flex items-center justify-center">
                     <FileText className="h-3.5 w-3.5 text-gray-600" />
                   </div>
-                  <h2 className="text-sm font-semibold uppercase tracking-wide">
+                  <h2 className="text-base font-semibold uppercase tracking-wide">
                     Job Description
                   </h2>
                 </div>
@@ -303,7 +303,7 @@ export default function JobTitleDetailPage() {
                   <div className="h-6 w-6 rounded-md bg-green-100 flex items-center justify-center">
                     <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
                   </div>
-                  <h2 className="text-sm font-semibold uppercase tracking-wide">
+                  <h2 className="text-base font-semibold uppercase tracking-wide">
                     Job Requirements
                   </h2>
                 </div>

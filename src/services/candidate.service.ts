@@ -1,4 +1,4 @@
-import { get, post, put, del } from "@/lib/axios";
+import { api, get, post, put, del } from "@/lib/axios";
 import type { ApiResponse } from "@/types";
 
 // --- Types ---
@@ -42,6 +42,47 @@ export interface AssessmentProgress {
   anyFailed: boolean;
   currentStage: "waiting" | "interview1" | "interview2" | "mcu" | "completed" | "failed";
   interviewStarted?: boolean;
+}
+
+export interface ScoringInput {
+  relevance_of_experience: number;
+  training_undertaken: number;
+  technical_skills: number;
+  non_technical_skills: number;
+  communication_skills: number;
+  emotional_maturity: number;
+  understanding_of_position: number;
+  teamwork_ability: number;
+}
+
+export interface InterviewUpdatePayload {
+  status: "PASSED" | "FAILED";
+  description: string;
+  scoring?: ScoringInput;
+  conclusion?: "PROCEED" | "RECOMMENDED" | "REJECTED";
+  key_competencies?: string | null;
+  interviewer_notes?: string | null;
+  assessed_by?: string | null;
+}
+
+export interface AssessmentScoringData {
+  id: number;
+  assessment_id: number;
+  stage: "INTERVIEW1" | "INTERVIEW2";
+  relevance_of_experience: number;
+  training_undertaken: number;
+  technical_skills: number;
+  non_technical_skills: number;
+  communication_skills: number;
+  emotional_maturity: number;
+  understanding_of_position: number;
+  teamwork_ability: number;
+  total_score: number;
+  conclusion: "PROCEED" | "RECOMMENDED" | "REJECTED";
+  key_competencies: string | null;
+  interviewer_notes: string | null;
+  assessed_by: string | null;
+  assessed_at: string | null;
 }
 
 export interface CandidateAssessment {
@@ -655,13 +696,12 @@ export const candidateService = {
 
   async updateInterview1(
     candidateId: string | number,
-    status: "PASSED" | "FAILED",
-    description: string
+    payload: InterviewUpdatePayload
   ): Promise<ApiResponse<AssessmentProgress>> {
     try {
-      const response = await put<unknown, { status: string; description: string }>(
+      const response = await put<unknown, InterviewUpdatePayload>(
         `/v1/candidate/${candidateId}/assessment/interview1`,
-        { status, description }
+        payload
       );
       const res = response as { success?: boolean; data?: AssessmentProgress; message?: string };
 
@@ -672,19 +712,18 @@ export const candidateService = {
       return { success: false, message: res.message || "Unexpected response format" };
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } } };
-      return { success: false, message: err.response?.data?.message || "Failed to update interview 1" };
+      return { success: false, message: err.response?.data?.message || "Failed to update Interview HR" };
     }
   },
 
   async updateInterview2(
     candidateId: string | number,
-    status: "PASSED" | "FAILED",
-    description: string
+    payload: InterviewUpdatePayload
   ): Promise<ApiResponse<AssessmentProgress>> {
     try {
-      const response = await put<unknown, { status: string; description: string }>(
+      const response = await put<unknown, InterviewUpdatePayload>(
         `/v1/candidate/${candidateId}/assessment/interview2`,
-        { status, description }
+        payload
       );
       const res = response as { success?: boolean; data?: AssessmentProgress; message?: string };
 
@@ -695,7 +734,29 @@ export const candidateService = {
       return { success: false, message: res.message || "Unexpected response format" };
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } } };
-      return { success: false, message: err.response?.data?.message || "Failed to update interview 2" };
+      return { success: false, message: err.response?.data?.message || "Failed to update Interview User" };
+    }
+  },
+
+  async getAssessmentScoring(
+    candidateId: string | number,
+    stage?: "interview1" | "interview2"
+  ): Promise<ApiResponse<AssessmentScoringData | AssessmentScoringData[]>> {
+    try {
+      const params = stage ? `?stage=${stage}` : "";
+      const response = await get<unknown>(
+        `/v1/candidate/${candidateId}/assessment/scoring${params}`
+      );
+      const res = response as { success?: boolean; data?: AssessmentScoringData | AssessmentScoringData[] };
+
+      if (res.success && res.data) {
+        return { success: true, data: res.data };
+      }
+
+      return { success: false, message: "Unexpected response format" };
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      return { success: false, message: err.response?.data?.message || "Failed to fetch assessment scoring" };
     }
   },
 
@@ -719,6 +780,64 @@ export const candidateService = {
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } } };
       return { success: false, message: err.response?.data?.message || "Failed to update MCU" };
+    }
+  },
+
+  // ==================== MCU Document ====================
+
+  async uploadMcuDocument(
+    candidateId: string | number,
+    file: File
+  ): Promise<ApiResponse<{ url: string; name: string }>> {
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await api.post(
+        `/v1/candidate/${candidateId}/assessment/mcu/document`,
+        formData,
+        { headers: { "Content-Type": "multipart/form-data" } }
+      );
+      const res = response.data as { success?: boolean; data?: { url: string; name: string }; message?: string };
+
+      if (res.success && res.data) {
+        return { success: true, data: res.data };
+      }
+
+      return { success: false, message: res.message || "Unexpected response format" };
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      return { success: false, message: err.response?.data?.message || "Failed to upload MCU document" };
+    }
+  },
+
+  async getMcuDocument(
+    candidateId: string | number
+  ): Promise<ApiResponse<{ url: string | null; name: string | null; presignedUrl: string | null }>> {
+    try {
+      const response = await get<unknown>(`/v1/candidate/${candidateId}/assessment/mcu/document`);
+      const res = response as {
+        success?: boolean;
+        data?: { url: string | null; name: string | null; presignedUrl: string | null };
+      };
+
+      if (res.success && res.data) {
+        return { success: true, data: res.data };
+      }
+
+      return { success: false, message: "Unexpected response format" };
+    } catch (error: unknown) {
+      return { success: false, message: "Failed to fetch MCU document" };
+    }
+  },
+
+  async deleteMcuDocument(candidateId: string | number): Promise<ApiResponse<void>> {
+    try {
+      await del<unknown>(`/v1/candidate/${candidateId}/assessment/mcu/document`);
+      return { success: true };
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      return { success: false, message: err.response?.data?.message || "Failed to delete MCU document" };
     }
   },
 

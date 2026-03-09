@@ -470,7 +470,7 @@ export default function EmployeeRequestDetailPage() {
                   <div className="flex items-start justify-between">
                     <div>
                       <div className="flex items-center gap-3">
-                        <h2 className="text-base font-semibold tracking-tight">{request.code}</h2>
+                        <h2 className="text-xl font-semibold tracking-tight">{request.code}</h2>
                         {getStatusBadge(request.status)}
                       </div>
                       <p className="mt-1.5 text-sm text-foreground/80">{request.jobTitle?.name}</p>
@@ -587,19 +587,19 @@ export default function EmployeeRequestDetailPage() {
                   <CardContent className="pt-6 space-y-6">
                     {hasLexicalContent(request.generalJobPurpose) && (
                       <div>
-                        <p className="text-sm font-semibold text-foreground mb-2">General Job Purpose</p>
+                        <p className="text-base font-semibold text-foreground mb-2">General Job Purpose</p>
                         <LexicalRenderer value={request.generalJobPurpose} />
                       </div>
                     )}
                     {hasLexicalContent(request.jobDescription) && (
                       <div>
-                        <p className="text-sm font-semibold text-foreground mb-2">Job Description</p>
+                        <p className="text-base font-semibold text-foreground mb-2">Job Description</p>
                         <LexicalRenderer value={request.jobDescription} />
                       </div>
                     )}
                     {hasLexicalContent(request.jobRequirement) && (
                       <div>
-                        <p className="text-sm font-semibold text-foreground mb-2">Job Requirement</p>
+                        <p className="text-base font-semibold text-foreground mb-2">Job Requirement</p>
                         <LexicalRenderer value={request.jobRequirement} />
                       </div>
                     )}

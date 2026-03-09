@@ -252,7 +252,7 @@ export default function JobTitleEditPage() {
             <CardContent className="p-6 space-y-6">
               {/* Basic Fields */}
               <div>
-                <h2 className="text-sm font-semibold uppercase tracking-wide mb-4">
+                <h2 className="text-base font-semibold uppercase tracking-wide mb-4">
                   General Information
                 </h2>
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -414,7 +414,7 @@ export default function JobTitleEditPage() {
 
               {/* Rich Text: General Job Purpose */}
               <div className="border-t border-dashed pt-6">
-                <h2 className="text-sm font-semibold uppercase tracking-wide mb-4">
+                <h2 className="text-base font-semibold uppercase tracking-wide mb-4">
                   General Job Purpose
                 </h2>
                 <LexicalEditor
@@ -426,7 +426,7 @@ export default function JobTitleEditPage() {
 
               {/* Rich Text: Job Description */}
               <div className="border-t border-dashed pt-6">
-                <h2 className="text-sm font-semibold uppercase tracking-wide mb-4">
+                <h2 className="text-base font-semibold uppercase tracking-wide mb-4">
                   Job Description
                 </h2>
                 <LexicalEditor
@@ -438,7 +438,7 @@ export default function JobTitleEditPage() {
 
               {/* Rich Text: Job Requirements */}
               <div className="border-t border-dashed pt-6">
-                <h2 className="text-sm font-semibold uppercase tracking-wide mb-4">
+                <h2 className="text-base font-semibold uppercase tracking-wide mb-4">
                   Job Requirements
                 </h2>
                 <LexicalEditor

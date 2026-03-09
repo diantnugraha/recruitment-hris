@@ -31,6 +31,12 @@ import {
   GraduationCap,
   Award,
   ClipboardList,
+  ChevronRight,
+  Upload,
+  Download,
+  Trash2,
+  File,
+  Eye,
 } from "lucide-react";
 
 import { Header } from "@/components/layout/header";
@@ -67,6 +73,7 @@ import {
   type CandidateWithRelations,
   type AssessmentProgress,
   type CandidateBiodata,
+  type AssessmentScoringData,
 } from "@/services/candidate.service";
 import { formatShortDate, getInitials, cn } from "@/lib/utils";
 import { showToast } from "@/lib/utils/toast-messages";
@@ -77,13 +84,13 @@ import { LexicalRenderer } from "@/components/shared/lexical-renderer";
 const ASSESSMENT_STAGES = [
   {
     key: "interview1" as const,
-    label: "Interview 1",
+    label: "Interview HR",
     description: "Initial interview with HR/Hiring Manager",
     icon: ClipboardCheck,
   },
   {
     key: "interview2" as const,
-    label: "Interview 2",
+    label: "Interview User",
     description: "Technical/Final interview with team",
     icon: Users,
   },
@@ -98,36 +105,17 @@ const ASSESSMENT_STAGES = [
 // Workflow progress steps for visual stepper
 const RECRUITMENT_WORKFLOW_STEPS = [
   { key: "biodata", label: "Biodata", icon: FileText },
-  { key: "interview1", label: "Interview 1", icon: ClipboardCheck },
-  { key: "interview2", label: "Interview 2", icon: Users },
+  { key: "interview1", label: "Interview HR", icon: ClipboardCheck },
+  { key: "interview2", label: "Interview User", icon: Users },
   { key: "mcu", label: "MCU", icon: Stethoscope },
   { key: "completed", label: "Completed", icon: PartyPopper },
 ];
 
 type AssessmentStageKey = typeof ASSESSMENT_STAGES[number]["key"];
 
-// HR Assessment Scoring Criteria
-const HR_SCORING_CRITERIA = [
-  { key: "relevanceOfExperience", label: "Relevance of Experience" },
-  { key: "trainingUndertaken", label: "Training Undertaken" },
-  { key: "technicalSkills", label: "Technical Skills" },
-  { key: "nonTechnicalSkills", label: "Non-Technical Skills" },
-  { key: "communicationSkills", label: "Communication Skills" },
-  { key: "emotionalMaturity", label: "Emotional Maturity" },
-  { key: "understandingOfPosition", label: "Understanding of the Applied Position" },
-  { key: "teamworkAbility", label: "Ability to Work Collaboratively in a Team" },
-] as const;
-
-const SCORE_OPTIONS = [
-  { value: 1, label: "Very Poor" },
-  { value: 2, label: "Poor" },
-  { value: 3, label: "Fair" },
-  { value: 4, label: "Good" },
-  { value: 5, label: "Excellent" },
-] as const;
-
-type HRScoringKey = typeof HR_SCORING_CRITERIA[number]["key"];
-type HRConclusion = "proceed" | "recommended" | "rejected" | null;
+// HR Assessment Scoring — shared constants
+import { HR_SCORING_CRITERIA, SCORE_OPTIONS } from "@/lib/constants/assessmentScoring";
+import type { HRScoringKey, HRConclusion } from "@/lib/constants/assessmentScoring";
 
 // LocalStorage key for HR assessment form data
 const HR_FORM_STORAGE_KEY = (id: string) => `hr-assessment-form-${id}`;
@@ -197,6 +185,16 @@ export default function CandidateDetailPage() {
   const [userConclusion, setUserConclusion] = React.useState<HRConclusion>(null);
   const [isSubmittingUser, setIsSubmittingUser] = React.useState(false);
   const [showUserPreview, setShowUserPreview] = React.useState(false);
+
+  // MCU Document State
+  const [mcuDocument, setMcuDocument] = React.useState<{
+    url: string | null;
+    name: string | null;
+    presignedUrl: string | null;
+  } | null>(null);
+  const [isUploadingMcu, setIsUploadingMcu] = React.useState(false);
+  const [isDeletingMcuDoc, setIsDeletingMcuDoc] = React.useState(false);
+  const mcuFileInputRef = React.useRef<HTMLInputElement>(null);
 
   // Start Interview state
   const [isStartingInterview, setIsStartingInterview] = React.useState(false);
@@ -283,6 +281,37 @@ export default function CandidateDetailPage() {
     localStorage.removeItem(USER_FORM_STORAGE_KEY(id));
   }, [id]);
 
+  // Populate form state from saved scoring data
+  const populateScoringForm = React.useCallback((
+    scoring: AssessmentScoringData,
+    stage: "interview1" | "interview2"
+  ) => {
+    const formScoring: Record<HRScoringKey, number | null> = {
+      relevanceOfExperience: scoring.relevance_of_experience,
+      trainingUndertaken: scoring.training_undertaken,
+      technicalSkills: scoring.technical_skills,
+      nonTechnicalSkills: scoring.non_technical_skills,
+      communicationSkills: scoring.communication_skills,
+      emotionalMaturity: scoring.emotional_maturity,
+      understandingOfPosition: scoring.understanding_of_position,
+      teamworkAbility: scoring.teamwork_ability,
+    };
+
+    const conclusion = scoring.conclusion?.toLowerCase() as HRConclusion;
+
+    if (stage === "interview1") {
+      setHrScoring(formScoring);
+      setHrConclusion(conclusion);
+      if (scoring.key_competencies) setHrKeyCompetencies(scoring.key_competencies);
+      if (scoring.interviewer_notes) setHrUserNotes(scoring.interviewer_notes);
+    } else {
+      setUserScoring(formScoring);
+      setUserConclusion(conclusion);
+      if (scoring.key_competencies) setUserKeyCompetencies(scoring.key_competencies);
+      if (scoring.interviewer_notes) setUserUserNotes(scoring.interviewer_notes);
+    }
+  }, []);
+
   // Fetch candidate and assessment data
   const fetchData = React.useCallback(async () => {
     setIsLoading(true);
@@ -313,6 +342,30 @@ export default function CandidateDetailPage() {
 
       if (progressRes.success && progressRes.data) {
         setProgress(progressRes.data);
+
+        // Fetch scoring data if any interview stage is completed
+        const { interview1, interview2 } = progressRes.data;
+        if (!interview1.pending || !interview2.pending) {
+          const scoringRes = await candidateService.getAssessmentScoring(id);
+          if (scoringRes.success && scoringRes.data) {
+            const scorings = Array.isArray(scoringRes.data) ? scoringRes.data : [scoringRes.data];
+            for (const scoring of scorings) {
+              if (scoring.stage === "INTERVIEW1") {
+                populateScoringForm(scoring, "interview1");
+              } else if (scoring.stage === "INTERVIEW2") {
+                populateScoringForm(scoring, "interview2");
+              }
+            }
+          }
+        }
+
+        // Fetch MCU document if MCU stage is unlocked
+        if (!progressRes.data.mcu.locked) {
+          const mcuDocRes = await candidateService.getMcuDocument(id);
+          if (mcuDocRes.success && mcuDocRes.data) {
+            setMcuDocument(mcuDocRes.data);
+          }
+        }
       }
 
       if (biodataRes.success && biodataRes.data) {
@@ -324,7 +377,7 @@ export default function CandidateDetailPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [id]);
+  }, [id, populateScoringForm]);
 
   React.useEffect(() => {
     fetchData();
@@ -340,10 +393,10 @@ export default function CandidateDetailPage() {
 
       switch (stage) {
         case "interview1":
-          response = await candidateService.updateInterview1(id, action, notes);
+          response = await candidateService.updateInterview1(id, { status: action, description: notes });
           break;
         case "interview2":
-          response = await candidateService.updateInterview2(id, action, notes);
+          response = await candidateService.updateInterview2(id, { status: action, description: notes });
           break;
         case "mcu":
           response = await candidateService.updateMcu(id, action, notes);
@@ -352,7 +405,7 @@ export default function CandidateDetailPage() {
 
       if (response?.success && response.data) {
         setProgress(response.data);
-        showToast.success(`${stage === "mcu" ? "MCU" : stage === "interview1" ? "Interview 1" : "Interview 2"} marked as ${action.toLowerCase()}`);
+        showToast.success(`${stage === "mcu" ? "MCU" : stage === "interview1" ? "Interview HR" : "Interview User"} marked as ${action.toLowerCase()}`);
 
         // Refresh candidate data to get updated assessment
         const candidateRes = await candidateService.getById(id);
@@ -367,6 +420,66 @@ export default function CandidateDetailPage() {
     } finally {
       setIsSubmitting(null);
       setConfirmDialog(null);
+    }
+  };
+
+  // MCU Document Upload Handler
+  const handleMcuFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const allowedTypes = ["application/pdf", "image/jpeg", "image/png", "image/jpg"];
+    if (!allowedTypes.includes(file.type)) {
+      showToast.error("Invalid file type. Please upload PDF, JPEG, or PNG.");
+      return;
+    }
+
+    // Validate file size (10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      showToast.error("File too large. Maximum size is 10MB.");
+      return;
+    }
+
+    setIsUploadingMcu(true);
+    try {
+      const response = await candidateService.uploadMcuDocument(id, file);
+      if (response.success && response.data) {
+        // Refresh MCU document data
+        const docRes = await candidateService.getMcuDocument(id);
+        if (docRes.success && docRes.data) {
+          setMcuDocument(docRes.data);
+        }
+        showToast.success("MCU document uploaded successfully");
+      } else {
+        showToast.error(response.message || "Failed to upload document");
+      }
+    } catch (err) {
+      showToast.error("Failed to upload MCU document");
+    } finally {
+      setIsUploadingMcu(false);
+      // Reset file input
+      if (mcuFileInputRef.current) {
+        mcuFileInputRef.current.value = "";
+      }
+    }
+  };
+
+  // MCU Document Delete Handler
+  const handleMcuDocumentDelete = async () => {
+    setIsDeletingMcuDoc(true);
+    try {
+      const response = await candidateService.deleteMcuDocument(id);
+      if (response.success) {
+        setMcuDocument(null);
+        showToast.success("MCU document deleted successfully");
+      } else {
+        showToast.error(response.message || "Failed to delete document");
+      }
+    } catch (err) {
+      showToast.error("Failed to delete MCU document");
+    } finally {
+      setIsDeletingMcuDoc(false);
     }
   };
 
@@ -390,22 +503,23 @@ export default function CandidateDetailPage() {
       // Map conclusion to action
       const action: "PASSED" | "FAILED" = hrConclusion === "rejected" ? "FAILED" : "PASSED";
 
-      // Compose notes with all form data
-      const formattedNotes = [
-        "=== SCORING ===",
-        ...HR_SCORING_CRITERIA.map(criteria => {
-          const score = hrScoring[criteria.key];
-          const scoreLabel = SCORE_OPTIONS.find(opt => opt.value === score)?.label || "-";
-          return `${criteria.label}: ${scoreLabel} (${score}/5)`;
-        }),
-        "",
-        "=== ADDITIONAL INFORMATION ===",
-        `Key Competencies: ${hrKeyCompetencies || "-"}`,
-        `User Notes: ${hrUserNotes || "-"}`,
-        `Conclusion: ${hrConclusion?.toUpperCase() || "-"}`,
-      ].join("\n");
-
-      const response = await candidateService.updateInterview1(id, action, formattedNotes);
+      const response = await candidateService.updateInterview1(id, {
+        status: action,
+        description: "",
+        scoring: {
+          relevance_of_experience: hrScoring.relevanceOfExperience!,
+          training_undertaken: hrScoring.trainingUndertaken!,
+          technical_skills: hrScoring.technicalSkills!,
+          non_technical_skills: hrScoring.nonTechnicalSkills!,
+          communication_skills: hrScoring.communicationSkills!,
+          emotional_maturity: hrScoring.emotionalMaturity!,
+          understanding_of_position: hrScoring.understandingOfPosition!,
+          teamwork_ability: hrScoring.teamworkAbility!,
+        },
+        conclusion: hrConclusion!.toUpperCase() as "PROCEED" | "RECOMMENDED" | "REJECTED",
+        key_competencies: hrKeyCompetencies || null,
+        interviewer_notes: hrUserNotes || null,
+      });
 
       if (response?.success && response.data) {
         setProgress(response.data);
@@ -449,22 +563,23 @@ export default function CandidateDetailPage() {
       // Map conclusion to action
       const action: "PASSED" | "FAILED" = userConclusion === "rejected" ? "FAILED" : "PASSED";
 
-      // Compose notes with all form data
-      const formattedNotes = [
-        "=== SCORING ===",
-        ...HR_SCORING_CRITERIA.map(criteria => {
-          const score = userScoring[criteria.key];
-          const scoreLabel = SCORE_OPTIONS.find(opt => opt.value === score)?.label || "-";
-          return `${criteria.label}: ${scoreLabel} (${score}/5)`;
-        }),
-        "",
-        "=== ADDITIONAL INFORMATION ===",
-        `Key Competencies: ${userKeyCompetencies || "-"}`,
-        `User Notes: ${userUserNotes || "-"}`,
-        `Conclusion: ${userConclusion?.toUpperCase() || "-"}`,
-      ].join("\n");
-
-      const response = await candidateService.updateInterview2(id, action, formattedNotes);
+      const response = await candidateService.updateInterview2(id, {
+        status: action,
+        description: "",
+        scoring: {
+          relevance_of_experience: userScoring.relevanceOfExperience!,
+          training_undertaken: userScoring.trainingUndertaken!,
+          technical_skills: userScoring.technicalSkills!,
+          non_technical_skills: userScoring.nonTechnicalSkills!,
+          communication_skills: userScoring.communicationSkills!,
+          emotional_maturity: userScoring.emotionalMaturity!,
+          understanding_of_position: userScoring.understandingOfPosition!,
+          teamwork_ability: userScoring.teamworkAbility!,
+        },
+        conclusion: userConclusion!.toUpperCase() as "PROCEED" | "RECOMMENDED" | "REJECTED",
+        key_competencies: userKeyCompetencies || null,
+        interviewer_notes: userUserNotes || null,
+      });
 
       if (response?.success && response.data) {
         setProgress(response.data);
@@ -614,7 +729,7 @@ export default function CandidateDetailPage() {
                 </Avatar>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-3">
-                    <h2 className="text-base font-semibold tracking-tight">{candidate.fullname}</h2>
+                    <h2 className="text-xl font-semibold tracking-tight">{candidate.fullname}</h2>
                     {progress && (
                       <>
                         {progress.anyFailed ? (
@@ -806,7 +921,7 @@ export default function CandidateDetailPage() {
               {/* Application Details */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-sm">
+                  <CardTitle className="flex items-center gap-2 text-base">
                     <div className="h-8 w-8 rounded-lg bg-accent/10 flex items-center justify-center">
                       <Briefcase className="h-4 w-4 text-accent" />
                     </div>
@@ -823,7 +938,7 @@ export default function CandidateDetailPage() {
                         </div>
                         <div>
                           <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Candidate Code</p>
-                          <p className="text-xs mt-1">{candidate.detail.candidateCode}</p>
+                          <p className="text-sm mt-1">{candidate.detail.candidateCode}</p>
                         </div>
                       </div>
                     )}
@@ -834,7 +949,7 @@ export default function CandidateDetailPage() {
                         </div>
                         <div>
                           <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Employee Request</p>
-                          <p className="text-xs mt-1">{candidate.employeeRequest.code}</p>
+                          <p className="text-sm mt-1">{candidate.employeeRequest.code}</p>
                         </div>
                       </div>
                     )}
@@ -845,7 +960,7 @@ export default function CandidateDetailPage() {
                         </div>
                         <div>
                           <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Position Applied</p>
-                          <p className="text-xs mt-1">{candidate.jobTitle.name}</p>
+                          <p className="text-sm mt-1">{candidate.jobTitle.name}</p>
                         </div>
                       </div>
                     )}
@@ -866,7 +981,7 @@ export default function CandidateDetailPage() {
                       </div>
                       <div>
                         <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Applied Date</p>
-                        <p className="text-xs mt-1">{candidate.createdAt ? formatShortDate(candidate.createdAt) : "—"}</p>
+                        <p className="text-sm mt-1">{candidate.createdAt ? formatShortDate(candidate.createdAt) : "—"}</p>
                       </div>
                     </div>
                   </div>
@@ -876,7 +991,7 @@ export default function CandidateDetailPage() {
               {/* Personal Information */}
               <Card>
                     <CardHeader>
-                      <CardTitle className="flex items-center gap-2 text-sm">
+                      <CardTitle className="flex items-center gap-2 text-base">
                         <div className="h-8 w-8 rounded-lg bg-accent/10 flex items-center justify-center">
                           <User className="h-4 w-4 text-accent" />
                         </div>
@@ -892,7 +1007,7 @@ export default function CandidateDetailPage() {
                           </div>
                           <div>
                             <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Gender</p>
-                            <p className="text-xs mt-1">{candidate.gender === "M" ? "Male" : "Female"}</p>
+                            <p className="text-sm mt-1">{candidate.gender === "M" ? "Male" : "Female"}</p>
                           </div>
                         </div>
                         <div className="flex items-start gap-3">
@@ -901,7 +1016,7 @@ export default function CandidateDetailPage() {
                           </div>
                           <div>
                             <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Birth Date</p>
-                            <p className="text-xs mt-1">{candidate.birthDate ? formatShortDate(candidate.birthDate) : "—"}</p>
+                            <p className="text-sm mt-1">{candidate.birthDate ? formatShortDate(candidate.birthDate) : "—"}</p>
                           </div>
                         </div>
                         <div className="flex items-start gap-3">
@@ -910,7 +1025,7 @@ export default function CandidateDetailPage() {
                           </div>
                           <div>
                             <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Birth Place</p>
-                            <p className="text-xs mt-1">{candidate.birthPlace || "—"}</p>
+                            <p className="text-sm mt-1">{candidate.birthPlace || "—"}</p>
                           </div>
                         </div>
                         <div className="flex items-start gap-3">
@@ -919,7 +1034,7 @@ export default function CandidateDetailPage() {
                           </div>
                           <div>
                             <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Religion</p>
-                            <p className="text-xs mt-1">{candidate.religion || "—"}</p>
+                            <p className="text-sm mt-1">{candidate.religion || "—"}</p>
                           </div>
                         </div>
                         <div className="flex items-start gap-3">
@@ -928,7 +1043,7 @@ export default function CandidateDetailPage() {
                           </div>
                           <div>
                             <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Marital Status</p>
-                            <p className="text-xs mt-1">{candidate.marritalStatus || "—"}</p>
+                            <p className="text-sm mt-1">{candidate.marritalStatus || "—"}</p>
                           </div>
                         </div>
                         <div className="flex items-start gap-3">
@@ -937,7 +1052,7 @@ export default function CandidateDetailPage() {
                           </div>
                           <div>
                             <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Citizenship</p>
-                            <p className="text-xs mt-1">{candidate.citizenship || "—"}</p>
+                            <p className="text-sm mt-1">{candidate.citizenship || "—"}</p>
                           </div>
                         </div>
                       </div>
@@ -947,7 +1062,7 @@ export default function CandidateDetailPage() {
                   {/* Contact Information */}
                   <Card>
                     <CardHeader>
-                      <CardTitle className="flex items-center gap-2 text-sm">
+                      <CardTitle className="flex items-center gap-2 text-base">
                         <div className="h-8 w-8 rounded-lg bg-accent/10 flex items-center justify-center">
                           <MapPin className="h-4 w-4 text-accent" />
                         </div>
@@ -962,7 +1077,7 @@ export default function CandidateDetailPage() {
                         </div>
                         <div className="flex-1">
                           <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Address</p>
-                          <p className="text-xs mt-1">{candidate.address || "—"}</p>
+                          <p className="text-sm mt-1">{candidate.address || "—"}</p>
                         </div>
                       </div>
                       <div className="grid gap-4 sm:grid-cols-2">
@@ -972,7 +1087,7 @@ export default function CandidateDetailPage() {
                           </div>
                           <div>
                             <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Resident Status</p>
-                            <p className="text-xs mt-1">{candidate.residentStatus || "—"}</p>
+                            <p className="text-sm mt-1">{candidate.residentStatus || "—"}</p>
                           </div>
                         </div>
                         <div className="flex items-start gap-3">
@@ -981,7 +1096,7 @@ export default function CandidateDetailPage() {
                           </div>
                           <div>
                             <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Mobile Phone</p>
-                            <p className="text-xs mt-1">{candidate.mobilePhone || "—"}</p>
+                            <p className="text-sm mt-1">{candidate.mobilePhone || "—"}</p>
                           </div>
                         </div>
                         <div className="flex items-start gap-3 sm:col-span-2">
@@ -990,7 +1105,7 @@ export default function CandidateDetailPage() {
                           </div>
                           <div>
                             <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Email</p>
-                            <p className="text-xs mt-1">{candidate.email}</p>
+                            <p className="text-sm mt-1">{candidate.email}</p>
                           </div>
                         </div>
                       </div>
@@ -1000,7 +1115,7 @@ export default function CandidateDetailPage() {
                   {/* Identity Documents */}
                   <Card>
                     <CardHeader>
-                      <CardTitle className="flex items-center gap-2 text-sm">
+                      <CardTitle className="flex items-center gap-2 text-base">
                         <div className="h-8 w-8 rounded-lg bg-accent/10 flex items-center justify-center">
                           <IdCard className="h-4 w-4 text-accent" />
                         </div>
@@ -1016,7 +1131,7 @@ export default function CandidateDetailPage() {
                           </div>
                           <div>
                             <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">ID Number (KTP)</p>
-                            <p className="text-xs mt-1">{candidate.idNo || "—"}</p>
+                            <p className="text-sm mt-1">{candidate.idNo || "—"}</p>
                           </div>
                         </div>
                         <div className="flex items-start gap-3">
@@ -1025,7 +1140,7 @@ export default function CandidateDetailPage() {
                           </div>
                           <div>
                             <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Tax ID (NPWP)</p>
-                            <p className="text-xs mt-1">{candidate.taxId || "—"}</p>
+                            <p className="text-sm mt-1">{candidate.taxId || "—"}</p>
                           </div>
                         </div>
                         <div className="flex items-start gap-3">
@@ -1034,7 +1149,7 @@ export default function CandidateDetailPage() {
                           </div>
                           <div>
                             <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">BPJS ID</p>
-                            <p className="text-xs mt-1">{candidate.bpjsId || "—"}</p>
+                            <p className="text-sm mt-1">{candidate.bpjsId || "—"}</p>
                           </div>
                         </div>
                         <div className="flex items-start gap-3">
@@ -1043,7 +1158,7 @@ export default function CandidateDetailPage() {
                           </div>
                           <div>
                             <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Driving License</p>
-                            <p className="text-xs mt-1">{candidate.drivingLicense || "—"}</p>
+                            <p className="text-sm mt-1">{candidate.drivingLicense || "—"}</p>
                           </div>
                         </div>
                       </div>
@@ -1055,7 +1170,7 @@ export default function CandidateDetailPage() {
                 {/* Educational Background */}
                 <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-sm">
+                  <CardTitle className="flex items-center gap-2 text-base">
                     <div className="h-8 w-8 rounded-lg bg-accent/10 flex items-center justify-center">
                       <GraduationCap className="h-4 w-4 text-accent" />
                     </div>
@@ -1100,7 +1215,7 @@ export default function CandidateDetailPage() {
               {/* Work Experience */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-sm">
+                  <CardTitle className="flex items-center gap-2 text-base">
                     <div className="h-8 w-8 rounded-lg bg-accent/10 flex items-center justify-center">
                       <Building2 className="h-4 w-4 text-accent" />
                     </div>
@@ -1145,7 +1260,7 @@ export default function CandidateDetailPage() {
               {/* Family Members */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-sm">
+                  <CardTitle className="flex items-center gap-2 text-base">
                     <div className="h-8 w-8 rounded-lg bg-accent/10 flex items-center justify-center">
                       <Users className="h-4 w-4 text-accent" />
                     </div>
@@ -1190,7 +1305,7 @@ export default function CandidateDetailPage() {
               {/* Course / Training Experience */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-sm">
+                  <CardTitle className="flex items-center gap-2 text-base">
                     <div className="h-8 w-8 rounded-lg bg-accent/10 flex items-center justify-center">
                       <Award className="h-4 w-4 text-accent" />
                     </div>
@@ -1235,7 +1350,7 @@ export default function CandidateDetailPage() {
               {/* Self Assessment */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-sm">
+                  <CardTitle className="flex items-center gap-2 text-base">
                     <div className="h-8 w-8 rounded-lg bg-accent/10 flex items-center justify-center">
                       <ClipboardList className="h-4 w-4 text-accent" />
                     </div>
@@ -1342,104 +1457,234 @@ export default function CandidateDetailPage() {
             </TabsContent>
 
             {/* Assessment HR Tab */}
-            <TabsContent value="assessment-hr" className="space-y-6 mt-6">
+            <TabsContent value="assessment-hr" className="space-y-5 mt-6">
               {(() => {
                 const { status } = getStageStatus("interview1");
                 const isCompleted = status === "passed" || status === "failed";
 
+                // Score statistics
+                const filledScores = Object.values(hrScoring).filter((s): s is number => s !== null);
+                const totalFilled = filledScores.length;
+                const totalCriteria = HR_SCORING_CRITERIA.length;
+                const averageScore = totalFilled > 0 ? filledScores.reduce((a, b) => a + b, 0) / totalFilled : 0;
+                const totalScore = filledScores.reduce((a, b) => a + b, 0);
+                const maxTotal = totalCriteria * 5;
+                const progressPercent = Math.round((totalFilled / totalCriteria) * 100);
+
+                const scoreColor = (val: number) =>
+                  val >= 4.5 ? "text-emerald-600" :
+                  val >= 3.5 ? "text-blue-600" :
+                  val >= 2.5 ? "text-amber-600" :
+                  val >= 1 ? "text-red-500" : "text-muted-foreground";
+
+                const pillColor = (val: number, selected: boolean) => {
+                  if (!selected) return "bg-secondary/80 text-muted-foreground hover:bg-secondary";
+                  if (val <= 1) return "bg-red-500 text-white shadow-sm shadow-red-500/25";
+                  if (val <= 2) return "bg-orange-500 text-white shadow-sm shadow-orange-500/25";
+                  if (val <= 3) return "bg-amber-500 text-white shadow-sm shadow-amber-500/25";
+                  if (val <= 4) return "bg-blue-500 text-white shadow-sm shadow-blue-500/25";
+                  return "bg-emerald-500 text-white shadow-sm shadow-emerald-500/25";
+                };
+
                 return (
                   <>
-                    {/* Status Banner */}
+                    {/* Status Banner — Passed */}
                     {status === "passed" && (
-                      <Card className="border-emerald-500 bg-emerald-500/5">
-                        <CardContent className="flex items-center justify-between p-6">
+                      <Card className="border-emerald-500/40 bg-gradient-to-r from-emerald-500/5 to-transparent overflow-hidden relative">
+                        <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500" />
+                        <CardContent className="flex items-center justify-between p-5 pl-6">
                           <div className="flex items-center gap-4">
-                            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/10">
-                              <CheckCircle2 className="h-6 w-6 text-emerald-600" />
+                            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-emerald-500/10 ring-4 ring-emerald-500/5">
+                              <CheckCircle2 className="h-5 w-5 text-emerald-600" />
                             </div>
                             <div>
-                              <h3 className="font-semibold text-emerald-600">Assessment HR Completed!</h3>
-                              <p className="text-sm text-muted-foreground">
-                                This candidate has passed the HR assessment. Proceed to Assessment User for the next stage.
+                              <h3 className="font-semibold text-emerald-700 text-sm">Assessment HR — Passed</h3>
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                Candidate cleared HR assessment. Proceed to the next stage.
                               </p>
                             </div>
                           </div>
-                          <Button onClick={() => handleTabChange("assessment-user")}>
-                            Go to Assessment User
+                          <Button size="sm" onClick={() => handleTabChange("assessment-user")}>
+                            Assessment User
+                            <ChevronRight className="ml-1 h-4 w-4" />
                           </Button>
                         </CardContent>
                       </Card>
                     )}
 
+                    {/* Status Banner — Failed */}
                     {status === "failed" && (
-                      <Card className="border-destructive bg-destructive/5">
-                        <CardContent className="flex items-center gap-4 p-6">
-                          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
-                            <XCircle className="h-6 w-6 text-destructive" />
+                      <Card className="border-destructive/40 bg-gradient-to-r from-destructive/5 to-transparent overflow-hidden relative">
+                        <div className="absolute top-0 left-0 w-1 h-full bg-destructive" />
+                        <CardContent className="flex items-center gap-4 p-5 pl-6">
+                          <div className="flex h-11 w-11 items-center justify-center rounded-full bg-destructive/10 ring-4 ring-destructive/5">
+                            <XCircle className="h-5 w-5 text-destructive" />
                           </div>
                           <div>
-                            <h3 className="font-semibold text-destructive">Assessment HR Failed</h3>
-                            <p className="text-sm text-muted-foreground">
-                              This candidate has been rejected in the HR assessment and cannot proceed further.
+                            <h3 className="font-semibold text-destructive text-sm">Assessment HR — Failed</h3>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              Candidate did not pass the HR assessment and cannot proceed further.
                             </p>
                           </div>
                         </CardContent>
                       </Card>
                     )}
 
-                    {/* Scoring Section */}
+                    {/* Score Overview Stats */}
+                    <div className="grid grid-cols-3 gap-3">
+                      <Card className="relative overflow-hidden">
+                        <CardContent className="p-4">
+                          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Progress</p>
+                          <div className="flex items-end gap-2 mt-1.5">
+                            <span className="text-2xl font-bold tabular-nums">{totalFilled}</span>
+                            <span className="text-sm text-muted-foreground mb-0.5">/ {totalCriteria}</span>
+                          </div>
+                          <div className="mt-2.5 h-1.5 w-full rounded-full bg-secondary overflow-hidden">
+                            <div
+                              className="h-full rounded-full bg-accent transition-all duration-500 ease-out"
+                              style={{ width: `${progressPercent}%` }}
+                            />
+                          </div>
+                        </CardContent>
+                      </Card>
+                      <Card className="relative overflow-hidden">
+                        <CardContent className="p-4">
+                          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Average</p>
+                          <div className="flex items-end gap-2 mt-1.5">
+                            <span className={cn("text-2xl font-bold tabular-nums", scoreColor(averageScore))}>
+                              {totalFilled > 0 ? averageScore.toFixed(1) : "—"}
+                            </span>
+                            <span className="text-sm text-muted-foreground mb-0.5">/ 5.0</span>
+                          </div>
+                          <p className="text-[11px] text-muted-foreground mt-1">
+                            {totalFilled === 0 ? "No scores yet" :
+                             averageScore >= 4.5 ? "Excellent" :
+                             averageScore >= 3.5 ? "Good" :
+                             averageScore >= 2.5 ? "Fair" :
+                             averageScore >= 1.5 ? "Poor" : "Very Poor"}
+                          </p>
+                        </CardContent>
+                      </Card>
+                      <Card className="relative overflow-hidden">
+                        <CardContent className="p-4">
+                          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Total Score</p>
+                          <div className="flex items-end gap-2 mt-1.5">
+                            <span className="text-2xl font-bold tabular-nums">{totalScore}</span>
+                            <span className="text-sm text-muted-foreground mb-0.5">/ {maxTotal}</span>
+                          </div>
+                          <p className="text-[11px] text-muted-foreground mt-1">
+                            {totalFilled > 0 ? `${Math.round((totalScore / maxTotal) * 100)}% of maximum` : "Start scoring below"}
+                          </p>
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    {/* Section 1 — Scoring */}
                     <Card>
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-lg">Scoring</CardTitle>
+                      <CardHeader className="pb-2">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-accent/10 text-accent text-xs font-bold">1</div>
+                          <div>
+                            <CardTitle className="text-base">Interview Scoring</CardTitle>
+                            <CardDescription className="text-xs">Rate each criterion from 1 (Very Poor) to 5 (Excellent)</CardDescription>
+                          </div>
+                        </div>
                       </CardHeader>
-                      <CardContent>
-                        <div className="space-y-4">
-                          {HR_SCORING_CRITERIA.map((criteria, index) => (
-                            <div key={criteria.key} className="flex items-center justify-between py-2 border-b last:border-b-0">
-                              <span className="text-sm font-medium">
-                                {index + 1}. {criteria.label}
-                              </span>
-                              <div className="flex gap-1">
-                                {SCORE_OPTIONS.map((option) => (
-                                  <button
-                                    key={option.value}
-                                    type="button"
-                                    disabled={isCompleted}
-                                    onClick={() => setHrScoring(prev => ({
-                                      ...prev,
-                                      [criteria.key]: option.value
-                                    }))}
-                                    className={cn(
-                                      "px-3 py-1.5 text-xs font-medium rounded border transition-colors min-w-[70px]",
-                                      hrScoring[criteria.key] === option.value
-                                        ? "bg-accent text-accent-foreground border-accent"
-                                        : "bg-background hover:bg-secondary border-border",
-                                      isCompleted && "opacity-60 cursor-not-allowed"
-                                    )}
-                                  >
-                                    {option.label}
-                                  </button>
-                                ))}
-                              </div>
+                      <CardContent className="pt-2">
+                        {/* Score legend */}
+                        <div className="flex items-center justify-end gap-4 mb-3 pb-3 border-b">
+                          {SCORE_OPTIONS.map((opt) => (
+                            <div key={opt.value} className="flex items-center gap-1.5">
+                              <div className={cn(
+                                "h-2.5 w-2.5 rounded-full",
+                                opt.value === 1 && "bg-red-500",
+                                opt.value === 2 && "bg-orange-500",
+                                opt.value === 3 && "bg-amber-500",
+                                opt.value === 4 && "bg-blue-500",
+                                opt.value === 5 && "bg-emerald-500",
+                              )} />
+                              <span className="text-[11px] text-muted-foreground">{opt.label}</span>
                             </div>
                           ))}
+                        </div>
+
+                        <div className="space-y-1">
+                          {HR_SCORING_CRITERIA.map((criteria, index) => {
+                            const currentScore = hrScoring[criteria.key];
+                            return (
+                              <div
+                                key={criteria.key}
+                                className={cn(
+                                  "group flex items-center justify-between py-3 px-3 -mx-3 rounded-lg transition-colors",
+                                  currentScore === null && !isCompleted && "hover:bg-secondary/50"
+                                )}
+                              >
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <span className="text-xs text-muted-foreground font-mono w-5 text-right shrink-0">{index + 1}.</span>
+                                  <span className="text-sm font-medium truncate">{criteria.label}</span>
+                                </div>
+                                <div className="flex items-center gap-1 shrink-0 ml-4">
+                                  {SCORE_OPTIONS.map((option) => {
+                                    const isSelected = currentScore === option.value;
+                                    return (
+                                      <button
+                                        key={option.value}
+                                        type="button"
+                                        disabled={isCompleted}
+                                        onClick={() => setHrScoring(prev => ({
+                                          ...prev,
+                                          [criteria.key]: option.value
+                                        }))}
+                                        title={option.label}
+                                        className={cn(
+                                          "relative h-8 w-8 rounded-md text-xs font-semibold transition-all duration-200",
+                                          pillColor(option.value, isSelected),
+                                          !isSelected && !isCompleted && "hover:scale-110 hover:bg-secondary",
+                                          isCompleted && "cursor-not-allowed opacity-60"
+                                        )}
+                                      >
+                                        {option.value}
+                                      </button>
+                                    );
+                                  })}
+                                  {/* Selected label */}
+                                  <span className={cn(
+                                    "ml-2 text-[11px] font-medium w-16 text-right transition-opacity",
+                                    currentScore ? "opacity-100" : "opacity-0"
+                                  )}>
+                                    {currentScore ? SCORE_OPTIONS.find(o => o.value === currentScore)?.label : ""}
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
                       </CardContent>
                     </Card>
 
-                    {/* Additional Information Section */}
+                    {/* Section 2 — Additional Information */}
                     <Card>
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-lg">Additional Information</CardTitle>
+                      <CardHeader className="pb-2">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-accent/10 text-accent text-xs font-bold">2</div>
+                          <div>
+                            <CardTitle className="text-base">Additional Information</CardTitle>
+                            <CardDescription className="text-xs">Provide qualitative notes and competency observations</CardDescription>
+                          </div>
+                        </div>
                       </CardHeader>
-                      <CardContent className="space-y-4">
+                      <CardContent className="space-y-5 pt-2">
                         <div className="space-y-2">
-                          <Label>
+                          <Label className="text-sm">
                             Key Competencies Required by the Department / Company
                           </Label>
                           {isCompleted ? (
-                            <div className="rounded-md border border-input bg-muted/30 p-3 text-sm min-h-20 opacity-60">
-                              {hrKeyCompetencies || <span className="text-muted-foreground">No content</span>}
+                            <div className="rounded-lg border border-input bg-muted/30 p-3 text-sm min-h-20 opacity-60">
+                              {hrKeyCompetencies ? (
+                                <LexicalRenderer value={hrKeyCompetencies} />
+                              ) : (
+                                <span className="text-muted-foreground">No content</span>
+                              )}
                             </div>
                           ) : (
                             <LexicalEditor
@@ -1451,102 +1696,147 @@ export default function CandidateDetailPage() {
                         </div>
 
                         <div className="space-y-2">
-                          <Label>User Notes</Label>
+                          <Label className="text-sm">Interviewer Notes</Label>
                           {isCompleted ? (
-                            <div className="rounded-md border border-input bg-muted/30 p-3 text-sm min-h-20 opacity-60">
-                              {hrUserNotes || <span className="text-muted-foreground">No content</span>}
+                            <div className="rounded-lg border border-input bg-muted/30 p-3 text-sm min-h-20 opacity-60">
+                              {hrUserNotes ? (
+                                <LexicalRenderer value={hrUserNotes} />
+                              ) : (
+                                <span className="text-muted-foreground">No content</span>
+                              )}
                             </div>
                           ) : (
                             <LexicalEditor
                               value={hrUserNotes}
                               onChange={setHrUserNotes}
-                              placeholder="Enter your notes..."
+                              placeholder="Enter your observations and notes..."
                             />
                           )}
                         </div>
+                      </CardContent>
+                    </Card>
 
-                        <div className="space-y-2">
-                          <Label>Interview Result Conclusion</Label>
-                          <div className="flex gap-2 pt-1">
-                            {[
-                              { value: "proceed" as const, label: "Proceed", color: "emerald" },
-                              { value: "recommended" as const, label: "Recommended", color: "blue" },
-                              { value: "rejected" as const, label: "Rejected", color: "red" },
-                            ].map((option) => (
+                    {/* Section 3 — Conclusion */}
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-accent/10 text-accent text-xs font-bold">3</div>
+                          <div>
+                            <CardTitle className="text-base">Interview Result Conclusion</CardTitle>
+                            <CardDescription className="text-xs">Select the final recommendation for this candidate</CardDescription>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="pt-2">
+                        <div className="grid grid-cols-3 gap-3">
+                          {[
+                            {
+                              value: "proceed" as const,
+                              label: "Proceed",
+                              desc: "Advance to next stage",
+                              icon: CheckCircle2,
+                              colors: {
+                                active: "border-emerald-500 bg-emerald-50 ring-2 ring-emerald-500/20",
+                                icon: "text-emerald-600",
+                                dot: "bg-emerald-500",
+                              },
+                            },
+                            {
+                              value: "recommended" as const,
+                              label: "Recommended",
+                              desc: "Conditionally advance",
+                              icon: ClipboardCheck,
+                              colors: {
+                                active: "border-blue-500 bg-blue-50 ring-2 ring-blue-500/20",
+                                icon: "text-blue-600",
+                                dot: "bg-blue-500",
+                              },
+                            },
+                            {
+                              value: "rejected" as const,
+                              label: "Rejected",
+                              desc: "Do not proceed",
+                              icon: XCircle,
+                              colors: {
+                                active: "border-red-500 bg-red-50 ring-2 ring-red-500/20",
+                                icon: "text-red-600",
+                                dot: "bg-red-500",
+                              },
+                            },
+                          ].map((option) => {
+                            const Icon = option.icon;
+                            const isSelected = hrConclusion === option.value;
+                            return (
                               <button
                                 key={option.value}
                                 type="button"
                                 disabled={isCompleted}
                                 onClick={() => setHrConclusion(option.value)}
                                 className={cn(
-                                  "flex-1 px-4 py-3 text-sm font-medium rounded-lg border-2 transition-all",
-                                  hrConclusion === option.value
-                                    ? option.color === "emerald"
-                                      ? "bg-emerald-50 border-emerald-500 text-emerald-700"
-                                      : option.color === "blue"
-                                      ? "bg-blue-50 border-blue-500 text-blue-700"
-                                      : "bg-red-50 border-red-500 text-red-700"
-                                    : "bg-background border-border hover:border-muted-foreground/50",
+                                  "relative flex flex-col items-center gap-2 rounded-xl border-2 p-5 transition-all duration-200 text-center",
+                                  isSelected
+                                    ? option.colors.active
+                                    : "border-border bg-background hover:border-muted-foreground/30 hover:bg-secondary/30",
                                   isCompleted && "opacity-60 cursor-not-allowed"
                                 )}
                               >
-                                <div className="flex items-center justify-center gap-2">
-                                  <div
-                                    className={cn(
-                                      "h-4 w-4 rounded-full border-2 flex items-center justify-center",
-                                      hrConclusion === option.value
-                                        ? option.color === "emerald"
-                                          ? "border-emerald-500"
-                                          : option.color === "blue"
-                                          ? "border-blue-500"
-                                          : "border-red-500"
-                                        : "border-muted-foreground/30"
-                                    )}
-                                  >
-                                    {hrConclusion === option.value && (
-                                      <div
-                                        className={cn(
-                                          "h-2 w-2 rounded-full",
-                                          option.color === "emerald"
-                                            ? "bg-emerald-500"
-                                            : option.color === "blue"
-                                            ? "bg-blue-500"
-                                            : "bg-red-500"
-                                        )}
-                                      />
-                                    )}
-                                  </div>
-                                  {option.label}
+                                {isSelected && (
+                                  <div className={cn("absolute top-2.5 right-2.5 h-2.5 w-2.5 rounded-full", option.colors.dot)} />
+                                )}
+                                <div className={cn(
+                                  "flex h-10 w-10 items-center justify-center rounded-full transition-colors",
+                                  isSelected ? "bg-white/60" : "bg-secondary"
+                                )}>
+                                  <Icon className={cn("h-5 w-5", isSelected ? option.colors.icon : "text-muted-foreground")} />
+                                </div>
+                                <div>
+                                  <p className={cn("text-sm font-semibold", isSelected ? option.colors.icon : "text-foreground")}>{option.label}</p>
+                                  <p className="text-[11px] text-muted-foreground mt-0.5">{option.desc}</p>
                                 </div>
                               </button>
-                            ))}
-                          </div>
+                            );
+                          })}
                         </div>
                       </CardContent>
                     </Card>
 
                     {/* Action Buttons */}
                     {!isCompleted && (
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="outline"
-                          onClick={() => setShowHRPreview(true)}
-                        >
-                          Preview
-                        </Button>
-                        <Button
-                          onClick={handleHRAssessmentSubmit}
-                          disabled={isSubmittingHR}
-                        >
-                          {isSubmittingHR ? (
-                            <>
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              Submitting...
-                            </>
-                          ) : (
-                            "Submit"
-                          )}
-                        </Button>
+                      <div className="flex items-center justify-between pt-2">
+                        <p className="text-xs text-muted-foreground">
+                          {totalFilled < totalCriteria
+                            ? `${totalCriteria - totalFilled} scoring criteria remaining`
+                            : hrConclusion
+                            ? "Ready to submit"
+                            : "Select a conclusion to submit"}
+                        </p>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setShowHRPreview(true)}
+                          >
+                            <FileText className="mr-2 h-3.5 w-3.5" />
+                            Preview
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={handleHRAssessmentSubmit}
+                            disabled={isSubmittingHR}
+                          >
+                            {isSubmittingHR ? (
+                              <>
+                                <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                                Submitting...
+                              </>
+                            ) : (
+                              <>
+                                <Send className="mr-2 h-3.5 w-3.5" />
+                                Submit Assessment
+                              </>
+                            )}
+                          </Button>
+                        </div>
                       </div>
                     )}
                   </>
@@ -1555,10 +1845,34 @@ export default function CandidateDetailPage() {
             </TabsContent>
 
             {/* Assessment User Tab */}
-            <TabsContent value="assessment-user" className="space-y-6 mt-6">
+            <TabsContent value="assessment-user" className="space-y-5 mt-6">
               {(() => {
                 const { status, locked } = getStageStatus("interview2");
                 const isCompleted = status === "passed" || status === "failed";
+
+                // Score statistics
+                const filledScores = Object.values(userScoring).filter((s): s is number => s !== null);
+                const totalFilled = filledScores.length;
+                const totalCriteria = HR_SCORING_CRITERIA.length;
+                const averageScore = totalFilled > 0 ? filledScores.reduce((a, b) => a + b, 0) / totalFilled : 0;
+                const totalScore = filledScores.reduce((a, b) => a + b, 0);
+                const maxTotal = totalCriteria * 5;
+                const progressPercent = Math.round((totalFilled / totalCriteria) * 100);
+
+                const scoreColor = (val: number) =>
+                  val >= 4.5 ? "text-emerald-600" :
+                  val >= 3.5 ? "text-blue-600" :
+                  val >= 2.5 ? "text-amber-600" :
+                  val >= 1 ? "text-red-500" : "text-muted-foreground";
+
+                const pillColor = (val: number, selected: boolean) => {
+                  if (!selected) return "bg-secondary/80 text-muted-foreground hover:bg-secondary";
+                  if (val <= 1) return "bg-red-500 text-white shadow-sm shadow-red-500/25";
+                  if (val <= 2) return "bg-orange-500 text-white shadow-sm shadow-orange-500/25";
+                  if (val <= 3) return "bg-amber-500 text-white shadow-sm shadow-amber-500/25";
+                  if (val <= 4) return "bg-blue-500 text-white shadow-sm shadow-blue-500/25";
+                  return "bg-emerald-500 text-white shadow-sm shadow-emerald-500/25";
+                };
 
                 return (
                   <>
@@ -1569,45 +1883,48 @@ export default function CandidateDetailPage() {
                           <Lock className="h-16 w-16 text-muted-foreground/30" />
                           <h3 className="mt-4 text-lg font-medium">Assessment User Locked</h3>
                           <p className="text-muted-foreground text-center max-w-md mt-2">
-                            Complete Interview 1 (Assessment HR) first to unlock this stage.
+                            Complete Interview HR (Assessment HR) first to unlock this stage.
                           </p>
                         </CardContent>
                       </Card>
                     )}
 
-                    {/* Status Banner */}
+                    {/* Status Banner — Passed */}
                     {!locked && status === "passed" && (
-                      <Card className="border-emerald-500 bg-emerald-500/5">
-                        <CardContent className="flex items-center justify-between p-6">
+                      <Card className="border-emerald-500/40 bg-gradient-to-r from-emerald-500/5 to-transparent overflow-hidden relative">
+                        <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500" />
+                        <CardContent className="flex items-center justify-between p-5 pl-6">
                           <div className="flex items-center gap-4">
-                            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/10">
-                              <CheckCircle2 className="h-6 w-6 text-emerald-600" />
+                            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-emerald-500/10 ring-4 ring-emerald-500/5">
+                              <CheckCircle2 className="h-5 w-5 text-emerald-600" />
                             </div>
                             <div>
-                              <h3 className="font-semibold text-emerald-600">Assessment User Completed!</h3>
-                              <p className="text-sm text-muted-foreground">
-                                This candidate has passed the User assessment. Proceed to MCU for the next stage.
+                              <h3 className="font-semibold text-emerald-700 text-sm">Assessment User — Passed</h3>
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                Candidate cleared User assessment. Proceed to MCU for the next stage.
                               </p>
                             </div>
                           </div>
-                          <Button onClick={() => handleTabChange("mcu")}>
+                          <Button size="sm" onClick={() => handleTabChange("mcu")}>
                             Proceed to MCU
-                            <Stethoscope className="ml-2 h-4 w-4" />
+                            <ChevronRight className="ml-1 h-4 w-4" />
                           </Button>
                         </CardContent>
                       </Card>
                     )}
 
+                    {/* Status Banner — Failed */}
                     {!locked && status === "failed" && (
-                      <Card className="border-destructive bg-destructive/5">
-                        <CardContent className="flex items-center gap-4 p-6">
-                          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
-                            <XCircle className="h-6 w-6 text-destructive" />
+                      <Card className="border-destructive/40 bg-gradient-to-r from-destructive/5 to-transparent overflow-hidden relative">
+                        <div className="absolute top-0 left-0 w-1 h-full bg-destructive" />
+                        <CardContent className="flex items-center gap-4 p-5 pl-6">
+                          <div className="flex h-11 w-11 items-center justify-center rounded-full bg-destructive/10 ring-4 ring-destructive/5">
+                            <XCircle className="h-5 w-5 text-destructive" />
                           </div>
                           <div>
-                            <h3 className="font-semibold text-destructive">Assessment User Failed</h3>
-                            <p className="text-sm text-muted-foreground">
-                              This candidate has been rejected in the User assessment and cannot proceed further.
+                            <h3 className="font-semibold text-destructive text-sm">Assessment User — Failed</h3>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              Candidate did not pass the User assessment and cannot proceed further.
                             </p>
                           </div>
                         </CardContent>
@@ -1617,59 +1934,161 @@ export default function CandidateDetailPage() {
                     {/* Form Content - Only show if not locked */}
                     {!locked && (
                       <>
-                        {/* Scoring Section */}
+                        {/* Score Overview Stats */}
+                        <div className="grid grid-cols-3 gap-3">
+                          <Card className="relative overflow-hidden">
+                            <CardContent className="p-4">
+                              <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Progress</p>
+                              <div className="flex items-end gap-2 mt-1.5">
+                                <span className="text-2xl font-bold tabular-nums">{totalFilled}</span>
+                                <span className="text-sm text-muted-foreground mb-0.5">/ {totalCriteria}</span>
+                              </div>
+                              <div className="mt-2.5 h-1.5 w-full rounded-full bg-secondary overflow-hidden">
+                                <div
+                                  className="h-full rounded-full bg-accent transition-all duration-500 ease-out"
+                                  style={{ width: `${progressPercent}%` }}
+                                />
+                              </div>
+                            </CardContent>
+                          </Card>
+                          <Card className="relative overflow-hidden">
+                            <CardContent className="p-4">
+                              <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Average</p>
+                              <div className="flex items-end gap-2 mt-1.5">
+                                <span className={cn("text-2xl font-bold tabular-nums", scoreColor(averageScore))}>
+                                  {totalFilled > 0 ? averageScore.toFixed(1) : "—"}
+                                </span>
+                                <span className="text-sm text-muted-foreground mb-0.5">/ 5.0</span>
+                              </div>
+                              <p className="text-[11px] text-muted-foreground mt-1">
+                                {totalFilled === 0 ? "No scores yet" :
+                                 averageScore >= 4.5 ? "Excellent" :
+                                 averageScore >= 3.5 ? "Good" :
+                                 averageScore >= 2.5 ? "Fair" :
+                                 averageScore >= 1.5 ? "Poor" : "Very Poor"}
+                              </p>
+                            </CardContent>
+                          </Card>
+                          <Card className="relative overflow-hidden">
+                            <CardContent className="p-4">
+                              <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Total Score</p>
+                              <div className="flex items-end gap-2 mt-1.5">
+                                <span className="text-2xl font-bold tabular-nums">{totalScore}</span>
+                                <span className="text-sm text-muted-foreground mb-0.5">/ {maxTotal}</span>
+                              </div>
+                              <p className="text-[11px] text-muted-foreground mt-1">
+                                {totalFilled > 0 ? `${Math.round((totalScore / maxTotal) * 100)}% of maximum` : "Start scoring below"}
+                              </p>
+                            </CardContent>
+                          </Card>
+                        </div>
+
+                        {/* Section 1 — Scoring */}
                         <Card>
-                          <CardHeader className="pb-3">
-                            <CardTitle className="text-lg">Scoring</CardTitle>
+                          <CardHeader className="pb-2">
+                            <div className="flex items-center gap-3">
+                              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-accent/10 text-accent text-xs font-bold">1</div>
+                              <div>
+                                <CardTitle className="text-base">Interview Scoring</CardTitle>
+                                <CardDescription className="text-xs">Rate each criterion from 1 (Very Poor) to 5 (Excellent)</CardDescription>
+                              </div>
+                            </div>
                           </CardHeader>
-                          <CardContent>
-                            <div className="space-y-4">
-                              {HR_SCORING_CRITERIA.map((criteria, index) => (
-                                <div key={criteria.key} className="flex items-center justify-between py-2 border-b last:border-b-0">
-                                  <span className="text-sm font-medium">
-                                    {index + 1}. {criteria.label}
-                                  </span>
-                                  <div className="flex gap-1">
-                                    {SCORE_OPTIONS.map((option) => (
-                                      <button
-                                        key={option.value}
-                                        type="button"
-                                        disabled={isCompleted}
-                                        onClick={() => setUserScoring(prev => ({
-                                          ...prev,
-                                          [criteria.key]: option.value
-                                        }))}
-                                        className={cn(
-                                          "px-3 py-1.5 text-xs font-medium rounded border transition-colors min-w-[70px]",
-                                          userScoring[criteria.key] === option.value
-                                            ? "bg-accent text-accent-foreground border-accent"
-                                            : "bg-background hover:bg-secondary border-border",
-                                          isCompleted && "opacity-60 cursor-not-allowed"
-                                        )}
-                                      >
-                                        {option.label}
-                                      </button>
-                                    ))}
-                                  </div>
+                          <CardContent className="pt-2">
+                            {/* Score legend */}
+                            <div className="flex items-center justify-end gap-4 mb-3 pb-3 border-b">
+                              {SCORE_OPTIONS.map((opt) => (
+                                <div key={opt.value} className="flex items-center gap-1.5">
+                                  <div className={cn(
+                                    "h-2.5 w-2.5 rounded-full",
+                                    opt.value === 1 && "bg-red-500",
+                                    opt.value === 2 && "bg-orange-500",
+                                    opt.value === 3 && "bg-amber-500",
+                                    opt.value === 4 && "bg-blue-500",
+                                    opt.value === 5 && "bg-emerald-500",
+                                  )} />
+                                  <span className="text-[11px] text-muted-foreground">{opt.label}</span>
                                 </div>
                               ))}
+                            </div>
+
+                            <div className="space-y-1">
+                              {HR_SCORING_CRITERIA.map((criteria, index) => {
+                                const currentScore = userScoring[criteria.key];
+                                return (
+                                  <div
+                                    key={criteria.key}
+                                    className={cn(
+                                      "group flex items-center justify-between py-3 px-3 -mx-3 rounded-lg transition-colors",
+                                      currentScore === null && !isCompleted && "hover:bg-secondary/50"
+                                    )}
+                                  >
+                                    <div className="flex items-center gap-3 min-w-0">
+                                      <span className="text-xs text-muted-foreground font-mono w-5 text-right shrink-0">{index + 1}.</span>
+                                      <span className="text-sm font-medium truncate">{criteria.label}</span>
+                                    </div>
+                                    <div className="flex items-center gap-1 shrink-0 ml-4">
+                                      {SCORE_OPTIONS.map((option) => {
+                                        const isSelected = currentScore === option.value;
+                                        return (
+                                          <button
+                                            key={option.value}
+                                            type="button"
+                                            disabled={isCompleted}
+                                            onClick={() => setUserScoring(prev => ({
+                                              ...prev,
+                                              [criteria.key]: option.value
+                                            }))}
+                                            title={option.label}
+                                            className={cn(
+                                              "relative h-8 w-8 rounded-md text-xs font-semibold transition-all duration-200",
+                                              pillColor(option.value, isSelected),
+                                              !isSelected && !isCompleted && "hover:scale-110 hover:bg-secondary",
+                                              isCompleted && "cursor-not-allowed opacity-60"
+                                            )}
+                                          >
+                                            {option.value}
+                                          </button>
+                                        );
+                                      })}
+                                      {/* Selected label */}
+                                      <span className={cn(
+                                        "ml-2 text-[11px] font-medium w-16 text-right transition-opacity",
+                                        currentScore ? "opacity-100" : "opacity-0"
+                                      )}>
+                                        {currentScore ? SCORE_OPTIONS.find(o => o.value === currentScore)?.label : ""}
+                                      </span>
+                                    </div>
+                                  </div>
+                                );
+                              })}
                             </div>
                           </CardContent>
                         </Card>
 
-                        {/* Additional Information Section */}
+                        {/* Section 2 — Additional Information */}
                         <Card>
-                          <CardHeader className="pb-3">
-                            <CardTitle className="text-lg">Additional Information</CardTitle>
+                          <CardHeader className="pb-2">
+                            <div className="flex items-center gap-3">
+                              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-accent/10 text-accent text-xs font-bold">2</div>
+                              <div>
+                                <CardTitle className="text-base">Additional Information</CardTitle>
+                                <CardDescription className="text-xs">Provide qualitative notes and competency observations</CardDescription>
+                              </div>
+                            </div>
                           </CardHeader>
-                          <CardContent className="space-y-4">
+                          <CardContent className="space-y-5 pt-2">
                             <div className="space-y-2">
-                              <Label>
+                              <Label className="text-sm">
                                 Key Competencies Required by the Department / Company
                               </Label>
                               {isCompleted ? (
-                                <div className="rounded-md border border-input bg-muted/30 p-3 text-sm min-h-20 opacity-60">
-                                  {userKeyCompetencies || <span className="text-muted-foreground">No content</span>}
+                                <div className="rounded-lg border border-input bg-muted/30 p-3 text-sm min-h-20 opacity-60">
+                                  {userKeyCompetencies ? (
+                                    <LexicalRenderer value={userKeyCompetencies} />
+                                  ) : (
+                                    <span className="text-muted-foreground">No content</span>
+                                  )}
                                 </div>
                               ) : (
                                 <LexicalEditor
@@ -1681,102 +2100,147 @@ export default function CandidateDetailPage() {
                             </div>
 
                             <div className="space-y-2">
-                              <Label>User Notes</Label>
+                              <Label className="text-sm">Interviewer Notes</Label>
                               {isCompleted ? (
-                                <div className="rounded-md border border-input bg-muted/30 p-3 text-sm min-h-20 opacity-60">
-                                  {userUserNotes || <span className="text-muted-foreground">No content</span>}
+                                <div className="rounded-lg border border-input bg-muted/30 p-3 text-sm min-h-20 opacity-60">
+                                  {userUserNotes ? (
+                                    <LexicalRenderer value={userUserNotes} />
+                                  ) : (
+                                    <span className="text-muted-foreground">No content</span>
+                                  )}
                                 </div>
                               ) : (
                                 <LexicalEditor
                                   value={userUserNotes}
                                   onChange={setUserUserNotes}
-                                  placeholder="Enter your notes..."
+                                  placeholder="Enter your observations and notes..."
                                 />
                               )}
                             </div>
+                          </CardContent>
+                        </Card>
 
-                            <div className="space-y-2">
-                              <Label>Interview Result Conclusion</Label>
-                              <div className="flex gap-2 pt-1">
-                                {[
-                                  { value: "proceed" as const, label: "Proceed", color: "emerald" },
-                                  { value: "recommended" as const, label: "Recommended", color: "blue" },
-                                  { value: "rejected" as const, label: "Rejected", color: "red" },
-                                ].map((option) => (
+                        {/* Section 3 — Conclusion */}
+                        <Card>
+                          <CardHeader className="pb-2">
+                            <div className="flex items-center gap-3">
+                              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-accent/10 text-accent text-xs font-bold">3</div>
+                              <div>
+                                <CardTitle className="text-base">Interview Result Conclusion</CardTitle>
+                                <CardDescription className="text-xs">Select the final recommendation for this candidate</CardDescription>
+                              </div>
+                            </div>
+                          </CardHeader>
+                          <CardContent className="pt-2">
+                            <div className="grid grid-cols-3 gap-3">
+                              {[
+                                {
+                                  value: "proceed" as const,
+                                  label: "Proceed",
+                                  desc: "Advance to next stage",
+                                  icon: CheckCircle2,
+                                  colors: {
+                                    active: "border-emerald-500 bg-emerald-50 ring-2 ring-emerald-500/20",
+                                    icon: "text-emerald-600",
+                                    dot: "bg-emerald-500",
+                                  },
+                                },
+                                {
+                                  value: "recommended" as const,
+                                  label: "Recommended",
+                                  desc: "Conditionally advance",
+                                  icon: ClipboardCheck,
+                                  colors: {
+                                    active: "border-blue-500 bg-blue-50 ring-2 ring-blue-500/20",
+                                    icon: "text-blue-600",
+                                    dot: "bg-blue-500",
+                                  },
+                                },
+                                {
+                                  value: "rejected" as const,
+                                  label: "Rejected",
+                                  desc: "Do not proceed",
+                                  icon: XCircle,
+                                  colors: {
+                                    active: "border-red-500 bg-red-50 ring-2 ring-red-500/20",
+                                    icon: "text-red-600",
+                                    dot: "bg-red-500",
+                                  },
+                                },
+                              ].map((option) => {
+                                const Icon = option.icon;
+                                const isSelected = userConclusion === option.value;
+                                return (
                                   <button
                                     key={option.value}
                                     type="button"
                                     disabled={isCompleted}
                                     onClick={() => setUserConclusion(option.value)}
                                     className={cn(
-                                      "flex-1 px-4 py-3 text-sm font-medium rounded-lg border-2 transition-all",
-                                      userConclusion === option.value
-                                        ? option.color === "emerald"
-                                          ? "bg-emerald-50 border-emerald-500 text-emerald-700"
-                                          : option.color === "blue"
-                                          ? "bg-blue-50 border-blue-500 text-blue-700"
-                                          : "bg-red-50 border-red-500 text-red-700"
-                                        : "bg-background border-border hover:border-muted-foreground/50",
+                                      "relative flex flex-col items-center gap-2 rounded-xl border-2 p-5 transition-all duration-200 text-center",
+                                      isSelected
+                                        ? option.colors.active
+                                        : "border-border bg-background hover:border-muted-foreground/30 hover:bg-secondary/30",
                                       isCompleted && "opacity-60 cursor-not-allowed"
                                     )}
                                   >
-                                    <div className="flex items-center justify-center gap-2">
-                                      <div
-                                        className={cn(
-                                          "h-4 w-4 rounded-full border-2 flex items-center justify-center",
-                                          userConclusion === option.value
-                                            ? option.color === "emerald"
-                                              ? "border-emerald-500"
-                                              : option.color === "blue"
-                                              ? "border-blue-500"
-                                              : "border-red-500"
-                                            : "border-muted-foreground/30"
-                                        )}
-                                      >
-                                        {userConclusion === option.value && (
-                                          <div
-                                            className={cn(
-                                              "h-2 w-2 rounded-full",
-                                              option.color === "emerald"
-                                                ? "bg-emerald-500"
-                                                : option.color === "blue"
-                                                ? "bg-blue-500"
-                                                : "bg-red-500"
-                                            )}
-                                          />
-                                        )}
-                                      </div>
-                                      {option.label}
+                                    {isSelected && (
+                                      <div className={cn("absolute top-2.5 right-2.5 h-2.5 w-2.5 rounded-full", option.colors.dot)} />
+                                    )}
+                                    <div className={cn(
+                                      "flex h-10 w-10 items-center justify-center rounded-full transition-colors",
+                                      isSelected ? "bg-white/60" : "bg-secondary"
+                                    )}>
+                                      <Icon className={cn("h-5 w-5", isSelected ? option.colors.icon : "text-muted-foreground")} />
+                                    </div>
+                                    <div>
+                                      <p className={cn("text-sm font-semibold", isSelected ? option.colors.icon : "text-foreground")}>{option.label}</p>
+                                      <p className="text-[11px] text-muted-foreground mt-0.5">{option.desc}</p>
                                     </div>
                                   </button>
-                                ))}
-                              </div>
+                                );
+                              })}
                             </div>
                           </CardContent>
                         </Card>
 
                         {/* Action Buttons */}
                         {!isCompleted && (
-                          <div className="flex justify-end gap-2">
-                            <Button
-                              variant="outline"
-                              onClick={() => setShowUserPreview(true)}
-                            >
-                              Preview
-                            </Button>
-                            <Button
-                              onClick={handleUserAssessmentSubmit}
-                              disabled={isSubmittingUser}
-                            >
-                              {isSubmittingUser ? (
-                                <>
-                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                  Submitting...
-                                </>
-                              ) : (
-                                "Submit"
-                              )}
-                            </Button>
+                          <div className="flex items-center justify-between pt-2">
+                            <p className="text-xs text-muted-foreground">
+                              {totalFilled < totalCriteria
+                                ? `${totalCriteria - totalFilled} scoring criteria remaining`
+                                : userConclusion
+                                ? "Ready to submit"
+                                : "Select a conclusion to submit"}
+                            </p>
+                            <div className="flex gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setShowUserPreview(true)}
+                              >
+                                <FileText className="mr-2 h-3.5 w-3.5" />
+                                Preview
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={handleUserAssessmentSubmit}
+                                disabled={isSubmittingUser}
+                              >
+                                {isSubmittingUser ? (
+                                  <>
+                                    <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                                    Submitting...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Send className="mr-2 h-3.5 w-3.5" />
+                                    Submit Assessment
+                                  </>
+                                )}
+                              </Button>
+                            </div>
                           </div>
                         )}
                       </>
@@ -1788,188 +2252,273 @@ export default function CandidateDetailPage() {
 
             {/* MCU Tab */}
             <TabsContent value="mcu" className="space-y-6 mt-6">
-              {/* MCU - Medical Check-Up */}
-              <div className="space-y-4">
-                {ASSESSMENT_STAGES.filter(stage => stage.key === "mcu").map((stage) => {
-                  const { status, locked } = getStageStatus(stage.key);
-                  const Icon = stage.icon;
-                  const isActive = !locked && status === "pending";
+              {(() => {
+                const mcuStage = ASSESSMENT_STAGES.find(s => s.key === "mcu")!;
+                const { status: mcuStatus, locked: mcuLocked } = getStageStatus("mcu");
+                const mcuIsPending = !mcuLocked && mcuStatus === "pending";
 
-                  return (
-                    <Card
-                      key={stage.key}
-                      className={cn(
-                        "transition-all",
-                        locked && "opacity-60",
-                        status === "passed" && "border-emerald-500/50 bg-emerald-500/5",
-                        status === "failed" && "border-destructive/50 bg-destructive/5"
-                      )}
-                    >
-                      <CardHeader className="pb-3">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className={cn(
-                              "flex h-10 w-10 items-center justify-center rounded-full",
-                              status === "passed" ? "bg-emerald-500/10" :
-                              status === "failed" ? "bg-destructive/10" :
-                              locked ? "bg-secondary" : "bg-accent/10"
-                            )}>
-                              {locked ? (
-                                <Lock className="h-5 w-5 text-muted-foreground" />
-                              ) : status === "passed" ? (
-                                <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-                              ) : status === "failed" ? (
-                                <XCircle className="h-5 w-5 text-destructive" />
-                              ) : (
-                                <Icon className="h-5 w-5 text-accent" />
-                              )}
+                return (
+                  <>
+                    {/* Status Banner */}
+                    {mcuStatus === "passed" && (
+                      <div className="flex items-center gap-3 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-500/10">
+                          <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-emerald-700">Medical Check-Up Passed</p>
+                          <p className="text-sm text-muted-foreground">Candidate has been cleared for medical examination.</p>
+                        </div>
+                      </div>
+                    )}
+                    {mcuStatus === "failed" && (
+                      <div className="flex items-center gap-3 rounded-lg border border-destructive/30 bg-destructive/5 p-4">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-destructive/10">
+                          <XCircle className="h-5 w-5 text-destructive" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-destructive">Medical Check-Up Failed</p>
+                          <p className="text-sm text-muted-foreground">Candidate did not pass the medical examination.</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Locked State */}
+                    {mcuLocked && (
+                      <Card>
+                        <CardContent className="flex flex-col items-center justify-center py-16">
+                          <Lock className="h-16 w-16 text-muted-foreground/30" />
+                          <h3 className="mt-4 text-lg font-medium">MCU Locked</h3>
+                          <p className="text-muted-foreground text-center max-w-md mt-2">
+                            Complete Interview User (Assessment User) first to unlock Medical Check-Up.
+                          </p>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {/* Main MCU Content - show when not locked */}
+                    {!mcuLocked && (
+                      <>
+                        {/* Section 1: Document Upload */}
+                        <Card>
+                          <CardHeader className="pb-4">
+                            <div className="flex items-center gap-3">
+                              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-500/10 text-sm font-bold text-blue-600">1</div>
+                              <div>
+                                <CardTitle className="text-base">MCU Document</CardTitle>
+                                <CardDescription>Upload the medical check-up result document (PDF, JPEG, or PNG, max 10MB)</CardDescription>
+                              </div>
+                            </div>
+                          </CardHeader>
+                          <CardContent className="pt-0">
+                            <Separator className="mb-4" />
+
+                            {/* Hidden file input */}
+                            <input
+                              ref={mcuFileInputRef}
+                              type="file"
+                              accept=".pdf,.jpg,.jpeg,.png"
+                              onChange={handleMcuFileUpload}
+                              className="hidden"
+                            />
+
+                            {/* Document state */}
+                            {mcuDocument?.url ? (
+                              <div className="rounded-lg border bg-secondary/20 p-4">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-3 min-w-0">
+                                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-500/10">
+                                      <File className="h-5 w-5 text-blue-600" />
+                                    </div>
+                                    <div className="min-w-0">
+                                      <p className="font-medium text-sm truncate">{mcuDocument.name || "MCU Document"}</p>
+                                      <p className="text-xs text-muted-foreground">Uploaded successfully</p>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-2 shrink-0">
+                                    {mcuDocument.presignedUrl && (
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        asChild
+                                      >
+                                        <a href={mcuDocument.presignedUrl} target="_blank" rel="noopener noreferrer">
+                                          <Eye className="mr-1.5 h-3.5 w-3.5" />
+                                          View
+                                        </a>
+                                      </Button>
+                                    )}
+                                    {mcuStatus === "pending" && (
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="text-destructive hover:text-destructive"
+                                        onClick={handleMcuDocumentDelete}
+                                        disabled={isDeletingMcuDoc}
+                                      >
+                                        {isDeletingMcuDoc ? (
+                                          <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                                        ) : (
+                                          <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+                                        )}
+                                        Delete
+                                      </Button>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => mcuFileInputRef.current?.click()}
+                                disabled={isUploadingMcu || mcuStatus !== "pending"}
+                                className={cn(
+                                  "w-full rounded-lg border-2 border-dashed p-8 text-center transition-colors",
+                                  mcuStatus === "pending"
+                                    ? "border-muted-foreground/25 hover:border-blue-500/50 hover:bg-blue-500/5 cursor-pointer"
+                                    : "border-muted-foreground/15 opacity-60 cursor-not-allowed"
+                                )}
+                              >
+                                {isUploadingMcu ? (
+                                  <div className="flex flex-col items-center gap-2">
+                                    <Loader2 className="h-8 w-8 text-blue-500 animate-spin" />
+                                    <p className="text-sm font-medium">Uploading document...</p>
+                                  </div>
+                                ) : (
+                                  <div className="flex flex-col items-center gap-2">
+                                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-500/10">
+                                      <Upload className="h-6 w-6 text-blue-500" />
+                                    </div>
+                                    <div>
+                                      <p className="text-sm font-medium">Click to upload MCU document</p>
+                                      <p className="text-xs text-muted-foreground mt-1">PDF, JPEG, or PNG up to 10MB</p>
+                                    </div>
+                                  </div>
+                                )}
+                              </button>
+                            )}
+                          </CardContent>
+                        </Card>
+
+                        {/* Section 2: Notes */}
+                        <Card>
+                          <CardHeader className="pb-4">
+                            <div className="flex items-center gap-3">
+                              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-500/10 text-sm font-bold text-blue-600">2</div>
+                              <div>
+                                <CardTitle className="text-base">Notes / Description</CardTitle>
+                                <CardDescription>Add any additional notes about the medical check-up results</CardDescription>
+                              </div>
+                            </div>
+                          </CardHeader>
+                          <CardContent className="pt-0">
+                            <Separator className="mb-4" />
+                            <Textarea
+                              id="mcu-notes"
+                              placeholder="Add notes for Medical Check-Up..."
+                              value={assessmentNotes.mcu}
+                              onChange={(e) => setAssessmentNotes(prev => ({
+                                ...prev,
+                                mcu: e.target.value
+                              }))}
+                              disabled={mcuStatus !== "pending"}
+                              className="min-h-32"
+                            />
+                          </CardContent>
+                        </Card>
+
+                        {/* Action Bar - Only show if pending */}
+                        {mcuIsPending && (
+                          <div className="sticky bottom-4 z-10">
+                            <Card className="border-blue-500/20 shadow-lg">
+                              <CardContent className="flex items-center justify-between p-4">
+                                <p className="text-sm text-muted-foreground">
+                                  Upload the MCU document and set the result to continue.
+                                </p>
+                                <div className="flex items-center gap-2">
+                                  <Button
+                                    variant="default"
+                                    className="bg-emerald-600 hover:bg-emerald-700"
+                                    disabled={isSubmitting === "mcu"}
+                                    onClick={() => setConfirmDialog({
+                                      open: true,
+                                      stage: "mcu",
+                                      action: "PASSED"
+                                    })}
+                                  >
+                                    {isSubmitting === "mcu" ? (
+                                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    ) : (
+                                      <CheckCircle2 className="mr-2 h-4 w-4" />
+                                    )}
+                                    Pass
+                                  </Button>
+                                  <Button
+                                    variant="destructive"
+                                    disabled={isSubmitting === "mcu"}
+                                    onClick={() => setConfirmDialog({
+                                      open: true,
+                                      stage: "mcu",
+                                      action: "FAILED"
+                                    })}
+                                  >
+                                    {isSubmitting === "mcu" ? (
+                                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    ) : (
+                                      <XCircle className="mr-2 h-4 w-4" />
+                                    )}
+                                    Fail
+                                  </Button>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          </div>
+                        )}
+                      </>
+                    )}
+
+                    {/* Assessment Failed Notice */}
+                    {progress?.anyFailed && (
+                      <Card className="border-destructive bg-destructive/5">
+                        <CardContent className="flex items-center gap-4 p-6">
+                          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
+                            <XCircle className="h-6 w-6 text-destructive" />
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-destructive">Assessment Failed</h3>
+                            <p className="text-sm text-muted-foreground">
+                              This candidate has failed one of the assessment stages and cannot proceed further.
+                            </p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {/* All Passed Notice */}
+                    {progress?.allPassed && (
+                      <Card className="border-emerald-500 bg-emerald-500/5">
+                        <CardContent className="flex items-center justify-between p-6">
+                          <div className="flex items-center gap-4">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/10">
+                              <PartyPopper className="h-6 w-6 text-emerald-600" />
                             </div>
                             <div>
-                              <CardTitle className="text-lg">{stage.label}</CardTitle>
-                              <CardDescription>{stage.description}</CardDescription>
+                              <h3 className="font-semibold text-emerald-600">All Assessments Passed!</h3>
+                              <p className="text-sm text-muted-foreground">
+                                This candidate has passed all assessment stages and is ready for onboarding.
+                              </p>
                             </div>
                           </div>
-                          {/* Status Badge */}
-                          {status === "passed" && (
-                            <Badge className="bg-emerald-600">Passed</Badge>
-                          )}
-                          {status === "failed" && (
-                            <Badge variant="destructive">Failed</Badge>
-                          )}
-                          {locked && (
-                            <Badge variant="secondary">
-                              <Lock className="mr-1 h-3 w-3" />
-                              Locked
-                            </Badge>
-                          )}
-                          {isActive && (
-                            <Badge variant="outline" className="border-accent text-accent">
-                              <Clock className="mr-1 h-3 w-3" />
-                              Pending
-                            </Badge>
-                          )}
-                        </div>
-                      </CardHeader>
-
-                      {/* Stage Content - Only show if not locked */}
-                      {!locked && (
-                        <CardContent className="pt-0">
-                          <Separator className="mb-4" />
-
-                          {/* Notes Section */}
-                          <div className="space-y-4">
-                            <div className="space-y-2">
-                              <Label htmlFor={`${stage.key}-notes`}>Notes / Description</Label>
-                              <Textarea
-                                id={`${stage.key}-notes`}
-                                placeholder={`Add notes for ${stage.label}...`}
-                                value={assessmentNotes[stage.key]}
-                                onChange={(e) => setAssessmentNotes(prev => ({
-                                  ...prev,
-                                  [stage.key]: e.target.value
-                                }))}
-                                disabled={status !== "pending"}
-                                className="min-h-24"
-                              />
-                            </div>
-
-                            {/* Action Buttons - Only show if pending */}
-                            {status === "pending" && (
-                              <div className="flex items-center gap-2 pt-2">
-                                <Button
-                                  variant="default"
-                                  className="bg-emerald-600 hover:bg-emerald-700"
-                                  disabled={isSubmitting === stage.key}
-                                  onClick={() => setConfirmDialog({
-                                    open: true,
-                                    stage: stage.key,
-                                    action: "PASSED"
-                                  })}
-                                >
-                                  {isSubmitting === stage.key ? (
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                  ) : (
-                                    <CheckCircle2 className="mr-2 h-4 w-4" />
-                                  )}
-                                  Pass
-                                </Button>
-                                <Button
-                                  variant="destructive"
-                                  disabled={isSubmitting === stage.key}
-                                  onClick={() => setConfirmDialog({
-                                    open: true,
-                                    stage: stage.key,
-                                    action: "FAILED"
-                                  })}
-                                >
-                                  {isSubmitting === stage.key ? (
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                  ) : (
-                                    <XCircle className="mr-2 h-4 w-4" />
-                                  )}
-                                  Fail
-                                </Button>
-                              </div>
-                            )}
-                          </div>
+                          <Button onClick={() => handleTabChange("onboarding")}>
+                            Start Onboarding
+                            <PartyPopper className="ml-2 h-4 w-4" />
+                          </Button>
                         </CardContent>
-                      )}
-
-                      {/* Locked Message */}
-                      {locked && (
-                        <CardContent className="pt-0">
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground bg-secondary/50 rounded-lg p-3">
-                            <Lock className="h-4 w-4" />
-                            <span>
-                              Complete Interview 2 (Assessment User) first to unlock MCU
-                            </span>
-                          </div>
-                        </CardContent>
-                      )}
-                    </Card>
-                  );
-                })}
-              </div>
-
-              {/* Assessment Failed Notice */}
-              {progress?.anyFailed && (
-                <Card className="border-destructive bg-destructive/5">
-                  <CardContent className="flex items-center gap-4 p-6">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
-                      <XCircle className="h-6 w-6 text-destructive" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-destructive">Assessment Failed</h3>
-                      <p className="text-sm text-muted-foreground">
-                        This candidate has failed one of the assessment stages and cannot proceed further.
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* All Passed Notice */}
-              {progress?.allPassed && (
-                <Card className="border-emerald-500 bg-emerald-500/5">
-                  <CardContent className="flex items-center justify-between p-6">
-                    <div className="flex items-center gap-4">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/10">
-                        <PartyPopper className="h-6 w-6 text-emerald-600" />
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-emerald-600">All Assessments Passed!</h3>
-                        <p className="text-sm text-muted-foreground">
-                          This candidate has passed all assessment stages and is ready for onboarding.
-                        </p>
-                      </div>
-                    </div>
-                    <Button onClick={() => handleTabChange("onboarding")}>
-                      Start Onboarding
-                      <PartyPopper className="ml-2 h-4 w-4" />
-                    </Button>
-                  </CardContent>
-                </Card>
-              )}
+                      </Card>
+                    )}
+                  </>
+                );
+              })()}
             </TabsContent>
 
             {/* Onboarding Tab */}
@@ -1978,7 +2527,7 @@ export default function CandidateDetailPage() {
                 <div className="space-y-6">
                   <Card>
                     <CardHeader>
-                      <CardTitle className="flex items-center gap-2 text-sm">
+                      <CardTitle className="flex items-center gap-2 text-base">
                         <PartyPopper className="h-5 w-5" />
                         Onboarding
                       </CardTitle>
@@ -2011,7 +2560,7 @@ export default function CandidateDetailPage() {
                     <Lock className="h-16 w-16 text-muted-foreground/30" />
                     <h3 className="mt-4 text-lg font-medium">Onboarding Locked</h3>
                     <p className="text-muted-foreground text-center max-w-md mt-2">
-                      The candidate must pass all assessment stages (Interview 1, Interview 2, and MCU)
+                      The candidate must pass all assessment stages (Interview HR, Interview User, and MCU)
                       before starting the onboarding process.
                     </p>
                   </CardContent>
@@ -2042,7 +2591,7 @@ export default function CandidateDetailPage() {
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <p className="text-xs font-medium">{candidate.fullname}</p>
+                  <p className="text-sm font-medium">{candidate.fullname}</p>
                   <p className="text-sm text-muted-foreground">{candidate.jobTitle?.name}</p>
                 </div>
               </div>
@@ -2050,7 +2599,7 @@ export default function CandidateDetailPage() {
 
             {/* Scoring Preview */}
             <div className="space-y-3">
-              <h4 className="font-semibold text-sm">Scoring</h4>
+              <h4 className="font-semibold text-base">Scoring</h4>
               <div className="border rounded-lg divide-y">
                 {HR_SCORING_CRITERIA.map((criteria, index) => {
                   const score = hrScoring[criteria.key];
@@ -2071,7 +2620,7 @@ export default function CandidateDetailPage() {
 
             {/* Additional Information Preview */}
             <div className="space-y-3">
-              <h4 className="font-semibold text-sm">Additional Information</h4>
+              <h4 className="font-semibold text-base">Additional Information</h4>
 
               <div className="space-y-2">
                 <p className="text-xs text-muted-foreground uppercase tracking-wider">Key Competencies</p>
@@ -2159,7 +2708,7 @@ export default function CandidateDetailPage() {
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <p className="text-xs font-medium">{candidate.fullname}</p>
+                  <p className="text-sm font-medium">{candidate.fullname}</p>
                   <p className="text-sm text-muted-foreground">{candidate.jobTitle?.name}</p>
                 </div>
               </div>
@@ -2167,7 +2716,7 @@ export default function CandidateDetailPage() {
 
             {/* Scoring Preview */}
             <div className="space-y-3">
-              <h4 className="font-semibold text-sm">Scoring</h4>
+              <h4 className="font-semibold text-base">Scoring</h4>
               <div className="border rounded-lg divide-y">
                 {HR_SCORING_CRITERIA.map((criteria, index) => {
                   const score = userScoring[criteria.key];
@@ -2188,7 +2737,7 @@ export default function CandidateDetailPage() {
 
             {/* Additional Information Preview */}
             <div className="space-y-3">
-              <h4 className="font-semibold text-sm">Additional Information</h4>
+              <h4 className="font-semibold text-base">Additional Information</h4>
 
               <div className="space-y-2">
                 <p className="text-xs text-muted-foreground uppercase tracking-wider">Key Competencies</p>
@@ -2270,13 +2819,13 @@ export default function CandidateDetailPage() {
               {confirmDialog?.action === "PASSED" ? (
                 <>
                   Are you sure you want to mark{" "}
-                  <strong>{confirmDialog?.stage === "mcu" ? "MCU" : confirmDialog?.stage === "interview1" ? "Interview 1" : "Interview 2"}</strong>{" "}
+                  <strong>{confirmDialog?.stage === "mcu" ? "MCU" : confirmDialog?.stage === "interview1" ? "Interview HR" : "Interview User"}</strong>{" "}
                   as passed? This will unlock the next stage.
                 </>
               ) : (
                 <>
                   Are you sure you want to mark{" "}
-                  <strong>{confirmDialog?.stage === "mcu" ? "MCU" : confirmDialog?.stage === "interview1" ? "Interview 1" : "Interview 2"}</strong>{" "}
+                  <strong>{confirmDialog?.stage === "mcu" ? "MCU" : confirmDialog?.stage === "interview1" ? "Interview HR" : "Interview User"}</strong>{" "}
                   as failed? The candidate will not be able to proceed further.
                 </>
               )}
