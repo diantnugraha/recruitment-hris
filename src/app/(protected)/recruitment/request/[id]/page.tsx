@@ -49,6 +49,7 @@ import {
 
 import { cn, formatShortDate } from "@/lib/utils";
 import { showToast } from "@/lib/utils/toast-messages";
+import { hasBiodataSubmitted } from "@/lib/utils/recruitmentHelpers";
 import { employeeRequestService } from "@/services/employee-request.service";
 import { candidateService, type CandidateWithRelations } from "@/services/candidate.service";
 import {
@@ -268,8 +269,8 @@ export default function RecruitmentRequestDetailPage() {
   };
 
   const deriveCandidateStatus = (candidate: CandidateWithRelations): CandidateStatus => {
-    // If candidate hasn't completed biodata yet, show waiting status
-    if (candidate.verify !== "VERIFIED") return CANDIDATE_STATUS.WAITING_BIODATA;
+    // If candidate hasn't submitted biodata yet
+    if (!hasBiodataSubmitted(candidate)) return CANDIDATE_STATUS.WAITING_BIODATA;
 
     const assessment = candidate.assessment;
 

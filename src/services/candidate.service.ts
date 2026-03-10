@@ -672,11 +672,14 @@ export const candidateService = {
 
   // ==================== Assessment Pipeline ====================
 
-  async startInterview(candidateId: string | number): Promise<ApiResponse<AssessmentProgress>> {
+  async startInterview(
+    candidateId: string | number,
+    data: { interview_date: string; interview_type: "online" | "onsite" }
+  ): Promise<ApiResponse<AssessmentProgress>> {
     try {
-      const response = await post<unknown, Record<string, never>>(
+      const response = await post<unknown, { interview_date: string; interview_type: string }>(
         `/v1/candidate/${candidateId}/assessment/start`,
-        {}
+        data
       );
       const res = response as { success?: boolean; data?: AssessmentProgress; message?: string };
 
@@ -877,8 +880,8 @@ export const candidateService = {
 
   async getOnboarding(candidateId: string | number): Promise<ApiResponse<Onboarding | null>> {
     try {
-      const response = await get<unknown>(`/v1/candidate/${candidateId}/onboarding`);
-      const res = response as {
+      const response = await api.get(`/v1/candidate/${candidateId}/onboarding`);
+      const res = response.data as {
         success?: boolean;
         data?: {
           id: number;
@@ -920,7 +923,7 @@ export const candidateService = {
             jobPlacement: res.data.job_placement,
             document: res.data.document,
             documentCandidate: res.data.document_candidate,
-            facilities: res.data.facilities.map(f => ({
+            facilities: (res.data.facilities || []).map(f => ({
               id: f.id,
               inventoryNo: f.inventory_no,
               item: f.item,
@@ -929,7 +932,7 @@ export const candidateService = {
               condition: f.condition,
               status: f.status,
             })),
-            programs: res.data.programs.map(p => ({
+            programs: (res.data.programs || []).map(p => ({
               id: p.id,
               program: p.program,
               date: p.date,
@@ -943,6 +946,11 @@ export const candidateService = {
 
       return { success: false, message: "Unexpected response format" };
     } catch (error: unknown) {
+      const err = error as { response?: { status?: number } };
+      // 404 or 500 means no onboarding exists yet — return null gracefully
+      if (err.response?.status === 404 || err.response?.status === 500) {
+        return { success: true, data: null };
+      }
       return { success: false, message: "Failed to fetch onboarding" };
     }
   },
@@ -956,10 +964,65 @@ export const candidateService = {
         `/v1/candidate/${candidateId}/onboarding`,
         data
       );
-      const res = response as { success?: boolean; data?: Onboarding; message?: string };
+      const res = response as {
+        success?: boolean;
+        data?: {
+          id: number;
+          candidate_id: number;
+          employee_request_id: number;
+          job_placement: string;
+          document: string;
+          document_candidate: string;
+          facilities: Array<{
+            id: number;
+            inventory_no: string;
+            item: string;
+            qty: number;
+            unit: string;
+            condition: string;
+            status: string;
+          }>;
+          programs: Array<{
+            id: number;
+            program: string;
+            date: string;
+            location: string;
+            pic: string;
+            status: string;
+          }>;
+        };
+        message?: string;
+      };
 
       if (res.success && res.data) {
-        return { success: true, data: res.data };
+        return {
+          success: true,
+          data: {
+            id: res.data.id,
+            candidateId: res.data.candidate_id,
+            employeeRequestId: res.data.employee_request_id,
+            jobPlacement: res.data.job_placement,
+            document: res.data.document,
+            documentCandidate: res.data.document_candidate,
+            facilities: (res.data.facilities || []).map(f => ({
+              id: f.id,
+              inventoryNo: f.inventory_no,
+              item: f.item,
+              qty: f.qty,
+              unit: f.unit,
+              condition: f.condition,
+              status: f.status,
+            })),
+            programs: (res.data.programs || []).map(p => ({
+              id: p.id,
+              program: p.program,
+              date: p.date,
+              location: p.location,
+              pic: p.pic,
+              status: p.status,
+            })),
+          },
+        };
       }
 
       return { success: false, message: res.message || "Unexpected response format" };
@@ -978,10 +1041,65 @@ export const candidateService = {
         `/v1/candidate/${candidateId}/onboarding`,
         data
       );
-      const res = response as { success?: boolean; data?: Onboarding; message?: string };
+      const res = response as {
+        success?: boolean;
+        data?: {
+          id: number;
+          candidate_id: number;
+          employee_request_id: number;
+          job_placement: string;
+          document: string;
+          document_candidate: string;
+          facilities: Array<{
+            id: number;
+            inventory_no: string;
+            item: string;
+            qty: number;
+            unit: string;
+            condition: string;
+            status: string;
+          }>;
+          programs: Array<{
+            id: number;
+            program: string;
+            date: string;
+            location: string;
+            pic: string;
+            status: string;
+          }>;
+        };
+        message?: string;
+      };
 
       if (res.success && res.data) {
-        return { success: true, data: res.data };
+        return {
+          success: true,
+          data: {
+            id: res.data.id,
+            candidateId: res.data.candidate_id,
+            employeeRequestId: res.data.employee_request_id,
+            jobPlacement: res.data.job_placement,
+            document: res.data.document,
+            documentCandidate: res.data.document_candidate,
+            facilities: (res.data.facilities || []).map(f => ({
+              id: f.id,
+              inventoryNo: f.inventory_no,
+              item: f.item,
+              qty: f.qty,
+              unit: f.unit,
+              condition: f.condition,
+              status: f.status,
+            })),
+            programs: (res.data.programs || []).map(p => ({
+              id: p.id,
+              program: p.program,
+              date: p.date,
+              location: p.location,
+              pic: p.pic,
+              status: p.status,
+            })),
+          },
+        };
       }
 
       return { success: false, message: res.message || "Unexpected response format" };
@@ -1009,10 +1127,25 @@ export const candidateService = {
         `/v1/candidate/${candidateId}/onboarding/facilities`,
         data
       );
-      const res = response as { success?: boolean; data?: Facility; message?: string };
+      const res = response as {
+        success?: boolean;
+        data?: { id: number; inventory_no: string; item: string; qty: number; unit: string; condition: string; status: string };
+        message?: string;
+      };
 
       if (res.success && res.data) {
-        return { success: true, data: res.data };
+        return {
+          success: true,
+          data: {
+            id: res.data.id,
+            inventoryNo: res.data.inventory_no,
+            item: res.data.item,
+            qty: res.data.qty,
+            unit: res.data.unit,
+            condition: res.data.condition,
+            status: res.data.status,
+          },
+        };
       }
 
       return { success: false, message: res.message || "Unexpected response format" };
@@ -1039,10 +1172,25 @@ export const candidateService = {
         `/v1/candidate/${candidateId}/onboarding/facilities/${facilityId}`,
         data
       );
-      const res = response as { success?: boolean; data?: Facility; message?: string };
+      const res = response as {
+        success?: boolean;
+        data?: { id: number; inventory_no: string; item: string; qty: number; unit: string; condition: string; status: string };
+        message?: string;
+      };
 
       if (res.success && res.data) {
-        return { success: true, data: res.data };
+        return {
+          success: true,
+          data: {
+            id: res.data.id,
+            inventoryNo: res.data.inventory_no,
+            item: res.data.item,
+            qty: res.data.qty,
+            unit: res.data.unit,
+            condition: res.data.condition,
+            status: res.data.status,
+          },
+        };
       }
 
       return { success: false, message: res.message || "Unexpected response format" };

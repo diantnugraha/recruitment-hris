@@ -20,17 +20,47 @@ export type CandidatePipelineStage =
   | "failed";
 
 /**
+ * Check if candidate has submitted their biodata.
+ * Priority:
+ * 1. detail.candidateVerify === "VERIFIED" (explicit submit via endpoint)
+ * 2. Assessment progressed beyond PENDING (interview already started by HR)
+ * 3. Self-assessment fields filled (candidate completed the assessment form)
+ */
+export function hasBiodataSubmitted(candidate: CandidateWithRelations): boolean {
+  if (candidate.detail?.candidateVerify === "VERIFIED") return true;
+
+  const assessment = candidate.assessment;
+  if (!assessment) return false;
+
+  // Interview already progressed
+  if (
+    assessment.interview1Status !== "PENDING" ||
+    assessment.interview2Status !== "PENDING" ||
+    assessment.mcuStatus !== "PENDING"
+  ) {
+    return true;
+  }
+
+  // Self-assessment has been filled by the candidate
+  if (assessment.expectedSalary || assessment.lastSalary || assessment.whenReadyWork) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
  * Determine the current pipeline stage for a single candidate
  * @param assessment - Candidate's assessment data
- * @param verified - Whether the candidate has completed biodata (verify === "VERIFIED")
+ * @param biodataSubmitted - Whether the candidate has submitted biodata
  * @returns The current stage key
  */
 export function getCandidateCurrentStage(
   assessment: CandidateAssessment | null | undefined,
-  verified: boolean = true
+  biodataSubmitted: boolean = true
 ): CandidatePipelineStage {
-  // If candidate hasn't completed biodata yet
-  if (!verified) return "waiting_biodata";
+  // If candidate hasn't submitted biodata yet
+  if (!biodataSubmitted) return "waiting_biodata";
 
   if (!assessment) return "interview1";
 
@@ -92,8 +122,7 @@ export function calculatePipelineStats(
   };
 
   candidates.forEach((candidate) => {
-    // If candidate hasn't completed biodata yet
-    if (candidate.verify !== "VERIFIED") {
+    if (!hasBiodataSubmitted(candidate)) {
       stats.waiting_biodata++;
       return;
     }

@@ -43,6 +43,7 @@ import {
   Pencil,
   Package,
   UserCheck,
+  Monitor,
 } from "lucide-react";
 
 import { Header } from "@/components/layout/header";
@@ -102,6 +103,7 @@ import {
 } from "@/services/candidate.service";
 import { formatShortDate, getInitials, cn } from "@/lib/utils";
 import { showToast } from "@/lib/utils/toast-messages";
+import { hasBiodataSubmitted } from "@/lib/utils/recruitmentHelpers";
 import { LexicalEditor } from "@/components/shared/lexical-editor";
 import { LexicalRenderer } from "@/components/shared/lexical-renderer";
 import { employeeService } from "@/services/employee.service";
@@ -247,12 +249,14 @@ export default function CandidateDetailPage() {
   const [isDeletingMcuDoc, setIsDeletingMcuDoc] = React.useState(false);
   const mcuFileInputRef = React.useRef<HTMLInputElement>(null);
 
-  // Start Interview state
+  // Start Interview dialog state
   const [isStartingInterview, setIsStartingInterview] = React.useState(false);
+  const [showStartInterviewDialog, setShowStartInterviewDialog] = React.useState(false);
+  const [interviewDate, setInterviewDate] = React.useState("");
+  const [interviewType, setInterviewType] = React.useState<"online" | "onsite" | "">("");
 
   // Onboarding State
   const [onboarding, setOnboarding] = React.useState<Onboarding | null>(null);
-  const [isSavingOnboarding, setIsSavingOnboarding] = React.useState(false);
   const [isConverting, setIsConverting] = React.useState(false);
   const [jobPlacement, setJobPlacement] = React.useState("");
   const [joinDate, setJoinDate] = React.useState("");
@@ -265,11 +269,11 @@ export default function CandidateDetailPage() {
   }>({ open: false, mode: "add" });
   const [facilityForm, setFacilityForm] = React.useState({
     inventoryNo: "",
-    item: "",
+    item: "" as string,
     qty: 1,
     unit: "Unit",
     condition: "New",
-    status: "Pending",
+    status: "Assigned",
   });
 
   // Program dialog state
@@ -298,8 +302,9 @@ export default function CandidateDetailPage() {
   const [showConvertDialog, setShowConvertDialog] = React.useState(false);
 
   // Onboarding constants
-  const FACILITY_CONDITIONS = ["New", "Good", "Used", "Refurbished"] as const;
-  const FACILITY_STATUSES = ["Pending", "Assigned", "Returned"] as const;
+  const FACILITY_ITEMS = ["Laptop CTO", "Laptop NCTO", "Starter Kit"] as const;
+  const FACILITY_CONDITIONS = ["New", "Used"] as const;
+  const FACILITY_STATUSES = ["Assigned"] as const;
   const PROGRAM_STATUSES = ["Scheduled", "In Progress", "Completed", "Cancelled"] as const;
 
   // Handle tab change and update URL
@@ -838,12 +843,23 @@ export default function CandidateDetailPage() {
 
   // Handle Start Interview
   const handleStartInterview = async () => {
+    if (!interviewDate || !interviewType) {
+      showToast.error("Please fill in interview date and type");
+      return;
+    }
+
     setIsStartingInterview(true);
     try {
-      const response = await candidateService.startInterview(id);
+      const response = await candidateService.startInterview(id, {
+        interview_date: new Date(interviewDate).toISOString(),
+        interview_type: interviewType,
+      });
       if (response.success && response.data) {
         setProgress(response.data);
-        showToast.success("Interview process started! You can now proceed with Assessment HR.");
+        setShowStartInterviewDialog(false);
+        setInterviewDate("");
+        setInterviewType("");
+        showToast.success("Interview scheduled! You can now proceed with Assessment HR.");
         handleTabChange("assessment-hr");
       } else {
         showToast.error(response.message || "Failed to start interview");
@@ -857,11 +873,19 @@ export default function CandidateDetailPage() {
 
   // ==================== Onboarding Handlers ====================
 
-  // Create onboarding if not exists
+  // Ensure onboarding exists — fetch first, create only if not found
   const ensureOnboarding = async (): Promise<boolean> => {
     if (onboarding) return true;
 
     try {
+      // Try fetching existing onboarding first
+      const fetchRes = await candidateService.getOnboarding(id);
+      if (fetchRes.success && fetchRes.data) {
+        setOnboarding(fetchRes.data);
+        return true;
+      }
+
+      // No existing onboarding, create new one
       const response = await candidateService.createOnboarding(id, {
         job_placement: jobPlacement,
       });
@@ -878,37 +902,6 @@ export default function CandidateDetailPage() {
     }
   };
 
-  // Save job placement
-  const handleSaveJobPlacement = async () => {
-    setIsSavingOnboarding(true);
-
-    try {
-      if (!onboarding) {
-        const created = await ensureOnboarding();
-        if (!created) {
-          setIsSavingOnboarding(false);
-          return;
-        }
-      }
-
-      const response = await candidateService.updateOnboarding(id, {
-        job_placement: jobPlacement,
-      });
-
-      if (response.success) {
-        showToast.success("Job placement saved");
-        if (response.data) {
-          setOnboarding(response.data);
-        }
-      } else {
-        showToast.error(response.message || "Failed to save");
-      }
-    } catch (err) {
-      showToast.error("Failed to save job placement");
-    } finally {
-      setIsSavingOnboarding(false);
-    }
-  };
 
   // Facility handlers
   const handleOpenFacilityDialog = (mode: "add" | "edit", facility?: Facility) => {
@@ -928,7 +921,7 @@ export default function CandidateDetailPage() {
         qty: 1,
         unit: "Unit",
         condition: "New",
-        status: "Pending",
+        status: "Assigned",
       });
     }
     setFacilityDialog({ open: true, mode, facility });
@@ -1105,10 +1098,15 @@ export default function CandidateDetailPage() {
     setIsConverting(true);
 
     try {
-      // First, save the join date to onboarding if not already saved
-      if (joinDate && onboarding) {
-        await candidateService.updateOnboarding(id, { job_placement: jobPlacement });
+      // Ensure onboarding record exists
+      const hasOnboarding = await ensureOnboarding();
+      if (!hasOnboarding) {
+        setIsConverting(false);
+        return;
       }
+
+      // Save job placement before sending
+      await candidateService.updateOnboarding(id, { job_placement: jobPlacement });
 
       // Send onboarding email to candidate
       const portalBaseUrl = window.location.origin;
@@ -1154,8 +1152,8 @@ export default function CandidateDetailPage() {
   // Get current recruitment workflow step index
   // Steps: 0=Biodata, 1=Interview1, 2=Interview2, 3=MCU, 4=Completed
   const getCurrentStepIndex = () => {
-    // If candidate hasn't completed biodata, stay at biodata step
-    if (candidate && candidate.verify !== "VERIFIED") return 0;
+    // If candidate hasn't submitted biodata, stay at biodata step
+    if (candidate && !hasBiodataSubmitted(candidate)) return 0;
 
     // If interview hasn't started yet, stay at biodata (waiting for start)
     if (!interviewStarted) return 0;
@@ -1315,8 +1313,8 @@ export default function CandidateDetailPage() {
             </Card>
           )}
 
-          {/* Start Interview Banner - Show when biodata is verified but interview not started */}
-          {candidate.verify === "VERIFIED" && !interviewStarted && !progress?.anyFailed && (
+          {/* Start Interview Banner - Show when biodata is submitted but interview not started */}
+          {hasBiodataSubmitted(candidate) && !interviewStarted && !progress?.anyFailed && (
             <Card className="border-accent/30 bg-accent/5">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
@@ -1327,17 +1325,13 @@ export default function CandidateDetailPage() {
                     <div>
                       <h3 className="font-semibold text-accent">Ready for Interview</h3>
                       <p className="text-sm text-muted-foreground">
-                        Candidate biodata is verified. Click the button to start the interview process.
+                        Candidate biodata has been submitted. Schedule the interview to proceed.
                       </p>
                     </div>
                   </div>
-                  <Button onClick={handleStartInterview} disabled={isStartingInterview}>
-                    {isStartingInterview ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <ClipboardCheck className="mr-2 h-4 w-4" />
-                    )}
-                    Start Interview
+                  <Button onClick={() => setShowStartInterviewDialog(true)}>
+                    <ClipboardCheck className="mr-2 h-4 w-4" />
+                    Schedule Interview
                   </Button>
                 </div>
               </CardContent>
@@ -3075,7 +3069,7 @@ export default function CandidateDetailPage() {
                               <TableBody>
                                 {onboarding.facilities.map((facility) => (
                                   <TableRow key={facility.id}>
-                                    <TableCell className="text-sm font-mono">
+                                    <TableCell className="text-sm">
                                       {facility.inventoryNo || "—"}
                                     </TableCell>
                                     <TableCell className="font-medium">{facility.item}</TableCell>
@@ -3262,18 +3256,6 @@ export default function CandidateDetailPage() {
                             onChange={(e) => setJoinDate(e.target.value)}
                           />
                         </div>
-                        <Button
-                          className="w-full"
-                          onClick={handleSaveJobPlacement}
-                          disabled={isSavingOnboarding}
-                        >
-                          {isSavingOnboarding ? (
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          ) : (
-                            <Save className="mr-2 h-4 w-4" />
-                          )}
-                          Save
-                        </Button>
                       </CardContent>
                     </Card>
 
@@ -3331,21 +3313,28 @@ export default function CandidateDetailPage() {
                           </span>
                         </div>
 
-                        <Separator className="my-4" />
-
-                        <Button
-                          className="w-full bg-blue-600 hover:bg-blue-700"
-                          onClick={() => setShowConvertDialog(true)}
-                          disabled={!canSendOnboarding}
-                        >
-                          <Send className="mr-2 h-4 w-4" />
-                          Send Onboarding
-                        </Button>
-                        {!canSendOnboarding && (
-                          <p className="text-xs text-muted-foreground text-center">
-                            Complete all checklist items first
-                          </p>
-                        )}
+                        {/* Send Onboarding CTA */}
+                        <div className="mt-5 rounded-xl bg-gradient-to-b from-blue-50 to-blue-100/50 dark:from-blue-950/40 dark:to-blue-900/20 border border-blue-100 dark:border-blue-900/50 px-6 py-6 flex flex-col items-center text-center gap-3">
+                          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/50">
+                            <Send className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                          </div>
+                          <div>
+                            <p className="font-semibold text-sm">Ready to Send?</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {canSendOnboarding
+                                ? "All requirements met. Send onboarding details to the candidate."
+                                : "Complete all checklist items above before sending."}
+                            </p>
+                          </div>
+                          <Button
+                            className="bg-blue-600 hover:bg-blue-700 px-6 mt-1"
+                            onClick={() => setShowConvertDialog(true)}
+                            disabled={!canSendOnboarding}
+                          >
+                            <Send className="mr-2 h-4 w-4" />
+                            Send Onboarding
+                          </Button>
+                        </div>
                       </CardContent>
                     </Card>
                 </div>
@@ -4050,7 +4039,7 @@ export default function CandidateDetailPage() {
         open={facilityDialog.open}
         onOpenChange={(open) => setFacilityDialog({ ...facilityDialog, open })}
       >
-        <DialogContent>
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>
               {facilityDialog.mode === "add" ? "Add Facility" : "Edit Facility"}
@@ -4062,23 +4051,29 @@ export default function CandidateDetailPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Inventory No</Label>
-                <Input
-                  placeholder="e.g., INV-001"
-                  value={facilityForm.inventoryNo}
-                  onChange={(e) => setFacilityForm({ ...facilityForm, inventoryNo: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Item *</Label>
-                <Input
-                  placeholder="e.g., Laptop"
-                  value={facilityForm.item}
-                  onChange={(e) => setFacilityForm({ ...facilityForm, item: e.target.value })}
-                />
-              </div>
+            <div className="space-y-2">
+              <Label>Inventory No</Label>
+              <Input
+                placeholder="e.g., INV-001"
+                value={facilityForm.inventoryNo}
+                onChange={(e) => setFacilityForm({ ...facilityForm, inventoryNo: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Item *</Label>
+              <Select
+                value={facilityForm.item}
+                onValueChange={(v) => setFacilityForm({ ...facilityForm, item: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select item" />
+                </SelectTrigger>
+                <SelectContent>
+                  {FACILITY_ITEMS.map((item) => (
+                    <SelectItem key={item} value={item}>{item}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -4093,9 +4088,8 @@ export default function CandidateDetailPage() {
               <div className="space-y-2">
                 <Label>Unit</Label>
                 <Input
-                  placeholder="e.g., Unit, Pcs"
                   value={facilityForm.unit}
-                  onChange={(e) => setFacilityForm({ ...facilityForm, unit: e.target.value })}
+                  disabled
                 />
               </div>
             </div>
@@ -4118,19 +4112,10 @@ export default function CandidateDetailPage() {
               </div>
               <div className="space-y-2">
                 <Label>Status</Label>
-                <Select
+                <Input
                   value={facilityForm.status}
-                  onValueChange={(v) => setFacilityForm({ ...facilityForm, status: v })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {FACILITY_STATUSES.map((s) => (
-                      <SelectItem key={s} value={s}>{s}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  disabled
+                />
               </div>
             </div>
           </div>
@@ -4297,6 +4282,94 @@ export default function CandidateDetailPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Schedule Interview Dialog */}
+      <Dialog open={showStartInterviewDialog} onOpenChange={(open) => {
+        setShowStartInterviewDialog(open);
+        if (!open) {
+          setInterviewDate("");
+          setInterviewType("");
+        }
+      }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-lg bg-accent/10 flex items-center justify-center">
+                <ClipboardCheck className="h-4 w-4 text-accent" />
+              </div>
+              Schedule Interview
+            </DialogTitle>
+            <DialogDescription>
+              Set the interview date and type for this candidate. The candidate will be notified about the interview schedule.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="interview-date">Interview Date & Time</Label>
+              <Input
+                id="interview-date"
+                type="datetime-local"
+                value={interviewDate}
+                onChange={(e) => setInterviewDate(e.target.value)}
+                min={new Date().toISOString().slice(0, 16)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Interview Type</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setInterviewType("onsite")}
+                  className={cn(
+                    "flex flex-col items-center gap-2 rounded-lg border-2 p-4 transition-all hover:border-accent/50",
+                    interviewType === "onsite"
+                      ? "border-accent bg-accent/5 text-accent"
+                      : "border-border"
+                  )}
+                >
+                  <Building2 className="h-6 w-6" />
+                  <span className="text-sm font-medium">Onsite</span>
+                  <span className="text-xs text-muted-foreground">In-person interview</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setInterviewType("online")}
+                  className={cn(
+                    "flex flex-col items-center gap-2 rounded-lg border-2 p-4 transition-all hover:border-accent/50",
+                    interviewType === "online"
+                      ? "border-accent bg-accent/5 text-accent"
+                      : "border-border"
+                  )}
+                >
+                  <Monitor className="h-6 w-6" />
+                  <span className="text-sm font-medium">Online</span>
+                  <span className="text-xs text-muted-foreground">Video call interview</span>
+                </button>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowStartInterviewDialog(false)}
+              disabled={isStartingInterview}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleStartInterview}
+              disabled={isStartingInterview || !interviewDate || !interviewType}
+            >
+              {isStartingInterview ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <ClipboardCheck className="mr-2 h-4 w-4" />
+              )}
+              {isStartingInterview ? "Scheduling..." : "Start Interview"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

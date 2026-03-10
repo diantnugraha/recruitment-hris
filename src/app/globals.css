@@ -94,6 +94,10 @@
     letter-spacing: -0.01em;
   }
 
+  input, textarea, select, button {
+    font-family: inherit;
+  }
+
   /* Heading typography */
   h1 {
     @apply text-3xl font-semibold tracking-tight;

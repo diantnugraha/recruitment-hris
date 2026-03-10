@@ -83,9 +83,10 @@ import {
   type WorkLocation,
 } from "@/lib/constants/employeeRequest";
 
-// Facility conditions and statuses
-const FACILITY_CONDITIONS = ["New", "Good", "Used", "Refurbished"] as const;
-const FACILITY_STATUSES = ["Pending", "Assigned", "Returned"] as const;
+// Facility items, conditions and statuses
+const FACILITY_ITEMS = ["Laptop CTO", "Laptop NCTO", "Starter Kit"] as const;
+const FACILITY_CONDITIONS = ["New", "Used"] as const;
+const FACILITY_STATUSES = ["Assigned"] as const;
 const PROGRAM_STATUSES = ["Scheduled", "In Progress", "Completed", "Cancelled"] as const;
 
 export default function OnboardingDetailPage() {
@@ -113,11 +114,11 @@ export default function OnboardingDetailPage() {
   }>({ open: false, mode: "add" });
   const [facilityForm, setFacilityForm] = React.useState({
     inventoryNo: "",
-    item: "",
+    item: "" as string,
     qty: 1,
     unit: "Unit",
     condition: "New",
-    status: "Pending",
+    status: "Assigned",
   });
 
   // Program dialog state
@@ -181,11 +182,19 @@ export default function OnboardingDetailPage() {
     fetchData();
   }, [fetchData]);
 
-  // Create onboarding if not exists
+  // Ensure onboarding exists — fetch first, create only if not found
   const ensureOnboarding = async (): Promise<boolean> => {
     if (onboarding) return true;
 
     try {
+      // Try fetching existing onboarding first
+      const fetchRes = await candidateService.getOnboarding(candidateId);
+      if (fetchRes.success && fetchRes.data) {
+        setOnboarding(fetchRes.data);
+        return true;
+      }
+
+      // No existing onboarding, create new one
       const response = await candidateService.createOnboarding(candidateId, {
         job_placement: jobPlacement,
       });
@@ -252,7 +261,7 @@ export default function OnboardingDetailPage() {
         qty: 1,
         unit: "Unit",
         condition: "New",
-        status: "Pending",
+        status: "Assigned",
       });
     }
     setFacilityDialog({ open: true, mode, facility });
@@ -862,7 +871,7 @@ export default function OnboardingDetailPage() {
         open={facilityDialog.open}
         onOpenChange={(open) => setFacilityDialog({ ...facilityDialog, open })}
       >
-        <DialogContent>
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>
               {facilityDialog.mode === "add" ? "Add Facility" : "Edit Facility"}
@@ -874,23 +883,29 @@ export default function OnboardingDetailPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Inventory No</Label>
-                <Input
-                  placeholder="e.g., INV-001"
-                  value={facilityForm.inventoryNo}
-                  onChange={(e) => setFacilityForm({ ...facilityForm, inventoryNo: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Item *</Label>
-                <Input
-                  placeholder="e.g., Laptop"
-                  value={facilityForm.item}
-                  onChange={(e) => setFacilityForm({ ...facilityForm, item: e.target.value })}
-                />
-              </div>
+            <div className="space-y-2">
+              <Label>Inventory No</Label>
+              <Input
+                placeholder="e.g., INV-001"
+                value={facilityForm.inventoryNo}
+                onChange={(e) => setFacilityForm({ ...facilityForm, inventoryNo: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Item *</Label>
+              <Select
+                value={facilityForm.item}
+                onValueChange={(v) => setFacilityForm({ ...facilityForm, item: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select item" />
+                </SelectTrigger>
+                <SelectContent>
+                  {FACILITY_ITEMS.map((item) => (
+                    <SelectItem key={item} value={item}>{item}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -905,9 +920,8 @@ export default function OnboardingDetailPage() {
               <div className="space-y-2">
                 <Label>Unit</Label>
                 <Input
-                  placeholder="e.g., Unit, Pcs"
                   value={facilityForm.unit}
-                  onChange={(e) => setFacilityForm({ ...facilityForm, unit: e.target.value })}
+                  disabled
                 />
               </div>
             </div>
@@ -930,19 +944,10 @@ export default function OnboardingDetailPage() {
               </div>
               <div className="space-y-2">
                 <Label>Status</Label>
-                <Select
+                <Input
                   value={facilityForm.status}
-                  onValueChange={(v) => setFacilityForm({ ...facilityForm, status: v })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {FACILITY_STATUSES.map((s) => (
-                      <SelectItem key={s} value={s}>{s}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  disabled
+                />
               </div>
             </div>
           </div>
