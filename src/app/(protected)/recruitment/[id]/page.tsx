@@ -11,8 +11,10 @@ import {
   Calendar,
   Loader2,
   AlertCircle,
+  AlertTriangle,
   CheckCircle2,
   XCircle,
+  X,
   Clock,
   ClipboardCheck,
   Stethoscope,
@@ -37,6 +39,10 @@ import {
   Trash2,
   File,
   Eye,
+  Plus,
+  Pencil,
+  Package,
+  UserCheck,
 } from "lucide-react";
 
 import { Header } from "@/components/layout/header";
@@ -49,6 +55,22 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -74,11 +96,19 @@ import {
   type AssessmentProgress,
   type CandidateBiodata,
   type AssessmentScoringData,
+  type Onboarding,
+  type Facility,
+  type OnboardingProgram,
 } from "@/services/candidate.service";
 import { formatShortDate, getInitials, cn } from "@/lib/utils";
 import { showToast } from "@/lib/utils/toast-messages";
 import { LexicalEditor } from "@/components/shared/lexical-editor";
 import { LexicalRenderer } from "@/components/shared/lexical-renderer";
+import { employeeService } from "@/services/employee.service";
+import type { EmployeeWithRelations } from "@/types";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 // Assessment stage configuration
 const ASSESSMENT_STAGES = [
@@ -120,6 +150,15 @@ import type { HRScoringKey, HRConclusion } from "@/lib/constants/assessmentScori
 // LocalStorage key for HR assessment form data
 const HR_FORM_STORAGE_KEY = (id: string) => `hr-assessment-form-${id}`;
 const USER_FORM_STORAGE_KEY = (id: string) => `user-assessment-form-${id}`;
+
+// Format snake_case to Title Case (e.g., head_office_jakarta -> Head Office Jakarta)
+const formatJobPlacement = (value: string): string => {
+  if (!value) return "";
+  return value
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+};
 
 export default function CandidateDetailPage() {
   const params = useParams();
@@ -169,6 +208,18 @@ export default function CandidateDetailPage() {
   const [isSubmittingHR, setIsSubmittingHR] = React.useState(false);
   const [showHRPreview, setShowHRPreview] = React.useState(false);
 
+  // Assessor Assignment State (after HR Assessment confirm)
+  const [showAssessorAssignment, setShowAssessorAssignment] = React.useState(false);
+  const [selectedAssessors, setSelectedAssessors] = React.useState<EmployeeWithRelations[]>([]);
+  const [availableEmployees, setAvailableEmployees] = React.useState<EmployeeWithRelations[]>([]);
+  const [isLoadingEmployees, setIsLoadingEmployees] = React.useState(false);
+  const [assessorSearchOpen, setAssessorSearchOpen] = React.useState(false);
+  const [assessorSearchQuery, setAssessorSearchQuery] = React.useState("");
+
+  // Assigned Assessors Display State (for showing who is assigned)
+  const [assignedAssessors, setAssignedAssessors] = React.useState<{ employeeId: number; employeeName: string | null; employeeEmail: string | null }[]>([]);
+  const [isLoadingAssignees, setIsLoadingAssignees] = React.useState(false);
+
   // User Assessment Form State (Interview 2)
   const [userScoring, setUserScoring] = React.useState<Record<HRScoringKey, number | null>>({
     relevanceOfExperience: null,
@@ -198,6 +249,58 @@ export default function CandidateDetailPage() {
 
   // Start Interview state
   const [isStartingInterview, setIsStartingInterview] = React.useState(false);
+
+  // Onboarding State
+  const [onboarding, setOnboarding] = React.useState<Onboarding | null>(null);
+  const [isSavingOnboarding, setIsSavingOnboarding] = React.useState(false);
+  const [isConverting, setIsConverting] = React.useState(false);
+  const [jobPlacement, setJobPlacement] = React.useState("");
+  const [joinDate, setJoinDate] = React.useState("");
+
+  // Facility dialog state
+  const [facilityDialog, setFacilityDialog] = React.useState<{
+    open: boolean;
+    mode: "add" | "edit";
+    facility?: Facility;
+  }>({ open: false, mode: "add" });
+  const [facilityForm, setFacilityForm] = React.useState({
+    inventoryNo: "",
+    item: "",
+    qty: 1,
+    unit: "Unit",
+    condition: "New",
+    status: "Pending",
+  });
+
+  // Program dialog state
+  const [programDialog, setProgramDialog] = React.useState<{
+    open: boolean;
+    mode: "add" | "edit";
+    program?: OnboardingProgram;
+  }>({ open: false, mode: "add" });
+  const [programForm, setProgramForm] = React.useState({
+    program: "",
+    date: "",
+    location: "",
+    pic: "",
+    status: "Scheduled",
+  });
+
+  // Delete confirmation state for onboarding
+  const [onboardingDeleteConfirm, setOnboardingDeleteConfirm] = React.useState<{
+    open: boolean;
+    type: "facility" | "program";
+    id: number;
+    name: string;
+  } | null>(null);
+
+  // Convert to employee dialog
+  const [showConvertDialog, setShowConvertDialog] = React.useState(false);
+
+  // Onboarding constants
+  const FACILITY_CONDITIONS = ["New", "Good", "Used", "Refurbished"] as const;
+  const FACILITY_STATUSES = ["Pending", "Assigned", "Returned"] as const;
+  const PROGRAM_STATUSES = ["Scheduled", "In Progress", "Completed", "Cancelled"] as const;
 
   // Handle tab change and update URL
   const handleTabChange = React.useCallback((tab: string) => {
@@ -335,6 +438,11 @@ export default function CandidateDetailPage() {
             mcu: candidateRes.data.assessment.mcuDesc || "",
           });
         }
+
+        // Pre-fill job placement from employee request (will be overridden by onboarding data if exists)
+        if (candidateRes.data.employeeRequest?.jobPlacement) {
+          setJobPlacement(candidateRes.data.employeeRequest.jobPlacement);
+        }
       } else {
         setError(candidateRes.message || "Failed to load candidate");
         return;
@@ -364,6 +472,27 @@ export default function CandidateDetailPage() {
           const mcuDocRes = await candidateService.getMcuDocument(id);
           if (mcuDocRes.success && mcuDocRes.data) {
             setMcuDocument(mcuDocRes.data);
+          }
+        }
+
+        // Fetch assigned assessors if Interview User is unlocked
+        if (!progressRes.data.interview2.locked) {
+          const assigneesRes = await candidateService.getAssessmentAssignees(id);
+          if (assigneesRes.success && assigneesRes.data) {
+            setAssignedAssessors(assigneesRes.data);
+          }
+        }
+
+        // Fetch onboarding data if all assessments passed
+        if (progressRes.data.allPassed) {
+          const onboardingRes = await candidateService.getOnboarding(id);
+          if (onboardingRes.success && onboardingRes.data) {
+            setOnboarding(onboardingRes.data);
+            // Use onboarding jobPlacement, fallback to employee request's jobPlacement
+            setJobPlacement(onboardingRes.data.jobPlacement || candidateRes.data.employeeRequest?.jobPlacement || "");
+          } else {
+            // No onboarding yet, pre-fill from employee request
+            setJobPlacement(candidateRes.data.employeeRequest?.jobPlacement || "");
           }
         }
       }
@@ -483,6 +612,80 @@ export default function CandidateDetailPage() {
     }
   };
 
+  // Fetch ALL employees for assessor assignment (paginate through all pages)
+  const fetchEmployeesForAssignment = React.useCallback(async () => {
+    setIsLoadingEmployees(true);
+    try {
+      const allEmployees: EmployeeWithRelations[] = [];
+      let page = 1;
+      let hasMore = true;
+
+      while (hasMore) {
+        const response = await employeeService.getAll(page, 100);
+        if (response.success && response.data?.data) {
+          allEmployees.push(...response.data.data);
+          // Check if there are more pages
+          const pagination = response.data.pagination;
+          if (pagination) {
+            hasMore = page < pagination.totalPages;
+            page++;
+          } else {
+            hasMore = false;
+          }
+        } else {
+          hasMore = false;
+        }
+      }
+
+      setAvailableEmployees(allEmployees);
+    } catch (err) {
+      console.error("Failed to fetch employees:", err);
+    } finally {
+      setIsLoadingEmployees(false);
+    }
+  }, []);
+
+  // Fetch assigned assessors for Interview User stage
+  const fetchAssignedAssessors = React.useCallback(async () => {
+    if (!params.id) return;
+    setIsLoadingAssignees(true);
+    try {
+      const response = await candidateService.getAssessmentAssignees(params.id as string);
+      if (response.success && response.data) {
+        setAssignedAssessors(response.data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch assigned assessors:", err);
+    } finally {
+      setIsLoadingAssignees(false);
+    }
+  }, [params.id]);
+
+  // Open assessor assignment dialog (after HR preview confirmation)
+  const handleOpenAssessorAssignment = React.useCallback(() => {
+    setShowHRPreview(false);
+    setShowAssessorAssignment(true);
+    setSelectedAssessors([]);
+    setAssessorSearchQuery("");
+    fetchEmployeesForAssignment();
+  }, [fetchEmployeesForAssignment]);
+
+  // Toggle assessor selection
+  const toggleAssessor = React.useCallback((employee: EmployeeWithRelations) => {
+    setSelectedAssessors(prev => {
+      const exists = prev.some(e => e.id === employee.id);
+      if (exists) {
+        return prev.filter(e => e.id !== employee.id);
+      }
+      return [...prev, employee];
+    });
+  }, []);
+
+  // Remove assessor from selection
+  const removeAssessor = React.useCallback((employeeId: string) => {
+    setSelectedAssessors(prev => prev.filter(e => e.id !== employeeId));
+  }, []);
+
   // HR Assessment Submit Handler
   const handleHRAssessmentSubmit = async () => {
     if (!hrConclusion) {
@@ -494,6 +697,12 @@ export default function CandidateDetailPage() {
     const allScoresFilled = Object.values(hrScoring).every(score => score !== null);
     if (!allScoresFilled) {
       showToast.error("Please fill in all scoring criteria");
+      return;
+    }
+
+    // Check if assessors are selected (for non-rejected conclusions)
+    if (hrConclusion !== "rejected" && selectedAssessors.length === 0) {
+      showToast.error("Please select at least one assessor for Interview User");
       return;
     }
 
@@ -519,6 +728,7 @@ export default function CandidateDetailPage() {
         conclusion: hrConclusion!.toUpperCase() as "PROCEED" | "RECOMMENDED" | "REJECTED",
         key_competencies: hrKeyCompetencies || null,
         interviewer_notes: hrUserNotes || null,
+        assessor_ids: selectedAssessors.map(e => parseInt(e.id, 10)),
       });
 
       if (response?.success && response.data) {
@@ -527,6 +737,10 @@ export default function CandidateDetailPage() {
 
         // Clear localStorage after successful submit
         clearHRFormStorage();
+
+        // Close assignment dialog and reset
+        setShowAssessorAssignment(false);
+        setSelectedAssessors([]);
 
         // Refresh candidate data
         const candidateRes = await candidateService.getById(id);
@@ -640,6 +854,288 @@ export default function CandidateDetailPage() {
       setIsStartingInterview(false);
     }
   };
+
+  // ==================== Onboarding Handlers ====================
+
+  // Create onboarding if not exists
+  const ensureOnboarding = async (): Promise<boolean> => {
+    if (onboarding) return true;
+
+    try {
+      const response = await candidateService.createOnboarding(id, {
+        job_placement: jobPlacement,
+      });
+      if (response.success && response.data) {
+        setOnboarding(response.data);
+        return true;
+      } else {
+        showToast.error(response.message || "Failed to create onboarding");
+        return false;
+      }
+    } catch (err) {
+      showToast.error("Failed to create onboarding");
+      return false;
+    }
+  };
+
+  // Save job placement
+  const handleSaveJobPlacement = async () => {
+    setIsSavingOnboarding(true);
+
+    try {
+      if (!onboarding) {
+        const created = await ensureOnboarding();
+        if (!created) {
+          setIsSavingOnboarding(false);
+          return;
+        }
+      }
+
+      const response = await candidateService.updateOnboarding(id, {
+        job_placement: jobPlacement,
+      });
+
+      if (response.success) {
+        showToast.success("Job placement saved");
+        if (response.data) {
+          setOnboarding(response.data);
+        }
+      } else {
+        showToast.error(response.message || "Failed to save");
+      }
+    } catch (err) {
+      showToast.error("Failed to save job placement");
+    } finally {
+      setIsSavingOnboarding(false);
+    }
+  };
+
+  // Facility handlers
+  const handleOpenFacilityDialog = (mode: "add" | "edit", facility?: Facility) => {
+    if (mode === "edit" && facility) {
+      setFacilityForm({
+        inventoryNo: facility.inventoryNo,
+        item: facility.item,
+        qty: facility.qty,
+        unit: facility.unit,
+        condition: facility.condition,
+        status: facility.status,
+      });
+    } else {
+      setFacilityForm({
+        inventoryNo: "",
+        item: "",
+        qty: 1,
+        unit: "Unit",
+        condition: "New",
+        status: "Pending",
+      });
+    }
+    setFacilityDialog({ open: true, mode, facility });
+  };
+
+  const handleSaveFacility = async () => {
+    const hasOnboarding = await ensureOnboarding();
+    if (!hasOnboarding) return;
+
+    try {
+      if (facilityDialog.mode === "add") {
+        const response = await candidateService.addFacility(id, {
+          inventory_no: facilityForm.inventoryNo,
+          item: facilityForm.item,
+          qty: facilityForm.qty,
+          unit: facilityForm.unit,
+          condition: facilityForm.condition,
+          status: facilityForm.status,
+        });
+
+        if (response.success) {
+          showToast.success("Facility added");
+          const onboardingRes = await candidateService.getOnboarding(id);
+          if (onboardingRes.success && onboardingRes.data) {
+            setOnboarding(onboardingRes.data);
+          }
+        } else {
+          showToast.error(response.message || "Failed to add facility");
+        }
+      } else if (facilityDialog.facility) {
+        const response = await candidateService.updateFacility(
+          id,
+          facilityDialog.facility.id,
+          {
+            inventory_no: facilityForm.inventoryNo,
+            item: facilityForm.item,
+            qty: facilityForm.qty,
+            unit: facilityForm.unit,
+            condition: facilityForm.condition,
+            status: facilityForm.status,
+          }
+        );
+
+        if (response.success) {
+          showToast.success("Facility updated");
+          const onboardingRes = await candidateService.getOnboarding(id);
+          if (onboardingRes.success && onboardingRes.data) {
+            setOnboarding(onboardingRes.data);
+          }
+        } else {
+          showToast.error(response.message || "Failed to update facility");
+        }
+      }
+    } catch (err) {
+      showToast.error("Failed to save facility");
+    }
+
+    setFacilityDialog({ open: false, mode: "add" });
+  };
+
+  const handleDeleteFacility = async (facilityId: number) => {
+    try {
+      const response = await candidateService.deleteFacility(id, facilityId);
+      if (response.success) {
+        showToast.deleted("Facility");
+        const onboardingRes = await candidateService.getOnboarding(id);
+        if (onboardingRes.success && onboardingRes.data) {
+          setOnboarding(onboardingRes.data);
+        }
+      } else {
+        showToast.error(response.message || "Failed to delete facility");
+      }
+    } catch (err) {
+      showToast.error("Failed to delete facility");
+    }
+    setOnboardingDeleteConfirm(null);
+  };
+
+  // Program handlers
+  const handleOpenProgramDialog = (mode: "add" | "edit", program?: OnboardingProgram) => {
+    if (mode === "edit" && program) {
+      setProgramForm({
+        program: program.program,
+        date: program.date,
+        location: program.location,
+        pic: program.pic,
+        status: program.status,
+      });
+    } else {
+      setProgramForm({
+        program: "",
+        date: "",
+        location: "",
+        pic: "",
+        status: "Scheduled",
+      });
+    }
+    setProgramDialog({ open: true, mode, program });
+  };
+
+  const handleSaveProgram = async () => {
+    const hasOnboarding = await ensureOnboarding();
+    if (!hasOnboarding) return;
+
+    try {
+      if (programDialog.mode === "add") {
+        const response = await candidateService.addProgram(id, {
+          program: programForm.program,
+          date: programForm.date,
+          location: programForm.location,
+          pic: programForm.pic,
+          status: programForm.status,
+        });
+
+        if (response.success) {
+          showToast.success("Program added");
+          const onboardingRes = await candidateService.getOnboarding(id);
+          if (onboardingRes.success && onboardingRes.data) {
+            setOnboarding(onboardingRes.data);
+          }
+        } else {
+          showToast.error(response.message || "Failed to add program");
+        }
+      } else if (programDialog.program) {
+        const response = await candidateService.updateProgram(
+          id,
+          programDialog.program.id,
+          {
+            program: programForm.program,
+            date: programForm.date,
+            location: programForm.location,
+            pic: programForm.pic,
+            status: programForm.status,
+          }
+        );
+
+        if (response.success) {
+          showToast.success("Program updated");
+          const onboardingRes = await candidateService.getOnboarding(id);
+          if (onboardingRes.success && onboardingRes.data) {
+            setOnboarding(onboardingRes.data);
+          }
+        } else {
+          showToast.error(response.message || "Failed to update program");
+        }
+      }
+    } catch (err) {
+      showToast.error("Failed to save program");
+    }
+
+    setProgramDialog({ open: false, mode: "add" });
+  };
+
+  const handleDeleteProgram = async (programId: number) => {
+    try {
+      const response = await candidateService.deleteProgram(id, programId);
+      if (response.success) {
+        showToast.deleted("Program");
+        const onboardingRes = await candidateService.getOnboarding(id);
+        if (onboardingRes.success && onboardingRes.data) {
+          setOnboarding(onboardingRes.data);
+        }
+      } else {
+        showToast.error(response.message || "Failed to delete program");
+      }
+    } catch (err) {
+      showToast.error("Failed to delete program");
+    }
+    setOnboardingDeleteConfirm(null);
+  };
+
+  // Send onboarding to candidate
+  const handleSendOnboarding = async () => {
+    setIsConverting(true);
+
+    try {
+      // First, save the join date to onboarding if not already saved
+      if (joinDate && onboarding) {
+        await candidateService.updateOnboarding(id, { job_placement: jobPlacement });
+      }
+
+      // Send onboarding email to candidate
+      const portalBaseUrl = window.location.origin;
+      const response = await candidateService.sendOnboardingEmail(id, portalBaseUrl);
+      if (response.success) {
+        showToast.success("Onboarding email sent to candidate!");
+        setShowConvertDialog(false);
+        // Refresh onboarding data
+        const onboardingRes = await candidateService.getOnboarding(id);
+        if (onboardingRes.success && onboardingRes.data) {
+          setOnboarding(onboardingRes.data);
+        }
+      } else {
+        showToast.error(response.message || "Failed to send onboarding");
+      }
+    } catch (err) {
+      showToast.error("Failed to send onboarding");
+    } finally {
+      setIsConverting(false);
+    }
+  };
+
+  // Check if ready to send onboarding
+  const canSendOnboarding = onboarding &&
+    joinDate &&
+    onboarding.facilities.length > 0 &&
+    onboarding.programs.length > 0;
 
   // Get stage status
   const getStageStatus = (stage: AssessmentStageKey) => {
@@ -1810,33 +2306,13 @@ export default function CandidateDetailPage() {
                             ? "Ready to submit"
                             : "Select a conclusion to submit"}
                         </p>
-                        <div className="flex gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setShowHRPreview(true)}
-                          >
-                            <FileText className="mr-2 h-3.5 w-3.5" />
-                            Preview
-                          </Button>
-                          <Button
-                            size="sm"
-                            onClick={handleHRAssessmentSubmit}
-                            disabled={isSubmittingHR}
-                          >
-                            {isSubmittingHR ? (
-                              <>
-                                <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-                                Submitting...
-                              </>
-                            ) : (
-                              <>
-                                <Send className="mr-2 h-3.5 w-3.5" />
-                                Submit Assessment
-                              </>
-                            )}
-                          </Button>
-                        </div>
+                        <Button
+                          size="sm"
+                          onClick={() => setShowHRPreview(true)}
+                        >
+                          <Send className="mr-2 h-3.5 w-3.5" />
+                          Submit Assessment
+                        </Button>
                       </div>
                     )}
                   </>
@@ -1934,6 +2410,45 @@ export default function CandidateDetailPage() {
                     {/* Form Content - Only show if not locked */}
                     {!locked && (
                       <>
+                        {/* Assigned Assessors Card */}
+                        {assignedAssessors.length > 0 && (
+                          <Card className="border-blue-500/30 bg-gradient-to-r from-blue-500/5 via-blue-500/3 to-transparent overflow-hidden relative">
+                            <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-blue-500 to-blue-400" />
+                            <CardContent className="p-5 pl-6">
+                              <div className="flex items-start gap-4">
+                                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-blue-500/10 ring-4 ring-blue-500/5 shrink-0">
+                                  <Users className="h-5 w-5 text-blue-600" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <h3 className="font-semibold text-blue-700 text-sm mb-3">Assigned Assessors</h3>
+                                  <div className="flex flex-wrap gap-2">
+                                    {assignedAssessors.map((assessor) => (
+                                      <div
+                                        key={assessor.employeeId}
+                                        className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-white border border-blue-100 shadow-sm"
+                                      >
+                                        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-500 text-white text-xs font-medium">
+                                          {assessor.employeeName ? assessor.employeeName.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase() : "?"}
+                                        </div>
+                                        <div className="min-w-0">
+                                          <p className="text-sm font-medium text-gray-900 truncate">
+                                            {assessor.employeeName || "Unknown"}
+                                          </p>
+                                          {assessor.employeeEmail && (
+                                            <p className="text-xs text-gray-500 truncate">
+                                              {assessor.employeeEmail}
+                                            </p>
+                                          )}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        )}
+
                         {/* Score Overview Stats */}
                         <div className="grid grid-cols-3 gap-3">
                           <Card className="relative overflow-hidden">
@@ -2214,33 +2729,13 @@ export default function CandidateDetailPage() {
                                 ? "Ready to submit"
                                 : "Select a conclusion to submit"}
                             </p>
-                            <div className="flex gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setShowUserPreview(true)}
-                              >
-                                <FileText className="mr-2 h-3.5 w-3.5" />
-                                Preview
-                              </Button>
-                              <Button
-                                size="sm"
-                                onClick={handleUserAssessmentSubmit}
-                                disabled={isSubmittingUser}
-                              >
-                                {isSubmittingUser ? (
-                                  <>
-                                    <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-                                    Submitting...
-                                  </>
-                                ) : (
-                                  <>
-                                    <Send className="mr-2 h-3.5 w-3.5" />
-                                    Submit Assessment
-                                  </>
-                                )}
-                              </Button>
-                            </div>
+                            <Button
+                              size="sm"
+                              onClick={() => setShowUserPreview(true)}
+                            >
+                              <Send className="mr-2 h-3.5 w-3.5" />
+                              Submit Assessment
+                            </Button>
                           </div>
                         )}
                       </>
@@ -2525,44 +3020,349 @@ export default function CandidateDetailPage() {
             <TabsContent value="onboarding" className="space-y-6 mt-6">
               {canStartOnboarding ? (
                 <div className="space-y-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2 text-base">
-                        <PartyPopper className="h-5 w-5" />
-                        Onboarding
-                      </CardTitle>
-                      <CardDescription>
-                        Manage onboarding process including facilities and training programs
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex flex-col items-center justify-center py-8 text-center">
-                        <PartyPopper className="h-16 w-16 text-emerald-600 mb-4" />
-                        <h3 className="text-lg font-semibold">Ready for Onboarding</h3>
-                        <p className="text-muted-foreground max-w-md mt-2">
-                          This candidate has passed all assessments. Click below to manage their onboarding process,
-                          including assigning facilities and scheduling training programs.
-                        </p>
+                    {/* Facilities Section */}
+                    <Card>
+                      <CardHeader className="pb-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-950">
+                              <Package className="h-5 w-5 text-blue-600" />
+                            </div>
+                            <div>
+                              <CardTitle className="text-base">Facilities / Equipment</CardTitle>
+                              <CardDescription>Equipment and items assigned to the new employee</CardDescription>
+                            </div>
+                          </div>
+                          <Button size="sm" onClick={() => handleOpenFacilityDialog("add")}>
+                            <Plus className="mr-2 h-4 w-4" />
+                            Add Facility
+                          </Button>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        {(!onboarding || onboarding.facilities.length === 0) ? (
+                          <div className="flex flex-col items-center justify-center py-12 text-center">
+                            <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-muted">
+                              <Package className="h-7 w-7 text-muted-foreground" />
+                            </div>
+                            <h4 className="mt-4 font-semibold">No facilities assigned</h4>
+                            <p className="mt-1 text-sm text-muted-foreground max-w-xs">
+                              Assign equipment and items for the new employee
+                            </p>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="mt-4"
+                              onClick={() => handleOpenFacilityDialog("add")}
+                            >
+                              <Plus className="mr-2 h-4 w-4" />
+                              Add Facility
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="rounded-lg border overflow-hidden">
+                            <Table>
+                              <TableHeader>
+                                <TableRow className="bg-secondary/30">
+                                  <TableHead className="font-semibold">Inventory No</TableHead>
+                                  <TableHead className="font-semibold">Item</TableHead>
+                                  <TableHead className="text-center font-semibold">Qty</TableHead>
+                                  <TableHead className="font-semibold">Condition</TableHead>
+                                  <TableHead className="font-semibold">Status</TableHead>
+                                  <TableHead className="text-right font-semibold">Actions</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {onboarding.facilities.map((facility) => (
+                                  <TableRow key={facility.id}>
+                                    <TableCell className="text-sm font-mono">
+                                      {facility.inventoryNo || "—"}
+                                    </TableCell>
+                                    <TableCell className="font-medium">{facility.item}</TableCell>
+                                    <TableCell className="text-center">{facility.qty} {facility.unit}</TableCell>
+                                    <TableCell>
+                                      <Badge variant="outline" className="font-normal">{facility.condition}</Badge>
+                                    </TableCell>
+                                    <TableCell>
+                                      <Badge
+                                        variant={
+                                          facility.status === "Assigned" ? "default" :
+                                          facility.status === "Returned" ? "secondary" : "outline"
+                                        }
+                                      >
+                                        {facility.status}
+                                      </Badge>
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                      <div className="flex items-center justify-end gap-1">
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-8 w-8"
+                                          onClick={() => handleOpenFacilityDialog("edit", facility)}
+                                        >
+                                          <Pencil className="h-4 w-4" />
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-8 w-8 text-destructive hover:text-destructive"
+                                          onClick={() => setOnboardingDeleteConfirm({
+                                            open: true,
+                                            type: "facility",
+                                            id: facility.id,
+                                            name: facility.item,
+                                          })}
+                                        >
+                                          <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                      </div>
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+
+                    {/* Onboarding Programs Section */}
+                    <Card>
+                      <CardHeader className="pb-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-purple-50 dark:bg-purple-950">
+                              <GraduationCap className="h-5 w-5 text-purple-600" />
+                            </div>
+                            <div>
+                              <CardTitle className="text-base">Onboarding Programs</CardTitle>
+                              <CardDescription>Training and orientation schedule for the new employee</CardDescription>
+                            </div>
+                          </div>
+                          <Button size="sm" onClick={() => handleOpenProgramDialog("add")}>
+                            <Plus className="mr-2 h-4 w-4" />
+                            Add Program
+                          </Button>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        {(!onboarding || onboarding.programs.length === 0) ? (
+                          <div className="flex flex-col items-center justify-center py-12 text-center">
+                            <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-muted">
+                              <GraduationCap className="h-7 w-7 text-muted-foreground" />
+                            </div>
+                            <h4 className="mt-4 font-semibold">No programs scheduled</h4>
+                            <p className="mt-1 text-sm text-muted-foreground max-w-xs">
+                              Schedule training and orientation for the new employee
+                            </p>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="mt-4"
+                              onClick={() => handleOpenProgramDialog("add")}
+                            >
+                              <Plus className="mr-2 h-4 w-4" />
+                              Add Program
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="rounded-lg border overflow-hidden">
+                            <Table>
+                              <TableHeader>
+                                <TableRow className="bg-secondary/30">
+                                  <TableHead className="font-semibold">Program</TableHead>
+                                  <TableHead className="font-semibold">Date</TableHead>
+                                  <TableHead className="font-semibold">Location</TableHead>
+                                  <TableHead className="font-semibold">PIC</TableHead>
+                                  <TableHead className="font-semibold">Status</TableHead>
+                                  <TableHead className="text-right font-semibold">Actions</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {onboarding.programs.map((program) => (
+                                  <TableRow key={program.id}>
+                                    <TableCell className="font-medium">{program.program}</TableCell>
+                                    <TableCell>
+                                      {program.date ? formatShortDate(program.date) : "—"}
+                                    </TableCell>
+                                    <TableCell>{program.location || "—"}</TableCell>
+                                    <TableCell>{program.pic || "—"}</TableCell>
+                                    <TableCell>
+                                      <Badge
+                                        variant={
+                                          program.status === "Completed" ? "default" :
+                                          program.status === "In Progress" ? "secondary" :
+                                          program.status === "Cancelled" ? "destructive" : "outline"
+                                        }
+                                      >
+                                        {program.status}
+                                      </Badge>
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                      <div className="flex items-center justify-end gap-1">
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-8 w-8"
+                                          onClick={() => handleOpenProgramDialog("edit", program)}
+                                        >
+                                          <Pencil className="h-4 w-4" />
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-8 w-8 text-destructive hover:text-destructive"
+                                          onClick={() => setOnboardingDeleteConfirm({
+                                            open: true,
+                                            type: "program",
+                                            id: program.id,
+                                            name: program.program,
+                                          })}
+                                        >
+                                          <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                      </div>
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+
+                    {/* Job Placement */}
+                    <Card>
+                      <CardHeader className="pb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-950">
+                            <MapPin className="h-5 w-5 text-emerald-600" />
+                          </div>
+                          <CardTitle className="text-base">Job Placement</CardTitle>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="jobPlacement">Work Location / Placement</Label>
+                          <Input
+                            id="jobPlacement"
+                            value={formatJobPlacement(jobPlacement)}
+                            disabled
+                            className="bg-muted"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="joinDate">Join Date</Label>
+                          <Input
+                            id="joinDate"
+                            type="date"
+                            value={joinDate}
+                            onChange={(e) => setJoinDate(e.target.value)}
+                          />
+                        </div>
                         <Button
-                          className="mt-6"
-                          onClick={() => router.push(`/onboarding/${id}`)}
+                          className="w-full"
+                          onClick={handleSaveJobPlacement}
+                          disabled={isSavingOnboarding}
+                        >
+                          {isSavingOnboarding ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          ) : (
+                            <Save className="mr-2 h-4 w-4" />
+                          )}
+                          Save
+                        </Button>
+                      </CardContent>
+                    </Card>
+
+                    {/* Onboarding Checklist */}
+                    <Card className="border-blue-200 dark:border-blue-900">
+                      <CardHeader className="pb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-950">
+                            <Send className="h-5 w-5 text-blue-600" />
+                          </div>
+                          <div>
+                            <CardTitle className="text-base">Onboarding Checklist</CardTitle>
+                            <CardDescription>Requirements before sending onboarding to candidate</CardDescription>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <div className="flex items-center gap-3">
+                          {joinDate ? (
+                            <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
+                          ) : (
+                            <XCircle className="h-5 w-5 text-muted-foreground shrink-0" />
+                          )}
+                          <span className={cn(
+                            "text-sm",
+                            joinDate ? "" : "text-muted-foreground"
+                          )}>
+                            Join date set
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          {onboarding && onboarding.facilities.length > 0 ? (
+                            <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
+                          ) : (
+                            <XCircle className="h-5 w-5 text-muted-foreground shrink-0" />
+                          )}
+                          <span className={cn(
+                            "text-sm",
+                            onboarding && onboarding.facilities.length > 0 ? "" : "text-muted-foreground"
+                          )}>
+                            At least 1 facility assigned
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          {onboarding && onboarding.programs.length > 0 ? (
+                            <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
+                          ) : (
+                            <XCircle className="h-5 w-5 text-muted-foreground shrink-0" />
+                          )}
+                          <span className={cn(
+                            "text-sm",
+                            onboarding && onboarding.programs.length > 0 ? "" : "text-muted-foreground"
+                          )}>
+                            At least 1 program scheduled
+                          </span>
+                        </div>
+
+                        <Separator className="my-4" />
+
+                        <Button
+                          className="w-full bg-blue-600 hover:bg-blue-700"
+                          onClick={() => setShowConvertDialog(true)}
+                          disabled={!canSendOnboarding}
                         >
                           <Send className="mr-2 h-4 w-4" />
-                          Go to Onboarding Page
+                          Send Onboarding
                         </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
+                        {!canSendOnboarding && (
+                          <p className="text-xs text-muted-foreground text-center">
+                            Complete all checklist items first
+                          </p>
+                        )}
+                      </CardContent>
+                    </Card>
                 </div>
               ) : (
                 <Card>
                   <CardContent className="flex flex-col items-center justify-center py-16">
-                    <Lock className="h-16 w-16 text-muted-foreground/30" />
+                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted">
+                      <Lock className="h-8 w-8 text-muted-foreground" />
+                    </div>
                     <h3 className="mt-4 text-lg font-medium">Onboarding Locked</h3>
                     <p className="text-muted-foreground text-center max-w-md mt-2">
-                      The candidate must pass all assessment stages (Interview HR, Interview User, and MCU)
-                      before starting the onboarding process.
+                      The candidate must pass all assessment stages before the onboarding process can begin.
                     </p>
+                    <div className="flex items-center gap-2 mt-4 text-sm text-amber-600">
+                      <AlertTriangle className="h-4 w-4" />
+                      <span>Complete Interview HR, Interview User & MCU first</span>
+                    </div>
                   </CardContent>
                 </Card>
               )}
@@ -2573,44 +3373,115 @@ export default function CandidateDetailPage() {
 
       {/* HR Assessment Preview Dialog */}
       <Dialog open={showHRPreview} onOpenChange={setShowHRPreview}>
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Assessment HR Preview</DialogTitle>
-            <DialogDescription>
-              Review the assessment details before submitting
-            </DialogDescription>
-          </DialogHeader>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto p-0">
+          {/* Header with gradient accent */}
+          <div className="relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-accent/8 via-accent/4 to-transparent" />
+            <div className="absolute top-0 right-0 w-32 h-32 bg-accent/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2" />
+            <DialogHeader className="relative px-6 pt-6 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-accent/10 ring-1 ring-accent/20">
+                  <ClipboardCheck className="h-5 w-5 text-accent" />
+                </div>
+                <div>
+                  <DialogTitle className="text-lg font-semibold">Confirm Submission</DialogTitle>
+                  <DialogDescription className="text-sm">
+                    Review your HR Assessment before submitting
+                  </DialogDescription>
+                </div>
+              </div>
+            </DialogHeader>
+          </div>
 
-          <div className="space-y-6 py-4">
-            {/* Candidate Info */}
+          <div className="px-6 pb-6 space-y-5">
+            {/* Candidate Card */}
             {candidate && (
-              <div className="flex items-center gap-3 p-3 bg-secondary/30 rounded-lg">
-                <Avatar className="h-10 w-10">
-                  <AvatarFallback className="bg-accent/10 text-accent text-sm">
+              <div className="flex items-center gap-4 p-4 rounded-xl border bg-gradient-to-r from-secondary/50 to-secondary/20">
+                <Avatar className="h-12 w-12 ring-2 ring-background shadow-sm">
+                  <AvatarFallback className="bg-accent text-accent-foreground font-semibold">
                     {getInitials(candidate.fullname)}
                   </AvatarFallback>
                 </Avatar>
-                <div>
-                  <p className="text-sm font-medium">{candidate.fullname}</p>
-                  <p className="text-sm text-muted-foreground">{candidate.jobTitle?.name}</p>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-foreground truncate">{candidate.fullname}</p>
+                  <p className="text-sm text-muted-foreground truncate">{candidate.jobTitle?.name}</p>
                 </div>
+                {hrConclusion && (
+                  <div className={cn(
+                    "px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wide",
+                    hrConclusion === "proceed" && "bg-emerald-500/15 text-emerald-600 ring-1 ring-emerald-500/30",
+                    hrConclusion === "recommended" && "bg-blue-500/15 text-blue-600 ring-1 ring-blue-500/30",
+                    hrConclusion === "rejected" && "bg-red-500/15 text-red-600 ring-1 ring-red-500/30"
+                  )}>
+                    {hrConclusion === "proceed" ? "Proceed" : hrConclusion === "recommended" ? "Recommended" : "Rejected"}
+                  </div>
+                )}
               </div>
             )}
 
-            {/* Scoring Preview */}
+            {/* Score Summary Card */}
+            {(() => {
+              const filledScores = Object.values(hrScoring).filter((s): s is number => s !== null);
+              const totalFilled = filledScores.length;
+              const totalCriteria = HR_SCORING_CRITERIA.length;
+              const averageScore = totalFilled > 0 ? filledScores.reduce((a, b) => a + b, 0) / totalFilled : 0;
+              const totalScore = filledScores.reduce((a, b) => a + b, 0);
+              const maxTotal = totalCriteria * 5;
+
+              return (
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="rounded-xl border bg-gradient-to-br from-background to-secondary/30 p-4 text-center">
+                    <p className="text-2xl font-bold text-foreground">{totalFilled}/{totalCriteria}</p>
+                    <p className="text-[11px] text-muted-foreground uppercase tracking-wider mt-1">Criteria Filled</p>
+                  </div>
+                  <div className="rounded-xl border bg-gradient-to-br from-background to-secondary/30 p-4 text-center">
+                    <p className="text-2xl font-bold text-foreground">{averageScore.toFixed(1)}</p>
+                    <p className="text-[11px] text-muted-foreground uppercase tracking-wider mt-1">Avg. Score</p>
+                  </div>
+                  <div className="rounded-xl border bg-gradient-to-br from-background to-secondary/30 p-4 text-center">
+                    <p className="text-2xl font-bold text-foreground">{totalScore}/{maxTotal}</p>
+                    <p className="text-[11px] text-muted-foreground uppercase tracking-wider mt-1">Total Points</p>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Scoring Details */}
             <div className="space-y-3">
-              <h4 className="font-semibold text-base">Scoring</h4>
-              <div className="border rounded-lg divide-y">
+              <div className="flex items-center gap-2">
+                <div className="h-1 w-1 rounded-full bg-accent" />
+                <h4 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">Scoring Breakdown</h4>
+              </div>
+              <div className="rounded-xl border overflow-hidden">
                 {HR_SCORING_CRITERIA.map((criteria, index) => {
                   const score = hrScoring[criteria.key];
                   const scoreLabel = score ? SCORE_OPTIONS.find(opt => opt.value === score)?.label : null;
+                  const scoreColor = score && score >= 4 ? "text-emerald-600" : score && score >= 3 ? "text-blue-600" : score && score >= 2 ? "text-amber-600" : score ? "text-red-500" : "text-muted-foreground";
                   return (
-                    <div key={criteria.key} className="flex items-center justify-between px-3 py-2">
-                      <span className="text-sm">{index + 1}. {criteria.label}</span>
+                    <div key={criteria.key} className={cn(
+                      "flex items-center justify-between px-4 py-2.5 transition-colors",
+                      index % 2 === 0 ? "bg-secondary/20" : "bg-transparent"
+                    )}>
+                      <span className="text-sm text-foreground">{criteria.label}</span>
                       {scoreLabel ? (
-                        <Badge variant="secondary">{scoreLabel} ({score}/5)</Badge>
+                        <div className="flex items-center gap-2">
+                          <div className="flex gap-0.5">
+                            {[1, 2, 3, 4, 5].map((dot) => (
+                              <div
+                                key={dot}
+                                className={cn(
+                                  "h-1.5 w-1.5 rounded-full transition-colors",
+                                  score && dot <= score ? (
+                                    score >= 4 ? "bg-emerald-500" : score >= 3 ? "bg-blue-500" : score >= 2 ? "bg-amber-500" : "bg-red-500"
+                                  ) : "bg-secondary"
+                                )}
+                              />
+                            ))}
+                          </div>
+                          <span className={cn("text-xs font-medium", scoreColor)}>{scoreLabel}</span>
+                        </div>
                       ) : (
-                        <span className="text-xs text-muted-foreground italic">Not filled</span>
+                        <span className="text-xs text-muted-foreground/60 italic">Not rated</span>
                       )}
                     </div>
                   );
@@ -2618,116 +3489,410 @@ export default function CandidateDetailPage() {
               </div>
             </div>
 
-            {/* Additional Information Preview */}
-            <div className="space-y-3">
-              <h4 className="font-semibold text-base">Additional Information</h4>
-
-              <div className="space-y-2">
-                <p className="text-xs text-muted-foreground uppercase tracking-wider">Key Competencies</p>
-                <div className="border rounded-lg p-3 text-sm min-h-16 bg-secondary/20">
-                  {hrKeyCompetencies ? (
-                    <LexicalRenderer value={hrKeyCompetencies} />
-                  ) : (
-                    <span className="text-muted-foreground italic">Not filled</span>
+            {/* Additional Information */}
+            {(hrKeyCompetencies || hrUserNotes) && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="h-1 w-1 rounded-full bg-accent" />
+                  <h4 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">Additional Notes</h4>
+                </div>
+                <div className="space-y-3">
+                  {hrKeyCompetencies && (
+                    <div className="rounded-xl border p-4 bg-secondary/10">
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium mb-2">Key Competencies</p>
+                      <div className="text-sm text-foreground">
+                        <LexicalRenderer value={hrKeyCompetencies} />
+                      </div>
+                    </div>
+                  )}
+                  {hrUserNotes && (
+                    <div className="rounded-xl border p-4 bg-secondary/10">
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium mb-2">Interviewer Notes</p>
+                      <div className="text-sm text-foreground">
+                        <LexicalRenderer value={hrUserNotes} />
+                      </div>
+                    </div>
                   )}
                 </div>
               </div>
+            )}
 
-              <div className="space-y-2">
-                <p className="text-xs text-muted-foreground uppercase tracking-wider">User Notes</p>
-                <div className="border rounded-lg p-3 text-sm min-h-16 bg-secondary/20">
-                  {hrUserNotes ? (
-                    <LexicalRenderer value={hrUserNotes} />
-                  ) : (
-                    <span className="text-muted-foreground italic">Not filled</span>
-                  )}
-                </div>
-              </div>
+            {/* Warning for incomplete */}
+            {(() => {
+              const filledScores = Object.values(hrScoring).filter((s): s is number => s !== null);
+              const totalFilled = filledScores.length;
+              const totalCriteria = HR_SCORING_CRITERIA.length;
+              const isIncomplete = totalFilled < totalCriteria || !hrConclusion;
 
-              <div className="space-y-2">
-                <p className="text-xs text-muted-foreground uppercase tracking-wider">Interview Result Conclusion</p>
-                {hrConclusion ? (
-                  <Badge
-                    className={cn(
-                      "text-sm",
-                      hrConclusion === "proceed" && "bg-emerald-100 text-emerald-700 border-emerald-300",
-                      hrConclusion === "recommended" && "bg-blue-100 text-blue-700 border-blue-300",
-                      hrConclusion === "rejected" && "bg-red-100 text-red-700 border-red-300"
-                    )}
-                  >
-                    {hrConclusion === "proceed" ? "Proceed" : hrConclusion === "recommended" ? "Recommended" : "Rejected"}
-                  </Badge>
-                ) : (
-                  <span className="text-sm text-muted-foreground italic">Not selected</span>
-                )}
+              if (isIncomplete) {
+                return (
+                  <div className="flex items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-500/10">
+                      <AlertTriangle className="h-4 w-4 text-amber-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-amber-700">Incomplete Assessment</p>
+                      <p className="text-xs text-amber-600/80 mt-0.5">
+                        {totalFilled < totalCriteria && `${totalCriteria - totalFilled} scoring criteria not filled. `}
+                        {!hrConclusion && "Interview conclusion not selected."}
+                      </p>
+                    </div>
+                  </div>
+                );
+              }
+              return null;
+            })()}
+          </div>
+
+          {/* Footer */}
+          <div className="border-t bg-secondary/30 px-6 py-4">
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-muted-foreground">
+                Next: Assign assessors for Interview User
+              </p>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setShowHRPreview(false)} className="px-4">
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleOpenAssessorAssignment}
+                  className="px-5 gap-2"
+                >
+                  <Users className="h-4 w-4" />
+                  Continue
+                </Button>
               </div>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowHRPreview(false)}>
-              Close
-            </Button>
-            <Button
-              onClick={() => {
-                setShowHRPreview(false);
-                handleHRAssessmentSubmit();
-              }}
-              disabled={isSubmittingHR}
-            >
-              {isSubmittingHR ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Submitting...
-                </>
-              ) : (
-                "Submit Assessment"
-              )}
-            </Button>
-          </DialogFooter>
+      {/* Assessor Assignment Dialog */}
+      <Dialog open={showAssessorAssignment} onOpenChange={setShowAssessorAssignment}>
+        <DialogContent className="max-w-xl max-h-[85vh] overflow-hidden p-0">
+          {/* Header */}
+          <div className="relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/8 via-blue-500/4 to-transparent" />
+            <div className="absolute top-0 right-0 w-40 h-40 bg-blue-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+            <div className="absolute bottom-0 left-0 w-24 h-24 bg-blue-400/5 rounded-full blur-2xl translate-y-1/2 -translate-x-1/2" />
+            <DialogHeader className="relative px-6 pt-6 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-600/20 ring-1 ring-blue-500/30">
+                  <Users className="h-6 w-6 text-blue-600" />
+                </div>
+                <div>
+                  <DialogTitle className="text-lg font-semibold">Assign Assessors</DialogTitle>
+                  <DialogDescription className="text-sm">
+                    Select employees for Interview User stage
+                  </DialogDescription>
+                </div>
+              </div>
+            </DialogHeader>
+          </div>
+
+          <div className="px-6 pb-2 space-y-4">
+            {/* Selected Assessors */}
+            {selectedAssessors.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-[11px] text-muted-foreground uppercase tracking-wider font-medium">
+                  Selected ({selectedAssessors.length})
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {selectedAssessors.map((emp) => (
+                    <div
+                      key={emp.id}
+                      className="group flex items-center gap-2 pl-1 pr-2 py-1 rounded-full bg-gradient-to-r from-blue-500/10 to-blue-600/10 ring-1 ring-blue-500/20 hover:ring-blue-500/40 transition-all"
+                    >
+                      <Avatar className="h-6 w-6 ring-1 ring-white/50">
+                        <AvatarFallback className="bg-blue-500 text-white text-[10px] font-medium">
+                          {getInitials(`${emp.firstName} ${emp.lastName}`)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="text-xs font-medium text-foreground">
+                        {emp.firstName} {emp.lastName}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => removeAssessor(emp.id)}
+                        className="ml-0.5 h-4 w-4 rounded-full flex items-center justify-center bg-secondary/80 text-muted-foreground hover:bg-destructive hover:text-white transition-colors"
+                      >
+                        <X className="h-2.5 w-2.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Search & Select */}
+            <div className="space-y-2">
+              <p className="text-[11px] text-muted-foreground uppercase tracking-wider font-medium">
+                Search Employees
+              </p>
+              <Popover open={assessorSearchOpen} onOpenChange={setAssessorSearchOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={assessorSearchOpen}
+                    className="w-full justify-between h-11 px-3 bg-secondary/30 hover:bg-secondary/50 border-secondary"
+                  >
+                    <span className="text-muted-foreground text-sm">
+                      Click to search and select employees...
+                    </span>
+                    <ChevronRight className={cn(
+                      "h-4 w-4 text-muted-foreground transition-transform duration-200",
+                      assessorSearchOpen && "rotate-90"
+                    )} />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                  <Command className="border-0">
+                    <CommandInput
+                      placeholder="Type to search employees..."
+                      value={assessorSearchQuery}
+                      onValueChange={setAssessorSearchQuery}
+                      className="h-11"
+                    />
+                    <CommandList>
+                      <CommandEmpty>
+                        {isLoadingEmployees ? (
+                          <div className="flex items-center justify-center py-6 gap-2">
+                            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                            <span className="text-sm text-muted-foreground">Loading employees...</span>
+                          </div>
+                        ) : (
+                          <div className="py-6 text-center text-sm text-muted-foreground">
+                            No employees found
+                          </div>
+                        )}
+                      </CommandEmpty>
+                      <CommandGroup>
+                        <ScrollArea className="h-[240px]">
+                          {availableEmployees
+                            .filter(emp => {
+                              const name = `${emp.firstName} ${emp.lastName}`.toLowerCase();
+                              const query = assessorSearchQuery.toLowerCase();
+                              return name.includes(query) || emp.email?.toLowerCase().includes(query);
+                            })
+                            .map((emp) => {
+                              const isSelected = selectedAssessors.some(s => s.id === emp.id);
+                              return (
+                                <CommandItem
+                                  key={emp.id}
+                                  value={`${emp.firstName} ${emp.lastName} ${emp.email}`}
+                                  onSelect={() => toggleAssessor(emp)}
+                                  className="cursor-pointer group data-[selected=true]:bg-blue-500"
+                                >
+                                  <div className="flex items-center gap-3 w-full py-1">
+                                    <div className="relative">
+                                      <Avatar className="h-9 w-9 ring-2 ring-transparent group-data-[selected=true]:ring-white/30">
+                                        <AvatarFallback className={cn(
+                                          "text-xs font-medium transition-colors",
+                                          isSelected ? "bg-blue-600 text-white" : "bg-secondary text-foreground"
+                                        )}>
+                                          {getInitials(`${emp.firstName} ${emp.lastName}`)}
+                                        </AvatarFallback>
+                                      </Avatar>
+                                      {isSelected && (
+                                        <div className="absolute -bottom-0.5 -right-0.5 h-4 w-4 rounded-full bg-emerald-500 flex items-center justify-center ring-2 ring-background">
+                                          <Check className="h-2.5 w-2.5 text-white" />
+                                        </div>
+                                      )}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-sm font-medium truncate text-foreground group-data-[selected=true]:text-white">
+                                        {emp.firstName} {emp.lastName}
+                                      </p>
+                                      <p className="text-xs text-muted-foreground truncate group-data-[selected=true]:text-white/70">
+                                        {emp.jobTitle?.name || emp.email}
+                                      </p>
+                                    </div>
+                                    {isSelected && (
+                                      <Badge className="bg-blue-500/20 text-blue-600 border-0 text-[10px] group-data-[selected=true]:bg-white/30 group-data-[selected=true]:text-white">
+                                        Selected
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </CommandItem>
+                              );
+                            })}
+                        </ScrollArea>
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
+
+          {/* Info Banner */}
+          <div className="mx-6 mb-4 flex items-start gap-3 rounded-xl border border-blue-500/20 bg-blue-500/5 p-4">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-500/10">
+              <User className="h-4 w-4 text-blue-600" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-blue-700">Interview User Assignment</p>
+              <p className="text-xs text-blue-600/80 mt-0.5">
+                Selected employees will be assigned to conduct the Interview User stage for this candidate.
+              </p>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="border-t bg-secondary/30 px-6 py-4">
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-muted-foreground">
+                {selectedAssessors.length === 0
+                  ? "Select at least one assessor"
+                  : `${selectedAssessors.length} assessor${selectedAssessors.length > 1 ? "s" : ""} selected`
+                }
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowAssessorAssignment(false);
+                    setShowHRPreview(true);
+                  }}
+                  className="px-4"
+                >
+                  Back
+                </Button>
+                <Button
+                  onClick={handleHRAssessmentSubmit}
+                  disabled={isSubmittingHR || (hrConclusion !== "rejected" && selectedAssessors.length === 0)}
+                  className="px-5 gap-2 bg-blue-600 hover:bg-blue-700"
+                >
+                  {isSubmittingHR ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Submitting...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="h-4 w-4" />
+                      Submit Assessment
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 
       {/* User Assessment Preview Dialog */}
       <Dialog open={showUserPreview} onOpenChange={setShowUserPreview}>
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Assessment User Preview</DialogTitle>
-            <DialogDescription>
-              Review the assessment details before submitting
-            </DialogDescription>
-          </DialogHeader>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto p-0">
+          {/* Header with gradient accent */}
+          <div className="relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/8 via-blue-500/4 to-transparent" />
+            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2" />
+            <DialogHeader className="relative px-6 pt-6 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-500/10 ring-1 ring-blue-500/20">
+                  <ClipboardCheck className="h-5 w-5 text-blue-600" />
+                </div>
+                <div>
+                  <DialogTitle className="text-lg font-semibold">Confirm Submission</DialogTitle>
+                  <DialogDescription className="text-sm">
+                    Review your User Assessment before submitting
+                  </DialogDescription>
+                </div>
+              </div>
+            </DialogHeader>
+          </div>
 
-          <div className="space-y-6 py-4">
-            {/* Candidate Info */}
+          <div className="px-6 pb-6 space-y-5">
+            {/* Candidate Card */}
             {candidate && (
-              <div className="flex items-center gap-3 p-3 bg-secondary/30 rounded-lg">
-                <Avatar className="h-10 w-10">
-                  <AvatarFallback className="bg-accent/10 text-accent text-sm">
+              <div className="flex items-center gap-4 p-4 rounded-xl border bg-gradient-to-r from-secondary/50 to-secondary/20">
+                <Avatar className="h-12 w-12 ring-2 ring-background shadow-sm">
+                  <AvatarFallback className="bg-blue-500 text-white font-semibold">
                     {getInitials(candidate.fullname)}
                   </AvatarFallback>
                 </Avatar>
-                <div>
-                  <p className="text-sm font-medium">{candidate.fullname}</p>
-                  <p className="text-sm text-muted-foreground">{candidate.jobTitle?.name}</p>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-foreground truncate">{candidate.fullname}</p>
+                  <p className="text-sm text-muted-foreground truncate">{candidate.jobTitle?.name}</p>
                 </div>
+                {userConclusion && (
+                  <div className={cn(
+                    "px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wide",
+                    userConclusion === "proceed" && "bg-emerald-500/15 text-emerald-600 ring-1 ring-emerald-500/30",
+                    userConclusion === "recommended" && "bg-blue-500/15 text-blue-600 ring-1 ring-blue-500/30",
+                    userConclusion === "rejected" && "bg-red-500/15 text-red-600 ring-1 ring-red-500/30"
+                  )}>
+                    {userConclusion === "proceed" ? "Proceed" : userConclusion === "recommended" ? "Recommended" : "Rejected"}
+                  </div>
+                )}
               </div>
             )}
 
-            {/* Scoring Preview */}
+            {/* Score Summary Card */}
+            {(() => {
+              const filledScores = Object.values(userScoring).filter((s): s is number => s !== null);
+              const totalFilled = filledScores.length;
+              const totalCriteria = HR_SCORING_CRITERIA.length;
+              const averageScore = totalFilled > 0 ? filledScores.reduce((a, b) => a + b, 0) / totalFilled : 0;
+              const totalScore = filledScores.reduce((a, b) => a + b, 0);
+              const maxTotal = totalCriteria * 5;
+
+              return (
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="rounded-xl border bg-gradient-to-br from-background to-secondary/30 p-4 text-center">
+                    <p className="text-2xl font-bold text-foreground">{totalFilled}/{totalCriteria}</p>
+                    <p className="text-[11px] text-muted-foreground uppercase tracking-wider mt-1">Criteria Filled</p>
+                  </div>
+                  <div className="rounded-xl border bg-gradient-to-br from-background to-secondary/30 p-4 text-center">
+                    <p className="text-2xl font-bold text-foreground">{averageScore.toFixed(1)}</p>
+                    <p className="text-[11px] text-muted-foreground uppercase tracking-wider mt-1">Avg. Score</p>
+                  </div>
+                  <div className="rounded-xl border bg-gradient-to-br from-background to-secondary/30 p-4 text-center">
+                    <p className="text-2xl font-bold text-foreground">{totalScore}/{maxTotal}</p>
+                    <p className="text-[11px] text-muted-foreground uppercase tracking-wider mt-1">Total Points</p>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Scoring Details */}
             <div className="space-y-3">
-              <h4 className="font-semibold text-base">Scoring</h4>
-              <div className="border rounded-lg divide-y">
+              <div className="flex items-center gap-2">
+                <div className="h-1 w-1 rounded-full bg-blue-500" />
+                <h4 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">Scoring Breakdown</h4>
+              </div>
+              <div className="rounded-xl border overflow-hidden">
                 {HR_SCORING_CRITERIA.map((criteria, index) => {
                   const score = userScoring[criteria.key];
                   const scoreLabel = score ? SCORE_OPTIONS.find(opt => opt.value === score)?.label : null;
+                  const scoreColor = score && score >= 4 ? "text-emerald-600" : score && score >= 3 ? "text-blue-600" : score && score >= 2 ? "text-amber-600" : score ? "text-red-500" : "text-muted-foreground";
                   return (
-                    <div key={criteria.key} className="flex items-center justify-between px-3 py-2">
-                      <span className="text-sm">{index + 1}. {criteria.label}</span>
+                    <div key={criteria.key} className={cn(
+                      "flex items-center justify-between px-4 py-2.5 transition-colors",
+                      index % 2 === 0 ? "bg-secondary/20" : "bg-transparent"
+                    )}>
+                      <span className="text-sm text-foreground">{criteria.label}</span>
                       {scoreLabel ? (
-                        <Badge variant="secondary">{scoreLabel} ({score}/5)</Badge>
+                        <div className="flex items-center gap-2">
+                          <div className="flex gap-0.5">
+                            {[1, 2, 3, 4, 5].map((dot) => (
+                              <div
+                                key={dot}
+                                className={cn(
+                                  "h-1.5 w-1.5 rounded-full transition-colors",
+                                  score && dot <= score ? (
+                                    score >= 4 ? "bg-emerald-500" : score >= 3 ? "bg-blue-500" : score >= 2 ? "bg-amber-500" : "bg-red-500"
+                                  ) : "bg-secondary"
+                                )}
+                              />
+                            ))}
+                          </div>
+                          <span className={cn("text-xs font-medium", scoreColor)}>{scoreLabel}</span>
+                        </div>
                       ) : (
-                        <span className="text-xs text-muted-foreground italic">Not filled</span>
+                        <span className="text-xs text-muted-foreground/60 italic">Not rated</span>
                       )}
                     </div>
                   );
@@ -2735,73 +3900,94 @@ export default function CandidateDetailPage() {
               </div>
             </div>
 
-            {/* Additional Information Preview */}
-            <div className="space-y-3">
-              <h4 className="font-semibold text-base">Additional Information</h4>
-
-              <div className="space-y-2">
-                <p className="text-xs text-muted-foreground uppercase tracking-wider">Key Competencies</p>
-                <div className="border rounded-lg p-3 text-sm min-h-16 bg-secondary/20">
-                  {userKeyCompetencies ? (
-                    <LexicalRenderer value={userKeyCompetencies} />
-                  ) : (
-                    <span className="text-muted-foreground italic">Not filled</span>
+            {/* Additional Information */}
+            {(userKeyCompetencies || userUserNotes) && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="h-1 w-1 rounded-full bg-blue-500" />
+                  <h4 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">Additional Notes</h4>
+                </div>
+                <div className="space-y-3">
+                  {userKeyCompetencies && (
+                    <div className="rounded-xl border p-4 bg-secondary/10">
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium mb-2">Key Competencies</p>
+                      <div className="text-sm text-foreground">
+                        <LexicalRenderer value={userKeyCompetencies} />
+                      </div>
+                    </div>
+                  )}
+                  {userUserNotes && (
+                    <div className="rounded-xl border p-4 bg-secondary/10">
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium mb-2">Interviewer Notes</p>
+                      <div className="text-sm text-foreground">
+                        <LexicalRenderer value={userUserNotes} />
+                      </div>
+                    </div>
                   )}
                 </div>
               </div>
+            )}
 
-              <div className="space-y-2">
-                <p className="text-xs text-muted-foreground uppercase tracking-wider">User Notes</p>
-                <div className="border rounded-lg p-3 text-sm min-h-16 bg-secondary/20">
-                  {userUserNotes ? (
-                    <LexicalRenderer value={userUserNotes} />
+            {/* Warning for incomplete */}
+            {(() => {
+              const filledScores = Object.values(userScoring).filter((s): s is number => s !== null);
+              const totalFilled = filledScores.length;
+              const totalCriteria = HR_SCORING_CRITERIA.length;
+              const isIncomplete = totalFilled < totalCriteria || !userConclusion;
+
+              if (isIncomplete) {
+                return (
+                  <div className="flex items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-500/10">
+                      <AlertTriangle className="h-4 w-4 text-amber-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-amber-700">Incomplete Assessment</p>
+                      <p className="text-xs text-amber-600/80 mt-0.5">
+                        {totalFilled < totalCriteria && `${totalCriteria - totalFilled} scoring criteria not filled. `}
+                        {!userConclusion && "Interview conclusion not selected."}
+                      </p>
+                    </div>
+                  </div>
+                );
+              }
+              return null;
+            })()}
+          </div>
+
+          {/* Footer */}
+          <div className="border-t bg-secondary/30 px-6 py-4">
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-muted-foreground">
+                This action cannot be undone
+              </p>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setShowUserPreview(false)} className="px-4">
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => {
+                    setShowUserPreview(false);
+                    handleUserAssessmentSubmit();
+                  }}
+                  disabled={isSubmittingUser}
+                  className="px-5 gap-2"
+                >
+                  {isSubmittingUser ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Submitting...
+                    </>
                   ) : (
-                    <span className="text-muted-foreground italic">Not filled</span>
+                    <>
+                      <Send className="h-4 w-4" />
+                      Confirm & Submit
+                    </>
                   )}
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <p className="text-xs text-muted-foreground uppercase tracking-wider">Interview Result Conclusion</p>
-                {userConclusion ? (
-                  <Badge
-                    className={cn(
-                      "text-sm",
-                      userConclusion === "proceed" && "bg-emerald-100 text-emerald-700 border-emerald-300",
-                      userConclusion === "recommended" && "bg-blue-100 text-blue-700 border-blue-300",
-                      userConclusion === "rejected" && "bg-red-100 text-red-700 border-red-300"
-                    )}
-                  >
-                    {userConclusion === "proceed" ? "Proceed" : userConclusion === "recommended" ? "Recommended" : "Rejected"}
-                  </Badge>
-                ) : (
-                  <span className="text-sm text-muted-foreground italic">Not selected</span>
-                )}
+                </Button>
               </div>
             </div>
           </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowUserPreview(false)}>
-              Close
-            </Button>
-            <Button
-              onClick={() => {
-                setShowUserPreview(false);
-                handleUserAssessmentSubmit();
-              }}
-              disabled={isSubmittingUser}
-            >
-              {isSubmittingUser ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Submitting...
-                </>
-              ) : (
-                "Submit Assessment"
-              )}
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -2854,6 +4040,259 @@ export default function CandidateDetailPage() {
                 <XCircle className="mr-2 h-4 w-4" />
               )}
               Confirm
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Facility Dialog */}
+      <Dialog
+        open={facilityDialog.open}
+        onOpenChange={(open) => setFacilityDialog({ ...facilityDialog, open })}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {facilityDialog.mode === "add" ? "Add Facility" : "Edit Facility"}
+            </DialogTitle>
+            <DialogDescription>
+              {facilityDialog.mode === "add"
+                ? "Add a new facility/equipment for the employee"
+                : "Update facility information"}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Inventory No</Label>
+                <Input
+                  placeholder="e.g., INV-001"
+                  value={facilityForm.inventoryNo}
+                  onChange={(e) => setFacilityForm({ ...facilityForm, inventoryNo: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Item *</Label>
+                <Input
+                  placeholder="e.g., Laptop"
+                  value={facilityForm.item}
+                  onChange={(e) => setFacilityForm({ ...facilityForm, item: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Quantity</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  value={facilityForm.qty}
+                  onChange={(e) => setFacilityForm({ ...facilityForm, qty: Number(e.target.value) })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Unit</Label>
+                <Input
+                  placeholder="e.g., Unit, Pcs"
+                  value={facilityForm.unit}
+                  onChange={(e) => setFacilityForm({ ...facilityForm, unit: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Condition</Label>
+                <Select
+                  value={facilityForm.condition}
+                  onValueChange={(v) => setFacilityForm({ ...facilityForm, condition: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {FACILITY_CONDITIONS.map((c) => (
+                      <SelectItem key={c} value={c}>{c}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Select
+                  value={facilityForm.status}
+                  onValueChange={(v) => setFacilityForm({ ...facilityForm, status: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {FACILITY_STATUSES.map((s) => (
+                      <SelectItem key={s} value={s}>{s}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setFacilityDialog({ open: false, mode: "add" })}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveFacility} disabled={!facilityForm.item}>
+              {facilityDialog.mode === "add" ? "Add" : "Save"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Program Dialog */}
+      <Dialog
+        open={programDialog.open}
+        onOpenChange={(open) => setProgramDialog({ ...programDialog, open })}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {programDialog.mode === "add" ? "Add Program" : "Edit Program"}
+            </DialogTitle>
+            <DialogDescription>
+              {programDialog.mode === "add"
+                ? "Schedule a new onboarding program"
+                : "Update program information"}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Program Name *</Label>
+              <Input
+                placeholder="e.g., Company Orientation"
+                value={programForm.program}
+                onChange={(e) => setProgramForm({ ...programForm, program: e.target.value })}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Date</Label>
+                <Input
+                  type="date"
+                  value={programForm.date}
+                  onChange={(e) => setProgramForm({ ...programForm, date: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Location</Label>
+                <Input
+                  placeholder="e.g., Meeting Room A"
+                  value={programForm.location}
+                  onChange={(e) => setProgramForm({ ...programForm, location: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>PIC (Person In Charge)</Label>
+                <Input
+                  placeholder="e.g., HR Team"
+                  value={programForm.pic}
+                  onChange={(e) => setProgramForm({ ...programForm, pic: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Select
+                  value={programForm.status}
+                  onValueChange={(v) => setProgramForm({ ...programForm, status: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PROGRAM_STATUSES.map((s) => (
+                      <SelectItem key={s} value={s}>{s}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setProgramDialog({ open: false, mode: "add" })}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveProgram} disabled={!programForm.program}>
+              {programDialog.mode === "add" ? "Add" : "Save"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Onboarding Delete Confirmation */}
+      <AlertDialog
+        open={onboardingDeleteConfirm?.open || false}
+        onOpenChange={(open) => !open && setOnboardingDeleteConfirm(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {onboardingDeleteConfirm?.type === "facility" ? "Facility" : "Program"}</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete &quot;{onboardingDeleteConfirm?.name}&quot;? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (onboardingDeleteConfirm?.type === "facility") {
+                  handleDeleteFacility(onboardingDeleteConfirm.id);
+                } else if (onboardingDeleteConfirm?.type === "program") {
+                  handleDeleteProgram(onboardingDeleteConfirm.id);
+                }
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Send Onboarding Dialog */}
+      <AlertDialog open={showConvertDialog} onOpenChange={setShowConvertDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Send className="h-5 w-5 text-blue-600" />
+              Send Onboarding
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              You are about to send onboarding details to {candidate?.fullname}.
+              The candidate will receive an email to review and confirm the offer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-4">
+            <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900">
+              <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
+                <CheckCircle2 className="h-5 w-5" />
+                <span className="font-medium">Onboarding Summary</span>
+              </div>
+              <ul className="mt-2 text-sm text-blue-600 dark:text-blue-400 space-y-1">
+                <li>Work Location: {formatJobPlacement(jobPlacement) || "—"}</li>
+                <li>Join Date: {joinDate || "—"}</li>
+                <li>{onboarding?.facilities.length || 0} facilities assigned</li>
+                <li>{onboarding?.programs.length || 0} programs scheduled</li>
+              </ul>
+            </div>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isConverting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleSendOnboarding}
+              disabled={isConverting}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              {isConverting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              <Send className="mr-2 h-4 w-4" />
+              Send Onboarding
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

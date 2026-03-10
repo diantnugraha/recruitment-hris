@@ -44,6 +44,13 @@ export interface AssessmentProgress {
   interviewStarted?: boolean;
 }
 
+export interface AssessmentAssignee {
+  employeeId: number;
+  employeeName: string | null;
+  employeeEmail: string | null;
+  assignedAt: string;
+}
+
 export interface ScoringInput {
   relevance_of_experience: number;
   training_undertaken: number;
@@ -63,6 +70,7 @@ export interface InterviewUpdatePayload {
   key_competencies?: string | null;
   interviewer_notes?: string | null;
   assessed_by?: string | null;
+  assessor_ids?: number[];
 }
 
 export interface AssessmentScoringData {
@@ -102,7 +110,7 @@ export interface CandidateWithRelations extends Candidate {
   detail?: CandidateDetail | null;
   assessment?: CandidateAssessment | null;
   jobTitle?: { id: number; name: string } | null;
-  employeeRequest?: { id: number; code: string } | null;
+  employeeRequest?: { id: number; code: string; jobPlacement?: string } | null;
 }
 
 export interface Facility {
@@ -294,7 +302,7 @@ interface ApiCandidate {
     when_ready_work: string;
   } | null;
   job_title?: { id: number; name: string } | null;
-  employee_request?: { id: number; code: string } | null;
+  employee_request?: { id: number; code: string; job_placement?: string | null } | null;
 }
 
 // --- Mapping ---
@@ -341,7 +349,11 @@ function mapCandidate(api: ApiCandidate): CandidateWithRelations {
       whenReadyWork: api.assessment.when_ready_work,
     } : null,
     jobTitle: api.job_title,
-    employeeRequest: api.employee_request,
+    employeeRequest: api.employee_request ? {
+      id: api.employee_request.id,
+      code: api.employee_request.code,
+      jobPlacement: api.employee_request.job_placement || undefined,
+    } : null,
   };
 }
 
@@ -760,6 +772,26 @@ export const candidateService = {
     }
   },
 
+  async getAssessmentAssignees(
+    candidateId: string | number
+  ): Promise<ApiResponse<AssessmentAssignee[]>> {
+    try {
+      const response = await get<unknown>(
+        `/v1/candidate/${candidateId}/assessment/assignees`
+      );
+      const res = response as { success?: boolean; data?: AssessmentAssignee[] };
+
+      if (res.success && res.data) {
+        return { success: true, data: res.data };
+      }
+
+      return { success: false, message: "Unexpected response format" };
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      return { success: false, message: err.response?.data?.message || "Failed to fetch assessment assignees" };
+    }
+  },
+
   async updateMcu(
     candidateId: string | number,
     status: "PASSED" | "FAILED",
@@ -1094,6 +1126,30 @@ export const candidateService = {
       return { success: true };
     } catch (error: unknown) {
       return { success: false, message: "Failed to delete program" };
+    }
+  },
+
+  // ==================== Send Onboarding ====================
+
+  async sendOnboardingEmail(
+    candidateId: string | number,
+    portalBaseUrl: string
+  ): Promise<ApiResponse<{ success: boolean; message: string }>> {
+    try {
+      const response = await post<unknown, { portal_base_url: string }>(
+        `/v1/candidate/${candidateId}/onboarding/send`,
+        { portal_base_url: portalBaseUrl }
+      );
+      const res = response as { success?: boolean; data?: { success: boolean; message: string }; message?: string };
+
+      if (res.success) {
+        return { success: true, data: res.data };
+      }
+
+      return { success: false, message: res.message || "Unexpected response format" };
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      return { success: false, message: err.response?.data?.message || "Failed to send onboarding email" };
     }
   },
 
