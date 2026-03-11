@@ -56,7 +56,7 @@ interface RecruitmentRequestRow extends EmployeeRequestWithRelations {
 }
 
 // Status filter type
-type StatusFilter = "all" | "approved" | "in_recruitment";
+type StatusFilter = "all" | "approved" | "in_recruitment" | "completed";
 
 export default function RecruitmentPage() {
   const router = useRouter();
@@ -74,13 +74,16 @@ export default function RecruitmentPage() {
     setError(null);
 
     try {
-      // Fetch employee requests that are approved or in_recruitment
-      const [approvedRes, inRecruitmentRes] = await Promise.all([
+      // Fetch employee requests that are approved, in_recruitment, or completed
+      const [approvedRes, inRecruitmentRes, completedRes] = await Promise.all([
         employeeRequestService.getAll(1, 100, {
           status: EMPLOYEE_REQUEST_STATUS.APPROVED,
         }),
         employeeRequestService.getAll(1, 100, {
           status: EMPLOYEE_REQUEST_STATUS.IN_RECRUITMENT,
+        }),
+        employeeRequestService.getAll(1, 100, {
+          status: EMPLOYEE_REQUEST_STATUS.COMPLETED,
         }),
       ]);
 
@@ -91,6 +94,9 @@ export default function RecruitmentPage() {
       }
       if (inRecruitmentRes.success && inRecruitmentRes.data) {
         allRequests.push(...inRecruitmentRes.data.data);
+      }
+      if (completedRes.success && completedRes.data) {
+        allRequests.push(...completedRes.data.data);
       }
 
       // Debug: Log employee requests
@@ -155,11 +161,15 @@ export default function RecruitmentPage() {
     const inRecruitment = requests.filter(
       (r) => r.status === EMPLOYEE_REQUEST_STATUS.IN_RECRUITMENT
     );
+    const completed = requests.filter(
+      (r) => r.status === EMPLOYEE_REQUEST_STATUS.COMPLETED
+    );
 
     return {
       totalRequests: requests.length,
       approvedCount: approved.length,
       inRecruitmentCount: inRecruitment.length,
+      completedCount: completed.length,
       totalPositions: requests.reduce((sum, r) => sum + r.quantity, 0),
       totalCandidates: requests.reduce(
         (sum, r) => sum + r.pipelineStats.total,
@@ -184,6 +194,10 @@ export default function RecruitmentPage() {
     } else if (statusFilter === "in_recruitment") {
       filtered = filtered.filter(
         (r) => r.status === EMPLOYEE_REQUEST_STATUS.IN_RECRUITMENT
+      );
+    } else if (statusFilter === "completed") {
+      filtered = filtered.filter(
+        (r) => r.status === EMPLOYEE_REQUEST_STATUS.COMPLETED
       );
     }
 
@@ -288,6 +302,8 @@ export default function RecruitmentPage() {
                       <span>Approved: {stats.approvedCount}</span>
                       <span className="text-border">|</span>
                       <span>Recruiting: {stats.inRecruitmentCount}</span>
+                      <span className="text-border">|</span>
+                      <span>Completed: {stats.completedCount}</span>
                     </div>
                   </div>
                   <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-secondary">
@@ -356,6 +372,7 @@ export default function RecruitmentPage() {
                   <TabsTrigger value="all">All</TabsTrigger>
                   <TabsTrigger value="approved">Approved</TabsTrigger>
                   <TabsTrigger value="in_recruitment">Recruiting</TabsTrigger>
+                  <TabsTrigger value="completed">Completed</TabsTrigger>
                 </TabsList>
               </Tabs>
             </div>
@@ -386,6 +403,8 @@ export default function RecruitmentPage() {
                             ? "No approved requests"
                             : statusFilter === "in_recruitment"
                             ? "No requests in recruitment"
+                            : statusFilter === "completed"
+                            ? "No completed requests"
                             : "No recruitment requests found"}
                         </p>
                         <Button

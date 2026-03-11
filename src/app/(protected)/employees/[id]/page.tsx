@@ -2,13 +2,28 @@
 
 import * as React from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Pencil, Trash2, Loader2 } from "lucide-react";
+import {
+  ArrowLeft,
+  Pencil,
+  Trash2,
+  Loader2,
+  User,
+  Briefcase,
+  Heart,
+  Building2,
+  MapPin,
+  Calendar,
+  Mail,
+  Phone,
+  IdCard,
+} from "lucide-react";
 
 import { Header } from "@/components/layout/header";
 import { PageContainer } from "@/components/layout/page-container";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -53,10 +68,8 @@ function getStatusConfig(status: string) {
 
 function DetailField({ label, value }: { label: string; value: string }) {
   return (
-    <div className="space-y-1">
-      <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-        {label}
-      </p>
+    <div>
+      <p className="text-xs text-muted-foreground">{label}</p>
       <p className={`text-sm font-medium ${!value ? "text-muted-foreground" : ""}`}>
         {value || "No data"}
       </p>
@@ -190,7 +203,7 @@ export default function EmployeeDetailPage() {
     <>
       <Header title="Employee Details" />
       <PageContainer>
-        <div className="space-y-4">
+        <div className="space-y-6">
           {/* Top Bar: Back + Actions */}
           <div className="flex items-center justify-between">
             <button
@@ -222,20 +235,21 @@ export default function EmployeeDetailPage() {
             </div>
           </div>
 
-          {/* Single card with all content */}
+          {/* Profile Header Card */}
           <Card>
-            <CardContent className="p-6 space-y-8">
-              {/* Profile Header */}
+            <CardContent className="p-6">
               <div className="flex items-center gap-4">
-                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-700">
-                  <span className="text-xl font-bold">{initials}</span>
-                </div>
-                <div>
+                <Avatar className="h-14 w-14 border-2">
+                  <AvatarFallback className="bg-accent text-accent-foreground text-lg font-bold">
+                    {initials}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2.5">
-                    <h1 className="text-lg font-bold">{fullName || "—"}</h1>
+                    <h1 className="text-lg font-bold truncate">{fullName || "—"}</h1>
                     <Badge variant={statusCfg.variant}>{statusCfg.label}</Badge>
                   </div>
-                  <p className="mt-0.5 text-sm font-medium text-primary">
+                  <p className="mt-0.5 text-sm font-medium text-accent">
                     {employee.employeeNik || "No NIK"}
                   </p>
                   {subtitle && (
@@ -243,71 +257,164 @@ export default function EmployeeDetailPage() {
                   )}
                 </div>
               </div>
+            </CardContent>
+          </Card>
 
-              <div className="border-t border-dashed" />
-
-              {/* ========== SECTION: BIODATA ========== */}
-              <div>
-                <h2 className="text-base font-semibold uppercase tracking-wide mb-4">
-                  Biodata
-                </h2>
-                <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+          {/* Biodata */}
+          <Card>
+            <CardHeader className="pb-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-950">
+                  <IdCard className="h-5 w-5 text-blue-600" />
+                </div>
+                <div>
+                  <CardTitle className="text-base">Biodata</CardTitle>
+                  <CardDescription>Personal information and identity</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
+                  <IdCard className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
                   <DetailField label="NIK" value={employee.employeeNik || "No Data"} />
+                </div>
+                <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
+                  <User className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
                   <DetailField label="Full Name" value={fullName} />
+                </div>
+                <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
+                  <User className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
                   <DetailField label="Gender" value={employee.gender === "male" ? "Male" : "Female"} />
+                </div>
+                <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
+                  <Calendar className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
                   <DetailField label="Birth Date" value={formatDateField(employee.dateOfBirth)} />
+                </div>
+                <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
+                  <User className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
                   <DetailField label="Religion" value={employee.religion || ""} />
+                </div>
+                <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
+                  <User className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
                   <DetailField label="Ethnic" value={employee.ethnicity || ""} />
                 </div>
               </div>
+            </CardContent>
+          </Card>
 
-              <div className="border-t border-dashed" />
-
-              {/* ========== SECTION: WORK DETAILS ========== */}
-              <div>
-                <h2 className="text-base font-semibold uppercase tracking-wide mb-4">
-                  Work Details
-                </h2>
-                <div className="grid grid-cols-2 gap-x-8 gap-y-4">
-                  <DetailField label="Employee Type" value={matchedJobTitle?.type || employee.employeeType || ""} />
-                  <DetailField label="Job Level" value={matchedJobTitle?.jobLevel?.name || employee.jobLevel?.name || ""} />
-                  <DetailField label="Department" value={employee.department?.name || ""} />
-                  <DetailField label="Job Title" value={employee.jobTitle?.name || ""} />
-                  <DetailField label="Join Date" value={formatDateField(employee.hireDate)} />
-                  <DetailField label="Mobile Phone No." value={employee.employeeContact || employee.phone || ""} />
-                  <DetailField label="Email Address" value={employee.email} />
-                  <DetailField label="Location" value={employee.location || ""} />
-                  <DetailField label="Status" value={statusCfg.label} />
-                  {employee.permanentDate && (
-                    <DetailField label="Permanent Date" value={formatDateField(employee.permanentDate)} />
-                  )}
-                  {employee.contractEndDate && (
-                    <DetailField label="Contract End" value={formatDateField(employee.contractEndDate)} />
-                  )}
-                  {employee.probationEndDate && (
-                    <DetailField label="Probation End" value={formatDateField(employee.probationEndDate)} />
-                  )}
-                  {employee.exitDate && (
-                    <DetailField label="Resigned Date" value={formatDateField(employee.exitDate)} />
-                  )}
+          {/* Work Details */}
+          <Card>
+            <CardHeader className="pb-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-950">
+                  <Briefcase className="h-5 w-5 text-emerald-600" />
+                </div>
+                <div>
+                  <CardTitle className="text-base">Work Details</CardTitle>
+                  <CardDescription>Employment information and contact</CardDescription>
                 </div>
               </div>
-
-              <div className="border-t border-dashed" />
-
-              {/* ========== SECTION: FAMILY ========== */}
-              <div>
-                <h2 className="text-base font-semibold uppercase tracking-wide mb-4">
-                  Family
-                </h2>
-                <div className="grid grid-cols-2 gap-x-8 gap-y-4">
-                  <DetailField label="Mothers Name" value={employee.motherName || ""} />
-                  <DetailField label="Fathers Name" value={employee.fatherName || ""} />
-                  <DetailField label="Marital Status" value={maritalStatusLabel} />
-                  {employee.spouseName && (
-                    <DetailField label="Spouse" value={employee.spouseName} />
-                  )}
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
+                  <Briefcase className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                  <DetailField label="Employee Type" value={matchedJobTitle?.type || employee.employeeType || ""} />
                 </div>
+                <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
+                  <Briefcase className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                  <DetailField label="Job Level" value={matchedJobTitle?.jobLevel?.name || employee.jobLevel?.name || ""} />
+                </div>
+                <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
+                  <Building2 className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                  <DetailField label="Department" value={employee.department?.name || ""} />
+                </div>
+                <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
+                  <Briefcase className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                  <DetailField label="Job Title" value={employee.jobTitle?.name || ""} />
+                </div>
+                <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
+                  <Calendar className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                  <DetailField label="Join Date" value={formatDateField(employee.hireDate)} />
+                </div>
+                <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
+                  <Phone className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                  <DetailField label="Mobile Phone No." value={employee.employeeContact || employee.phone || ""} />
+                </div>
+                <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
+                  <Mail className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                  <DetailField label="Email Address" value={employee.email} />
+                </div>
+                <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
+                  <MapPin className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                  <DetailField label="Location" value={employee.location || ""} />
+                </div>
+                <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
+                  <Briefcase className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                  <DetailField label="Status" value={statusCfg.label} />
+                </div>
+                {employee.permanentDate && (
+                  <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
+                    <Calendar className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                    <DetailField label="Permanent Date" value={formatDateField(employee.permanentDate)} />
+                  </div>
+                )}
+                {employee.contractEndDate && (
+                  <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
+                    <Calendar className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                    <DetailField label="Contract End" value={formatDateField(employee.contractEndDate)} />
+                  </div>
+                )}
+                {employee.probationEndDate && (
+                  <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
+                    <Calendar className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                    <DetailField label="Probation End" value={formatDateField(employee.probationEndDate)} />
+                  </div>
+                )}
+                {employee.exitDate && (
+                  <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
+                    <Calendar className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                    <DetailField label="Resigned Date" value={formatDateField(employee.exitDate)} />
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Family */}
+          <Card>
+            <CardHeader className="pb-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-purple-50 dark:bg-purple-950">
+                  <Heart className="h-5 w-5 text-purple-600" />
+                </div>
+                <div>
+                  <CardTitle className="text-base">Family</CardTitle>
+                  <CardDescription>Family members and marital information</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
+                  <User className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                  <DetailField label="Mother's Name" value={employee.motherName || ""} />
+                </div>
+                <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
+                  <User className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                  <DetailField label="Father's Name" value={employee.fatherName || ""} />
+                </div>
+                <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
+                  <Heart className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                  <DetailField label="Marital Status" value={maritalStatusLabel} />
+                </div>
+                {employee.spouseName && (
+                  <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
+                    <User className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                    <DetailField label="Spouse" value={employee.spouseName} />
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

@@ -20,13 +20,18 @@ import {
   Search,
   ChevronRight,
   UserCircle,
+  Briefcase,
+  Building2,
+  MapPin,
+  Calendar,
+  Hash,
 } from "lucide-react";
 
 import { Header } from "@/components/layout/header";
 import { PageContainer } from "@/components/layout/page-container";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import {
@@ -125,7 +130,32 @@ export default function RecruitmentRequestDetailPage() {
             100
           );
           if (candidatesRes.success && candidatesRes.data) {
-            setCandidates(candidatesRes.data.data);
+            const candidatesList = candidatesRes.data.data;
+
+            // For candidates who passed MCU, fetch onboarding to get onboardingAcceptedAt
+            const mcuPassedCandidates = candidatesList.filter(
+              (c) => c.assessment?.mcuStatus === "PASSED"
+            );
+
+            if (mcuPassedCandidates.length > 0) {
+              const onboardingResults = await Promise.allSettled(
+                mcuPassedCandidates.map((c) =>
+                  candidateService.getOnboarding(c.id)
+                )
+              );
+
+              onboardingResults.forEach((result, index) => {
+                if (result.status === "fulfilled" && result.value.success && result.value.data) {
+                  const candidateId = mcuPassedCandidates[index].id;
+                  const target = candidatesList.find((c) => c.id === candidateId);
+                  if (target) {
+                    target.onboardingAcceptedAt = result.value.data.onboardingAcceptedAt;
+                  }
+                }
+              });
+            }
+
+            setCandidates(candidatesList);
           }
         } catch (candidateErr) {
           console.warn("Failed to fetch candidates:", candidateErr);
@@ -284,9 +314,10 @@ export default function RecruitmentRequestDetailPage() {
 
     // MCU completed
     if (assessment.mcuStatus === "PASSED") {
-      // If onboarding accepted, show ONBOARDING instead of HIRED
-      if (candidate.onboardingAcceptedAt) return CANDIDATE_STATUS.ONBOARDING;
-      return CANDIDATE_STATUS.HIRED;
+      // If onboarding accepted, show HIRED
+      if (candidate.onboardingAcceptedAt) return CANDIDATE_STATUS.HIRED;
+      // If not yet accepted, show WAITING_ACCEPTED
+      return CANDIDATE_STATUS.WAITING_ACCEPTED;
     }
     if (assessment.mcuStatus === "FAILED") return CANDIDATE_STATUS.REJECTED;
     if (mcuStarted) return CANDIDATE_STATUS.MCU;
@@ -504,87 +535,128 @@ export default function RecruitmentRequestDetailPage() {
             );
           })()}
 
-          {/* Job Details - Horizontal Card */}
-          <Card className="bg-gradient-to-r from-card to-secondary/20">
-            <CardContent className="py-4 px-6">
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 lg:gap-0 lg:divide-x divide-border">
-                <div className="lg:px-4 first:lg:pl-0 last:lg:pr-0">
-                  <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-1">Position</p>
-                  <p className="text-sm font-semibold truncate">{request.jobTitle?.name || "—"}</p>
-                  <button
-                    onClick={() => router.push(`/employee-request/${request.id}`)}
-                    className="text-xs text-accent hover:underline mt-0.5"
-                  >
-                    {request.code}
-                  </button>
+          {/* Job Details Card */}
+          <Card>
+            <CardHeader className="pb-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-950">
+                    <Briefcase className="h-5 w-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-base">Job Details</CardTitle>
+                    <CardDescription>Position requirements and placement information</CardDescription>
+                  </div>
                 </div>
-                <div className="lg:px-4">
-                  <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-1">Department</p>
-                  <p className="text-sm font-semibold truncate">{request.department?.name || "—"}</p>
+                <button
+                  onClick={() => router.push(`/employee-request/${request.id}`)}
+                  className="text-xs text-accent hover:underline font-medium"
+                >
+                  {request.code}
+                </button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
+                  <Briefcase className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-xs text-muted-foreground">Position</p>
+                    <p className="text-sm font-medium truncate">{request.jobTitle?.name || "—"}</p>
+                  </div>
                 </div>
-                <div className="lg:px-4">
-                  <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-1">Type</p>
-                  <p className="text-sm font-semibold">{request.employmentType ? EMPLOYMENT_TYPE_LABELS[request.employmentType as EmploymentType] : "—"}</p>
+                <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
+                  <Building2 className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-xs text-muted-foreground">Department</p>
+                    <p className="text-sm font-medium truncate">{request.department?.name || "—"}</p>
+                  </div>
                 </div>
-                <div className="lg:px-4">
-                  <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-1">Location</p>
-                  <p className="text-sm font-semibold truncate">{request.jobPlacement ? (WORK_LOCATION_LABELS[request.jobPlacement as WorkLocation] || request.jobPlacement) : "—"}</p>
+                <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
+                  <Users className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-xs text-muted-foreground">Employment Type</p>
+                    <p className="text-sm font-medium">{request.employmentType ? EMPLOYMENT_TYPE_LABELS[request.employmentType as EmploymentType] : "—"}</p>
+                  </div>
                 </div>
-                <div className="lg:px-4">
-                  <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-1">Openings</p>
-                  <p className="text-sm font-semibold">{request.quantity}</p>
+                <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
+                  <MapPin className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-xs text-muted-foreground">Work Location</p>
+                    <p className="text-sm font-medium truncate">{request.jobPlacement ? (WORK_LOCATION_LABELS[request.jobPlacement as WorkLocation] || request.jobPlacement) : "—"}</p>
+                  </div>
                 </div>
-                <div className="lg:px-4 last:lg:pr-0">
-                  <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-1">Target Onboard</p>
-                  <p className="text-sm font-semibold">{request.expectedOnboardDate ? formatShortDate(request.expectedOnboardDate) : "—"}</p>
+                <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
+                  <Hash className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-xs text-muted-foreground">Openings</p>
+                    <p className="text-sm font-medium">{request.quantity}</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
+                  <Calendar className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-xs text-muted-foreground">Target Onboard</p>
+                    <p className="text-sm font-medium">{request.expectedOnboardDate ? formatShortDate(request.expectedOnboardDate) : "—"}</p>
+                  </div>
                 </div>
               </div>
             </CardContent>
           </Card>
 
           {/* Candidates Section */}
-          <div className="space-y-4">
-            {/* Header with Search and Invite */}
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <h2 className="text-base font-semibold">Candidates</h2>
-                {candidates.length > 0 && (
-                  <Badge variant="secondary" className="text-xs">
-                    {candidates.length}
-                  </Badge>
-                )}
-              </div>
-              <div className="flex items-center gap-2">
-                {candidates.length > 0 && (
-                  <div className="relative">
-                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                    <Input
-                      placeholder="Search..."
-                      value={candidateSearch}
-                      onChange={(e) => setCandidateSearch(e.target.value)}
-                      className="pl-8 h-8 text-sm w-[160px]"
-                    />
+          <Card>
+            <CardHeader className="pb-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-purple-50 dark:bg-purple-950">
+                    <Users className="h-5 w-5 text-purple-600" />
                   </div>
-                )}
-                {canInviteCandidates && (
-                  <Button size="sm" onClick={() => setShowInviteDialog(true)}>
-                    <Mail className="mr-1.5 h-3.5 w-3.5" />
-                    Invite
-                  </Button>
-                )}
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <CardTitle className="text-base">Candidates</CardTitle>
+                      {candidates.length > 0 && (
+                        <Badge variant="secondary" className="text-xs">
+                          {candidates.length}
+                        </Badge>
+                      )}
+                    </div>
+                    <CardDescription>Applicants for this position</CardDescription>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {candidates.length > 0 && (
+                    <div className="relative">
+                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                      <Input
+                        placeholder="Search..."
+                        value={candidateSearch}
+                        onChange={(e) => setCandidateSearch(e.target.value)}
+                        className="pl-8 h-8 text-sm w-[160px]"
+                      />
+                    </div>
+                  )}
+                  {canInviteCandidates && (
+                    <Button size="sm" onClick={() => setShowInviteDialog(true)}>
+                      <Mail className="mr-1.5 h-3.5 w-3.5" />
+                      Invite
+                    </Button>
+                  )}
+                </div>
               </div>
-            </div>
-
-            {/* Table Card */}
-            <Card>
-              <CardContent className="p-0">
+            </CardHeader>
+            <CardContent className="p-0">
                 {candidates.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-16 text-center">
-                    <p className="text-sm text-muted-foreground mb-3">
-                      No candidates yet
+                  <div className="flex flex-col items-center justify-center py-12 text-center px-6">
+                    <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-muted">
+                      <Users className="h-7 w-7 text-muted-foreground" />
+                    </div>
+                    <h4 className="mt-4 font-semibold">No candidates yet</h4>
+                    <p className="mt-1 text-sm text-muted-foreground max-w-xs">
+                      Invite candidates to apply for this position
                     </p>
                     {canInviteCandidates && (
-                      <Button variant="outline" size="sm" onClick={() => setShowInviteDialog(true)}>
+                      <Button variant="outline" size="sm" className="mt-4" onClick={() => setShowInviteDialog(true)}>
                         <UserPlus className="mr-2 h-4 w-4" />
                         Invite Candidate
                       </Button>
@@ -593,11 +665,11 @@ export default function RecruitmentRequestDetailPage() {
                 ) : (
                   <Table>
                     <TableHeader>
-                      <TableRow className="hover:bg-transparent">
-                        <TableHead className="pl-6 w-[140px]">Code</TableHead>
-                        <TableHead className="w-[100px]">Status</TableHead>
-                        <TableHead>Name</TableHead>
-                        <TableHead className="w-[120px]">Applied</TableHead>
+                      <TableRow className="bg-secondary/30 hover:bg-secondary/30">
+                        <TableHead className="pl-6 w-[140px] font-semibold">Code</TableHead>
+                        <TableHead className="w-[100px] font-semibold">Status</TableHead>
+                        <TableHead className="font-semibold">Name</TableHead>
+                        <TableHead className="w-[120px] font-semibold">Applied</TableHead>
                         <TableHead className="w-10 pr-6"></TableHead>
                       </TableRow>
                     </TableHeader>
@@ -632,8 +704,7 @@ export default function RecruitmentRequestDetailPage() {
                   </Table>
                 )}
               </CardContent>
-            </Card>
-          </div>
+          </Card>
         </div>
       </PageContainer>
 

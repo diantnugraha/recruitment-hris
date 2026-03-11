@@ -12,13 +12,18 @@ import {
   CheckCircle2,
   Building2,
   FileText,
+  Layers,
+  GitBranch,
+  Calendar,
+  Tag,
+  Info,
 } from "lucide-react";
 
 import { Header } from "@/components/layout/header";
 import { PageContainer } from "@/components/layout/page-container";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,14 +42,15 @@ import { showToast } from "@/lib/utils/toast-messages";
 import { JobTitle, JobLevel } from "@/types";
 import { formatShortDate } from "@/lib/utils";
 
-// Detail field component — label on top, value below
-function DetailField({ label, value }: { label: string; value: string }) {
+// Info tile component for consistent field display
+function InfoTile({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: string }) {
   return (
-    <div className="space-y-1">
-      <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-        {label}
-      </p>
-      <p className="text-sm font-medium">{value || "—"}</p>
+    <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
+      <Icon className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+      <div>
+        <p className="text-xs text-muted-foreground">{label}</p>
+        <p className="text-sm font-medium">{value || "—"}</p>
+      </div>
     </div>
   );
 }
@@ -152,7 +158,7 @@ export default function JobTitleDetailPage() {
     <>
       <Header title="Job Title Details" />
       <PageContainer>
-        <div className="space-y-4">
+        <div className="space-y-6">
           {/* Top Bar: Back + Actions */}
           <div className="flex items-center justify-between">
             <button
@@ -184,135 +190,154 @@ export default function JobTitleDetailPage() {
             </div>
           </div>
 
-          {/* Single card with all content */}
-          <Card className="border-0 shadow-none">
-            <CardContent className="p-6 space-y-6">
-              {/* Profile Header */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-700">
-                    <Briefcase className="h-7 w-7" />
-                  </div>
-                  <div>
-                    <h1 className="text-lg font-bold">{jobTitle.name}</h1>
-                    <div className="mt-1 flex items-center gap-2 flex-wrap">
-                      <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100">
-                        {jobLevelName}
+          {/* Profile Header Card */}
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center gap-4">
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-blue-50 dark:bg-blue-950">
+                  <Briefcase className="h-7 w-7 text-blue-600" />
+                </div>
+                <div>
+                  <h1 className="text-lg font-bold">{jobTitle.name}</h1>
+                  <div className="mt-1.5 flex items-center gap-2 flex-wrap">
+                    <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100 dark:bg-blue-950 dark:text-blue-400">
+                      {jobLevelName}
+                    </Badge>
+                    {jobTitle.type && (
+                      <Badge
+                        variant="outline"
+                        className={
+                          jobTitle.type === "Technical"
+                            ? "border-purple-200 bg-purple-50 text-purple-700 dark:border-purple-800 dark:bg-purple-950 dark:text-purple-400"
+                            : "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-400"
+                        }
+                      >
+                        {jobTitle.type}
                       </Badge>
-                      {jobTitle.type && (
-                        <Badge
-                          variant="outline"
-                          className={
-                            jobTitle.type === "Technical"
-                              ? "border-purple-200 bg-purple-50 text-purple-700"
-                              : "border-amber-200 bg-amber-50 text-amber-700"
-                          }
-                        >
-                          {jobTitle.type}
-                        </Badge>
-                      )}
-                      {departmentNames.map((name) => (
-                        <Badge key={name} variant="secondary">
-                          {name}
-                        </Badge>
-                      ))}
-                    </div>
+                    )}
+                    {departmentNames.map((name) => (
+                      <Badge key={name} variant="secondary">
+                        {name}
+                      </Badge>
+                    ))}
                   </div>
                 </div>
               </div>
+            </CardContent>
+          </Card>
 
-              {/* Dashed separator */}
-              <div className="border-t border-dashed" />
-
-              {/* General Information */}
-              <div>
-                <h2 className="text-base font-semibold uppercase tracking-wide mb-4">
-                  General Information
-                </h2>
-                <div className="grid grid-cols-2 gap-x-8 gap-y-4">
-                  <DetailField label="Job Title" value={jobTitle.name} />
-                  <DetailField label="Job Level" value={jobLevelName} />
-                  <DetailField label="Type" value={jobTitle.type || "—"} />
-                  <DetailField label="Division" value={divisionName} />
-                  <DetailField label="Direct Report Line" value={directReportName} />
-                  <div />
-                  <div className="col-span-2">
-                    <div className="space-y-1">
-                      <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                        Departments
-                      </p>
-                      {departmentNames.length > 0 ? (
-                        <div className="flex flex-wrap gap-1.5 pt-0.5">
-                          {departmentNames.map((name) => (
-                            <Badge key={name} variant="outline" className="gap-1 text-xs">
-                              <Building2 className="h-3 w-3" />
-                              {name}
-                            </Badge>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-sm font-medium">—</p>
-                      )}
-                    </div>
-                  </div>
-                  <DetailField label="Created" value={formatShortDate(jobTitle.createdAt)} />
-                  <DetailField label="Last Updated" value={formatShortDate(jobTitle.updatedAt)} />
+          {/* General Information Card */}
+          <Card>
+            <CardHeader className="pb-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-950">
+                  <Info className="h-5 w-5 text-blue-600" />
+                </div>
+                <div>
+                  <CardTitle className="text-base">General Information</CardTitle>
+                  <CardDescription>Job title details and organizational placement</CardDescription>
                 </div>
               </div>
-
-              {/* General Job Purpose */}
-              <div className="border-t border-dashed" />
-              <div>
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="h-6 w-6 rounded-md bg-blue-100 flex items-center justify-center">
-                    <ClipboardList className="h-3.5 w-3.5 text-blue-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+                <InfoTile icon={Briefcase} label="Job Title" value={jobTitle.name} />
+                <InfoTile icon={Layers} label="Job Level" value={jobLevelName} />
+                <InfoTile icon={Tag} label="Type" value={jobTitle.type || "—"} />
+                <InfoTile icon={Building2} label="Division" value={divisionName} />
+                <InfoTile icon={GitBranch} label="Direct Report Line" value={directReportName} />
+                <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
+                  <Building2 className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-xs text-muted-foreground">Departments</p>
+                    {departmentNames.length > 0 ? (
+                      <div className="flex flex-wrap gap-1.5 pt-1">
+                        {departmentNames.map((name) => (
+                          <Badge key={name} variant="outline" className="gap-1 text-xs">
+                            {name}
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm font-medium">—</p>
+                    )}
                   </div>
-                  <h2 className="text-base font-semibold uppercase tracking-wide">
-                    General Job Purpose
-                  </h2>
                 </div>
-                {hasLexicalContent(jobTitle.purpose) ? (
+                <InfoTile icon={Calendar} label="Created" value={formatShortDate(jobTitle.createdAt)} />
+                <InfoTile icon={Calendar} label="Last Updated" value={formatShortDate(jobTitle.updatedAt)} />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* General Job Purpose Card */}
+          <Card>
+            <CardHeader className="pb-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-950">
+                  <ClipboardList className="h-5 w-5 text-emerald-600" />
+                </div>
+                <div>
+                  <CardTitle className="text-base">General Job Purpose</CardTitle>
+                  <CardDescription>Overall purpose and objective of this role</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {hasLexicalContent(jobTitle.purpose) ? (
+                <div className="rounded-lg border bg-secondary/30 p-4">
                   <LexicalRenderer value={jobTitle.purpose} />
-                ) : (
-                  <p className="text-sm text-muted-foreground italic">No Data</p>
-                )}
-              </div>
-
-              {/* Job Description */}
-              <div className="border-t border-dashed" />
-              <div>
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="h-6 w-6 rounded-md bg-gray-100 flex items-center justify-center">
-                    <FileText className="h-3.5 w-3.5 text-gray-600" />
-                  </div>
-                  <h2 className="text-base font-semibold uppercase tracking-wide">
-                    Job Description
-                  </h2>
                 </div>
-                {hasLexicalContent(jobTitle.description) ? (
+              ) : (
+                <p className="text-sm text-muted-foreground italic">No Data</p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Job Description Card */}
+          <Card>
+            <CardHeader className="pb-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-50 dark:bg-amber-950">
+                  <FileText className="h-5 w-5 text-amber-600" />
+                </div>
+                <div>
+                  <CardTitle className="text-base">Job Description</CardTitle>
+                  <CardDescription>Detailed responsibilities and duties</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {hasLexicalContent(jobTitle.description) ? (
+                <div className="rounded-lg border bg-secondary/30 p-4">
                   <LexicalRenderer value={jobTitle.description} />
-                ) : (
-                  <p className="text-sm text-muted-foreground italic">No Data</p>
-                )}
-              </div>
-
-              {/* Job Requirements */}
-              <div className="border-t border-dashed" />
-              <div>
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="h-6 w-6 rounded-md bg-green-100 flex items-center justify-center">
-                    <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
-                  </div>
-                  <h2 className="text-base font-semibold uppercase tracking-wide">
-                    Job Requirements
-                  </h2>
                 </div>
-                {hasLexicalContent(jobTitle.requirement) ? (
-                  <LexicalRenderer value={jobTitle.requirement} />
-                ) : (
-                  <p className="text-sm text-muted-foreground italic">No Data</p>
-                )}
+              ) : (
+                <p className="text-sm text-muted-foreground italic">No Data</p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Job Requirements Card */}
+          <Card>
+            <CardHeader className="pb-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-purple-50 dark:bg-purple-950">
+                  <CheckCircle2 className="h-5 w-5 text-purple-600" />
+                </div>
+                <div>
+                  <CardTitle className="text-base">Job Requirements</CardTitle>
+                  <CardDescription>Required qualifications and skills</CardDescription>
+                </div>
               </div>
+            </CardHeader>
+            <CardContent>
+              {hasLexicalContent(jobTitle.requirement) ? (
+                <div className="rounded-lg border bg-secondary/30 p-4">
+                  <LexicalRenderer value={jobTitle.requirement} />
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground italic">No Data</p>
+              )}
             </CardContent>
           </Card>
         </div>

@@ -35,8 +35,7 @@ import { Header } from "@/components/layout/header";
 import { PageContainer } from "@/components/layout/page-container";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { LexicalRenderer, hasLexicalContent } from "@/components/shared/lexical-renderer";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -466,7 +465,7 @@ export default function EmployeeRequestDetailPage() {
             <div className="lg:col-span-2 space-y-6">
               {/* Header card */}
               <Card>
-                <CardContent className="pt-6">
+                <CardHeader className="pb-4">
                   <div className="flex items-start justify-between">
                     <div>
                       <div className="flex items-center gap-3">
@@ -498,10 +497,9 @@ export default function EmployeeRequestDetailPage() {
                       </div>
                     )}
                   </div>
-
-                  <Separator className="my-4" />
-
-                  <div>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <div className="rounded-lg border bg-secondary/30 p-4">
                     <h4 className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wider">
                       Purpose / Justification
                     </h4>
@@ -512,52 +510,46 @@ export default function EmployeeRequestDetailPage() {
 
               {/* Requirements */}
               <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <div className="h-8 w-8 rounded-lg bg-accent/10 flex items-center justify-center">
-                      <Sparkles className="h-4 w-4 text-accent" />
+                <CardHeader className="pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-50 dark:bg-amber-950">
+                      <Sparkles className="h-5 w-5 text-amber-600" />
                     </div>
-                    Requirements
-                  </CardTitle>
+                    <div>
+                      <CardTitle className="text-base">Requirements</CardTitle>
+                      <CardDescription>Qualifications and preferences for this position</CardDescription>
+                    </div>
+                  </div>
                 </CardHeader>
-                <Separator />
-                <CardContent className="pt-6 space-y-6">
-                  <div className="grid gap-6 sm:grid-cols-2">
-                    <div className="flex items-start gap-3">
-                      <div className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
-                        <GraduationCap className="h-5 w-5 text-muted-foreground" />
-                      </div>
+                <CardContent>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
+                      <GraduationCap className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
                       <div>
-                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Education</p>
-                        <p className="font-medium mt-1">{EDUCATION_LEVEL_LABELS[request.education as EducationLevel]}</p>
+                        <p className="text-xs text-muted-foreground">Education</p>
+                        <p className="text-sm font-medium">{EDUCATION_LEVEL_LABELS[request.education as EducationLevel]}</p>
                       </div>
                     </div>
-                    <div className="flex items-start gap-3">
-                      <div className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
-                        <Clock className="h-5 w-5 text-muted-foreground" />
-                      </div>
+                    <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
+                      <Clock className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
                       <div>
-                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Experience</p>
-                        <p className="font-medium mt-1">{request.experience}</p>
+                        <p className="text-xs text-muted-foreground">Experience</p>
+                        <p className="text-sm font-medium">{request.experience}</p>
                       </div>
                     </div>
-                    <div className="flex items-start gap-3">
-                      <div className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
-                        <UserCircle className="h-5 w-5 text-muted-foreground" />
-                      </div>
+                    <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
+                      <UserCircle className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
                       <div>
-                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Gender</p>
-                        <p className="font-medium mt-1">{GENDER_PREFERENCE_LABELS[request.genderPreference as GenderPreference]}</p>
+                        <p className="text-xs text-muted-foreground">Gender</p>
+                        <p className="text-sm font-medium">{GENDER_PREFERENCE_LABELS[request.genderPreference as GenderPreference]}</p>
                       </div>
                     </div>
                     {(request.ageMin || request.ageMax) && (
-                      <div className="flex items-start gap-3">
-                        <div className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
-                          <Users className="h-5 w-5 text-muted-foreground" />
-                        </div>
+                      <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
+                        <Users className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
                         <div>
-                          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Age Range</p>
-                          <p className="font-medium mt-1">
+                          <p className="text-xs text-muted-foreground">Age Range</p>
+                          <p className="text-sm font-medium">
                             {request.ageMin && request.ageMax
                               ? `${request.ageMin} - ${request.ageMax} years`
                               : request.ageMin
@@ -568,23 +560,24 @@ export default function EmployeeRequestDetailPage() {
                       </div>
                     )}
                   </div>
-
                 </CardContent>
               </Card>
 
               {/* Job Description */}
               {(hasLexicalContent(request.generalJobPurpose) || hasLexicalContent(request.jobDescription) || hasLexicalContent(request.jobRequirement)) && (
                 <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <div className="h-8 w-8 rounded-lg bg-accent/10 flex items-center justify-center">
-                        <FileText className="h-4 w-4 text-accent" />
+                  <CardHeader className="pb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-950">
+                        <FileText className="h-5 w-5 text-blue-600" />
                       </div>
-                      Job Description
-                    </CardTitle>
+                      <div>
+                        <CardTitle className="text-base">Job Description</CardTitle>
+                        <CardDescription>Responsibilities and requirements for the role</CardDescription>
+                      </div>
+                    </div>
                   </CardHeader>
-                  <Separator />
-                  <CardContent className="pt-6 space-y-6">
+                  <CardContent className="space-y-6">
                     {hasLexicalContent(request.generalJobPurpose) && (
                       <div>
                         <p className="text-base font-semibold text-foreground mb-2">General Job Purpose</p>
@@ -609,16 +602,18 @@ export default function EmployeeRequestDetailPage() {
 
               {/* History */}
               <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <div className="h-8 w-8 rounded-lg bg-accent/10 flex items-center justify-center">
-                      <Activity className="h-4 w-4 text-accent" />
+                <CardHeader className="pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-purple-50 dark:bg-purple-950">
+                      <Activity className="h-5 w-5 text-purple-600" />
                     </div>
-                    Activity History
-                  </CardTitle>
+                    <div>
+                      <CardTitle className="text-base">Activity History</CardTitle>
+                      <CardDescription>Status changes and comments on this request</CardDescription>
+                    </div>
+                  </div>
                 </CardHeader>
-                <Separator />
-                <CardContent className="pt-6">
+                <CardContent>
                   {request.comments && request.comments.length > 0 ? (
                     <div className="space-y-6">
                       {request.comments.map((comment, index) => (
@@ -664,16 +659,15 @@ export default function EmployeeRequestDetailPage() {
             <div className="space-y-6">
               {/* Status card */}
               <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <div className="h-8 w-8 rounded-lg bg-accent/10 flex items-center justify-center">
-                      <CheckCircle className="h-4 w-4 text-accent" />
+                <CardHeader className="pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-950">
+                      <CheckCircle className="h-5 w-5 text-emerald-600" />
                     </div>
-                    Status
-                  </CardTitle>
+                    <CardTitle className="text-base">Status</CardTitle>
+                  </div>
                 </CardHeader>
-                <Separator />
-                <CardContent className="pt-6">
+                <CardContent>
                   <div className="text-center py-4">
                     {getStatusBadge(request.status)}
                     <p className="mt-3 text-sm text-muted-foreground">{statusConfig?.description}</p>
@@ -683,44 +677,37 @@ export default function EmployeeRequestDetailPage() {
 
               {/* Headcount & Timeline */}
               <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <div className="h-8 w-8 rounded-lg bg-accent/10 flex items-center justify-center">
-                      <Calendar className="h-4 w-4 text-accent" />
+                <CardHeader className="pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-950">
+                      <Calendar className="h-5 w-5 text-blue-600" />
                     </div>
-                    Headcount & Timeline
-                  </CardTitle>
+                    <CardTitle className="text-base">Headcount & Timeline</CardTitle>
+                  </div>
                 </CardHeader>
-                <Separator />
-                <CardContent className="pt-6 space-y-4">
-                  <div className="flex items-start gap-3">
-                    <div className="h-9 w-9 rounded-lg bg-secondary flex items-center justify-center">
-                      <Hash className="h-4 w-4 text-muted-foreground" />
-                    </div>
+                <CardContent className="space-y-3">
+                  <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
+                    <Hash className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
                     <div>
                       <p className="text-xs text-muted-foreground">Headcount</p>
-                      <p className="font-medium">{request.headcount} {request.headcount > 1 ? "people" : "person"}</p>
+                      <p className="text-sm font-medium">{request.headcount} {request.headcount > 1 ? "people" : "person"}</p>
                     </div>
                   </div>
                   {request.expectedOnboardDate && (
-                    <div className="flex items-start gap-3">
-                      <div className="h-9 w-9 rounded-lg bg-secondary flex items-center justify-center">
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                      </div>
+                    <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
+                      <Calendar className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
                       <div>
                         <p className="text-xs text-muted-foreground">Expected Onboard</p>
-                        <p className="font-medium">{formatShortDate(request.expectedOnboardDate)}</p>
+                        <p className="text-sm font-medium">{formatShortDate(request.expectedOnboardDate)}</p>
                       </div>
                     </div>
                   )}
                   {request.jobPlacement && (
-                    <div className="flex items-start gap-3">
-                      <div className="h-9 w-9 rounded-lg bg-secondary flex items-center justify-center">
-                        <MapPin className="h-4 w-4 text-muted-foreground" />
-                      </div>
+                    <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
+                      <MapPin className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
                       <div>
                         <p className="text-xs text-muted-foreground">Work Location</p>
-                        <p className="font-medium">{WORK_LOCATION_LABELS[request.jobPlacement as WorkLocation] || request.jobPlacement}</p>
+                        <p className="text-sm font-medium">{WORK_LOCATION_LABELS[request.jobPlacement as WorkLocation] || request.jobPlacement}</p>
                       </div>
                     </div>
                   )}
@@ -729,16 +716,15 @@ export default function EmployeeRequestDetailPage() {
 
               {/* Requester Info */}
               <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <div className="h-8 w-8 rounded-lg bg-accent/10 flex items-center justify-center">
-                      <User className="h-4 w-4 text-accent" />
+                <CardHeader className="pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-purple-50 dark:bg-purple-950">
+                      <User className="h-5 w-5 text-purple-600" />
                     </div>
-                    Requester
-                  </CardTitle>
+                    <CardTitle className="text-base">Requester</CardTitle>
+                  </div>
                 </CardHeader>
-                <Separator />
-                <CardContent className="pt-6 space-y-4">
+                <CardContent className="space-y-4">
                   <div className="flex items-center gap-3">
                     <Avatar className="h-10 w-10 border">
                       <AvatarFallback className="bg-accent/10 text-accent font-medium">
@@ -750,8 +736,7 @@ export default function EmployeeRequestDetailPage() {
                       <p className="text-sm text-muted-foreground">{request.department?.name}</p>
                     </div>
                   </div>
-                  <Separator />
-                  <div className="space-y-2 text-sm">
+                  <div className="rounded-lg border bg-secondary/30 p-3 space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Reason</span>
                       <span className="font-medium">{REQUEST_REASON_LABELS[request.reason as RequestReason]}</span>

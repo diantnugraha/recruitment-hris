@@ -253,6 +253,7 @@ export default function CandidateDetailPage() {
   const [isStartingInterview, setIsStartingInterview] = React.useState(false);
   const [showStartInterviewDialog, setShowStartInterviewDialog] = React.useState(false);
   const [interviewDate, setInterviewDate] = React.useState("");
+  const [interviewTime, setInterviewTime] = React.useState("");
   const [interviewType, setInterviewType] = React.useState<"online" | "onsite" | "">("");
 
   // Onboarding State
@@ -843,21 +844,22 @@ export default function CandidateDetailPage() {
 
   // Handle Start Interview
   const handleStartInterview = async () => {
-    if (!interviewDate || !interviewType) {
-      showToast.error("Please fill in interview date and type");
+    if (!interviewDate || !interviewTime || !interviewType) {
+      showToast.error("Please fill in interview date, time, and type");
       return;
     }
 
     setIsStartingInterview(true);
     try {
       const response = await candidateService.startInterview(id, {
-        interview_date: new Date(interviewDate).toISOString(),
+        interview_date: new Date(`${interviewDate}T${interviewTime}`).toISOString(),
         interview_type: interviewType,
       });
       if (response.success && response.data) {
         setProgress(response.data);
         setShowStartInterviewDialog(false);
         setInterviewDate("");
+        setInterviewTime("");
         setInterviewType("");
         showToast.success("Interview scheduled! You can now proceed with Assessment HR.");
         handleTabChange("assessment-hr");
@@ -1410,71 +1412,63 @@ export default function CandidateDetailPage() {
             </TabsList>
 
             {/* Profile Tab */}
-            <TabsContent value="profile" className="mt-6 space-y-8">
+            <TabsContent value="profile" className="mt-6 space-y-6">
               {/* Application Details */}
               <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <div className="h-8 w-8 rounded-lg bg-accent/10 flex items-center justify-center">
-                      <Briefcase className="h-4 w-4 text-accent" />
+                <CardHeader className="pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-950">
+                      <Briefcase className="h-5 w-5 text-blue-600" />
                     </div>
-                    Application Details
-                  </CardTitle>
+                    <div>
+                      <CardTitle className="text-base">Application Details</CardTitle>
+                      <CardDescription>Candidate application and verification details</CardDescription>
+                    </div>
+                  </div>
                 </CardHeader>
-                <Separator />
-                <CardContent className="pt-6">
+                <CardContent>
                   <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
                     {candidate.detail && (
-                      <div className="flex items-start gap-3">
-                        <div className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
-                          <FileText className="h-4 w-4 text-muted-foreground" />
-                        </div>
+                      <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
+                        <FileText className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
                         <div>
-                          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Candidate Code</p>
-                          <p className="text-sm mt-1">{candidate.detail.candidateCode}</p>
+                          <p className="text-xs text-muted-foreground">Candidate Code</p>
+                          <p className="text-sm font-medium">{candidate.detail.candidateCode}</p>
                         </div>
                       </div>
                     )}
                     {candidate.employeeRequest && (
-                      <div className="flex items-start gap-3">
-                        <div className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
-                          <Briefcase className="h-4 w-4 text-muted-foreground" />
-                        </div>
+                      <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
+                        <Briefcase className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
                         <div>
-                          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Employee Request</p>
-                          <p className="text-sm mt-1">{candidate.employeeRequest.code}</p>
+                          <p className="text-xs text-muted-foreground">Employee Request</p>
+                          <p className="text-sm font-medium">{candidate.employeeRequest.code}</p>
                         </div>
                       </div>
                     )}
                     {candidate.jobTitle && (
-                      <div className="flex items-start gap-3">
-                        <div className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
-                          <Briefcase className="h-4 w-4 text-muted-foreground" />
-                        </div>
+                      <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
+                        <Briefcase className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
                         <div>
-                          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Position Applied</p>
-                          <p className="text-sm mt-1">{candidate.jobTitle.name}</p>
+                          <p className="text-xs text-muted-foreground">Position Applied</p>
+                          <p className="text-sm font-medium">{candidate.jobTitle.name}</p>
                         </div>
                       </div>
                     )}
-                    <div className="flex items-start gap-3">
-                      <div className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
-                        <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
-                      </div>
+                    <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
+                      <CheckCircle2 className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
                       <div>
-                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Verification Status</p>
+                        <p className="text-xs text-muted-foreground">Verification Status</p>
                         <Badge variant={candidate.verify === "VERIFIED" ? "default" : "secondary"} className="mt-1">
                           {candidate.verify}
                         </Badge>
                       </div>
                     </div>
-                    <div className="flex items-start gap-3">
-                      <div className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                      </div>
+                    <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
+                      <Calendar className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
                       <div>
-                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Applied Date</p>
-                        <p className="text-sm mt-1">{candidate.createdAt ? formatShortDate(candidate.createdAt) : "—"}</p>
+                        <p className="text-xs text-muted-foreground">Applied Date</p>
+                        <p className="text-sm font-medium">{candidate.createdAt ? formatShortDate(candidate.createdAt) : "—"}</p>
                       </div>
                     </div>
                   </div>
@@ -1483,195 +1477,173 @@ export default function CandidateDetailPage() {
 
               {/* Personal Information */}
               <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2 text-base">
-                        <div className="h-8 w-8 rounded-lg bg-accent/10 flex items-center justify-center">
-                          <User className="h-4 w-4 text-accent" />
-                        </div>
-                        Personal Information
-                      </CardTitle>
-                    </CardHeader>
-                    <Separator />
-                    <CardContent className="pt-6">
-                      <div className="grid gap-6 sm:grid-cols-2">
-                        <div className="flex items-start gap-3">
-                          <div className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
-                            <User className="h-4 w-4 text-muted-foreground" />
-                          </div>
-                          <div>
-                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Gender</p>
-                            <p className="text-sm mt-1">{candidate.gender === "M" ? "Male" : "Female"}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-start gap-3">
-                          <div className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
-                            <Calendar className="h-4 w-4 text-muted-foreground" />
-                          </div>
-                          <div>
-                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Birth Date</p>
-                            <p className="text-sm mt-1">{candidate.birthDate ? formatShortDate(candidate.birthDate) : "—"}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-start gap-3">
-                          <div className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
-                            <MapPin className="h-4 w-4 text-muted-foreground" />
-                          </div>
-                          <div>
-                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Birth Place</p>
-                            <p className="text-sm mt-1">{candidate.birthPlace || "—"}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-start gap-3">
-                          <div className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
-                            <Heart className="h-4 w-4 text-muted-foreground" />
-                          </div>
-                          <div>
-                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Religion</p>
-                            <p className="text-sm mt-1">{candidate.religion || "—"}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-start gap-3">
-                          <div className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
-                            <Users className="h-4 w-4 text-muted-foreground" />
-                          </div>
-                          <div>
-                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Marital Status</p>
-                            <p className="text-sm mt-1">{candidate.marritalStatus || "—"}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-start gap-3">
-                          <div className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
-                            <Building2 className="h-4 w-4 text-muted-foreground" />
-                          </div>
-                          <div>
-                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Citizenship</p>
-                            <p className="text-sm mt-1">{candidate.citizenship || "—"}</p>
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* Contact Information */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2 text-base">
-                        <div className="h-8 w-8 rounded-lg bg-accent/10 flex items-center justify-center">
-                          <MapPin className="h-4 w-4 text-accent" />
-                        </div>
-                        Contact Information
-                      </CardTitle>
-                    </CardHeader>
-                    <Separator />
-                    <CardContent className="pt-6 space-y-4">
-                      <div className="flex items-start gap-3">
-                        <div className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
-                          <MapPin className="h-4 w-4 text-muted-foreground" />
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Address</p>
-                          <p className="text-sm mt-1">{candidate.address || "—"}</p>
-                        </div>
-                      </div>
-                      <div className="grid gap-4 sm:grid-cols-2">
-                        <div className="flex items-start gap-3">
-                          <div className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
-                            <Building2 className="h-4 w-4 text-muted-foreground" />
-                          </div>
-                          <div>
-                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Resident Status</p>
-                            <p className="text-sm mt-1">{candidate.residentStatus || "—"}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-start gap-3">
-                          <div className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
-                            <Phone className="h-4 w-4 text-muted-foreground" />
-                          </div>
-                          <div>
-                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Mobile Phone</p>
-                            <p className="text-sm mt-1">{candidate.mobilePhone || "—"}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-start gap-3 sm:col-span-2">
-                          <div className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
-                            <Mail className="h-4 w-4 text-muted-foreground" />
-                          </div>
-                          <div>
-                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Email</p>
-                            <p className="text-sm mt-1">{candidate.email}</p>
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* Identity Documents */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2 text-base">
-                        <div className="h-8 w-8 rounded-lg bg-accent/10 flex items-center justify-center">
-                          <IdCard className="h-4 w-4 text-accent" />
-                        </div>
-                        Identity Documents
-                      </CardTitle>
-                    </CardHeader>
-                    <Separator />
-                    <CardContent className="pt-6">
-                      <div className="grid gap-6 sm:grid-cols-2">
-                        <div className="flex items-start gap-3">
-                          <div className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
-                            <IdCard className="h-4 w-4 text-muted-foreground" />
-                          </div>
-                          <div>
-                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">ID Number (KTP)</p>
-                            <p className="text-sm mt-1">{candidate.idNo || "—"}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-start gap-3">
-                          <div className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
-                            <CreditCard className="h-4 w-4 text-muted-foreground" />
-                          </div>
-                          <div>
-                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Tax ID (NPWP)</p>
-                            <p className="text-sm mt-1">{candidate.taxId || "—"}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-start gap-3">
-                          <div className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
-                            <CreditCard className="h-4 w-4 text-muted-foreground" />
-                          </div>
-                          <div>
-                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">BPJS ID</p>
-                            <p className="text-sm mt-1">{candidate.bpjsId || "—"}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-start gap-3">
-                          <div className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
-                            <CreditCard className="h-4 w-4 text-muted-foreground" />
-                          </div>
-                          <div>
-                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Driving License</p>
-                            <p className="text-sm mt-1">{candidate.drivingLicense || "—"}</p>
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-              {/* Biodata Section - Full width cards */}
-              <div className="space-y-8">
-                {/* Educational Background */}
-                <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <div className="h-8 w-8 rounded-lg bg-accent/10 flex items-center justify-center">
-                      <GraduationCap className="h-4 w-4 text-accent" />
+                <CardHeader className="pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-950">
+                      <User className="h-5 w-5 text-emerald-600" />
                     </div>
-                    Educational Background
-                  </CardTitle>
+                    <div>
+                      <CardTitle className="text-base">Personal Information</CardTitle>
+                      <CardDescription>Basic personal and demographic information</CardDescription>
+                    </div>
+                  </div>
                 </CardHeader>
-                <Separator />
-                <CardContent className="pt-6">
+                <CardContent>
+                  <div className="grid gap-6 sm:grid-cols-2">
+                    <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
+                      <User className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">Gender</p>
+                        <p className="text-sm font-medium">{candidate.gender === "M" ? "Male" : "Female"}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
+                      <Calendar className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">Birth Date</p>
+                        <p className="text-sm font-medium">{candidate.birthDate ? formatShortDate(candidate.birthDate) : "—"}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
+                      <MapPin className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">Birth Place</p>
+                        <p className="text-sm font-medium">{candidate.birthPlace || "—"}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
+                      <Heart className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">Religion</p>
+                        <p className="text-sm font-medium">{candidate.religion || "—"}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
+                      <Users className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">Marital Status</p>
+                        <p className="text-sm font-medium">{candidate.marritalStatus || "—"}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
+                      <Building2 className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">Citizenship</p>
+                        <p className="text-sm font-medium">{candidate.citizenship || "—"}</p>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Contact Information */}
+              <Card>
+                <CardHeader className="pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-50 dark:bg-amber-950">
+                      <MapPin className="h-5 w-5 text-amber-600" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-base">Contact Information</CardTitle>
+                      <CardDescription>Address, phone, and email details</CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
+                    <MapPin className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                    <div className="flex-1">
+                      <p className="text-xs text-muted-foreground">Address</p>
+                      <p className="text-sm font-medium">{candidate.address || "—"}</p>
+                    </div>
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
+                      <Building2 className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">Resident Status</p>
+                        <p className="text-sm font-medium">{candidate.residentStatus || "—"}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
+                      <Phone className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">Mobile Phone</p>
+                        <p className="text-sm font-medium">{candidate.mobilePhone || "—"}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3 sm:col-span-2">
+                      <Mail className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">Email</p>
+                        <p className="text-sm font-medium">{candidate.email}</p>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Identity Documents */}
+              <Card>
+                <CardHeader className="pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-purple-50 dark:bg-purple-950">
+                      <IdCard className="h-5 w-5 text-purple-600" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-base">Identity Documents</CardTitle>
+                      <CardDescription>Government-issued identification numbers</CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid gap-6 sm:grid-cols-2">
+                    <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
+                      <IdCard className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">ID Number (KTP)</p>
+                        <p className="text-sm font-medium">{candidate.idNo || "—"}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
+                      <CreditCard className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">Tax ID (NPWP)</p>
+                        <p className="text-sm font-medium">{candidate.taxId || "—"}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
+                      <CreditCard className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">BPJS ID</p>
+                        <p className="text-sm font-medium">{candidate.bpjsId || "—"}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
+                      <CreditCard className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">Driving License</p>
+                        <p className="text-sm font-medium">{candidate.drivingLicense || "—"}</p>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Educational Background */}
+              <Card>
+                <CardHeader className="pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-950">
+                      <GraduationCap className="h-5 w-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-base">Educational Background</CardTitle>
+                      <CardDescription>Academic qualifications and degrees</CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
                   {biodata?.education && biodata.education.length > 0 ? (
                     <div className="overflow-x-auto rounded-lg border">
                       <table className="w-full text-sm">
@@ -1707,16 +1679,18 @@ export default function CandidateDetailPage() {
 
               {/* Work Experience */}
               <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <div className="h-8 w-8 rounded-lg bg-accent/10 flex items-center justify-center">
-                      <Building2 className="h-4 w-4 text-accent" />
+                <CardHeader className="pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-950">
+                      <Building2 className="h-5 w-5 text-emerald-600" />
                     </div>
-                    Work Experience
-                  </CardTitle>
+                    <div>
+                      <CardTitle className="text-base">Work Experience</CardTitle>
+                      <CardDescription>Previous employment history</CardDescription>
+                    </div>
+                  </div>
                 </CardHeader>
-                <Separator />
-                <CardContent className="pt-6">
+                <CardContent>
                   {biodata?.workExperience && biodata.workExperience.length > 0 ? (
                     <div className="overflow-x-auto rounded-lg border">
                       <table className="w-full text-sm">
@@ -1752,16 +1726,18 @@ export default function CandidateDetailPage() {
 
               {/* Family Members */}
               <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <div className="h-8 w-8 rounded-lg bg-accent/10 flex items-center justify-center">
-                      <Users className="h-4 w-4 text-accent" />
+                <CardHeader className="pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-purple-50 dark:bg-purple-950">
+                      <Users className="h-5 w-5 text-purple-600" />
                     </div>
-                    Family Members
-                  </CardTitle>
+                    <div>
+                      <CardTitle className="text-base">Family Members</CardTitle>
+                      <CardDescription>Family composition and details</CardDescription>
+                    </div>
+                  </div>
                 </CardHeader>
-                <Separator />
-                <CardContent className="pt-6">
+                <CardContent>
                   {biodata?.family && biodata.family.length > 0 ? (
                     <div className="overflow-x-auto rounded-lg border">
                       <table className="w-full text-sm">
@@ -1797,16 +1773,18 @@ export default function CandidateDetailPage() {
 
               {/* Course / Training Experience */}
               <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <div className="h-8 w-8 rounded-lg bg-accent/10 flex items-center justify-center">
-                      <Award className="h-4 w-4 text-accent" />
+                <CardHeader className="pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-50 dark:bg-amber-950">
+                      <Award className="h-5 w-5 text-amber-600" />
                     </div>
-                    Course / Training Experience
-                  </CardTitle>
+                    <div>
+                      <CardTitle className="text-base">Course / Training Experience</CardTitle>
+                      <CardDescription>Professional development and certifications</CardDescription>
+                    </div>
+                  </div>
                 </CardHeader>
-                <Separator />
-                <CardContent className="pt-6">
+                <CardContent>
                   {biodata?.training && biodata.training.length > 0 ? (
                     <div className="overflow-x-auto rounded-lg border">
                       <table className="w-full text-sm">
@@ -1842,16 +1820,18 @@ export default function CandidateDetailPage() {
 
               {/* Self Assessment */}
               <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <div className="h-8 w-8 rounded-lg bg-accent/10 flex items-center justify-center">
-                      <ClipboardList className="h-4 w-4 text-accent" />
+                <CardHeader className="pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-950">
+                      <ClipboardList className="h-5 w-5 text-blue-600" />
                     </div>
-                    Self Assessment
-                  </CardTitle>
+                    <div>
+                      <CardTitle className="text-base">Self Assessment</CardTitle>
+                      <CardDescription>Candidate self-evaluation responses</CardDescription>
+                    </div>
+                  </div>
                 </CardHeader>
-                <Separator />
-                <CardContent className="pt-6">
+                <CardContent>
                   {biodata?.selfAssessment ? (
                     <div className="grid gap-6 md:grid-cols-2">
                       <div className="space-y-2">
@@ -1945,8 +1925,7 @@ export default function CandidateDetailPage() {
                     </div>
                   )}
                 </CardContent>
-                </Card>
-              </div>
+              </Card>
             </TabsContent>
 
             {/* Assessment HR Tab */}
@@ -4323,6 +4302,7 @@ export default function CandidateDetailPage() {
         setShowStartInterviewDialog(open);
         if (!open) {
           setInterviewDate("");
+          setInterviewTime("");
           setInterviewType("");
         }
       }}>
@@ -4339,15 +4319,37 @@ export default function CandidateDetailPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <Label htmlFor="interview-date">Interview Date & Time</Label>
-              <Input
-                id="interview-date"
-                type="datetime-local"
-                value={interviewDate}
-                onChange={(e) => setInterviewDate(e.target.value)}
-                min={new Date().toISOString().slice(0, 16)}
-              />
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Interview Date & Time</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="interview-date" className="text-xs text-muted-foreground font-normal flex items-center gap-1.5">
+                    <Calendar className="h-3 w-3" />
+                    Date
+                  </Label>
+                  <Input
+                    id="interview-date"
+                    type="date"
+                    value={interviewDate}
+                    onChange={(e) => setInterviewDate(e.target.value)}
+                    min={new Date().toISOString().slice(0, 10)}
+                    className="h-11 text-sm font-medium tabular-nums"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="interview-time" className="text-xs text-muted-foreground font-normal flex items-center gap-1.5">
+                    <Clock className="h-3 w-3" />
+                    Time
+                  </Label>
+                  <Input
+                    id="interview-time"
+                    type="time"
+                    value={interviewTime}
+                    onChange={(e) => setInterviewTime(e.target.value)}
+                    className="h-11 text-sm font-medium tabular-nums"
+                  />
+                </div>
+              </div>
             </div>
             <div className="space-y-2">
               <Label>Interview Type</Label>
@@ -4393,7 +4395,7 @@ export default function CandidateDetailPage() {
             </Button>
             <Button
               onClick={handleStartInterview}
-              disabled={isStartingInterview || !interviewDate || !interviewType}
+              disabled={isStartingInterview || !interviewDate || !interviewTime || !interviewType}
             >
               {isStartingInterview ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
