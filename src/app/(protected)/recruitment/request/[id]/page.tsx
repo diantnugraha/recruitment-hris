@@ -283,7 +283,11 @@ export default function RecruitmentRequestDetailPage() {
     const mcuStarted = assessment.mcuStatus && assessment.mcuStatus !== "PENDING";
 
     // MCU completed
-    if (assessment.mcuStatus === "PASSED") return CANDIDATE_STATUS.HIRED;
+    if (assessment.mcuStatus === "PASSED") {
+      // If onboarding accepted, show ONBOARDING instead of HIRED
+      if (candidate.onboardingAcceptedAt) return CANDIDATE_STATUS.ONBOARDING;
+      return CANDIDATE_STATUS.HIRED;
+    }
     if (assessment.mcuStatus === "FAILED") return CANDIDATE_STATUS.REJECTED;
     if (mcuStarted) return CANDIDATE_STATUS.MCU;
 

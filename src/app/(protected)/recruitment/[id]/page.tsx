@@ -1135,6 +1135,9 @@ export default function CandidateDetailPage() {
     onboarding.facilities.length > 0 &&
     onboarding.programs.length > 0;
 
+  // Check if onboarding has been accepted by candidate
+  const isOnboardingAccepted = onboarding?.onboardingAcceptedAt != null;
+
   // Get stage status
   const getStageStatus = (stage: AssessmentStageKey) => {
     // If no progress or interview not started, all stages are locked
@@ -3027,10 +3030,12 @@ export default function CandidateDetailPage() {
                               <CardDescription>Equipment and items assigned to the new employee</CardDescription>
                             </div>
                           </div>
-                          <Button size="sm" onClick={() => handleOpenFacilityDialog("add")}>
-                            <Plus className="mr-2 h-4 w-4" />
-                            Add Facility
-                          </Button>
+                          {!isOnboardingAccepted && (
+                            <Button size="sm" onClick={() => handleOpenFacilityDialog("add")}>
+                              <Plus className="mr-2 h-4 w-4" />
+                              Add Facility
+                            </Button>
+                          )}
                         </div>
                       </CardHeader>
                       <CardContent>
@@ -3043,15 +3048,17 @@ export default function CandidateDetailPage() {
                             <p className="mt-1 text-sm text-muted-foreground max-w-xs">
                               Assign equipment and items for the new employee
                             </p>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="mt-4"
-                              onClick={() => handleOpenFacilityDialog("add")}
-                            >
-                              <Plus className="mr-2 h-4 w-4" />
-                              Add Facility
-                            </Button>
+                            {!isOnboardingAccepted && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="mt-4"
+                                onClick={() => handleOpenFacilityDialog("add")}
+                              >
+                                <Plus className="mr-2 h-4 w-4" />
+                                Add Facility
+                              </Button>
+                            )}
                           </div>
                         ) : (
                           <div className="rounded-lg border overflow-hidden">
@@ -3063,7 +3070,9 @@ export default function CandidateDetailPage() {
                                   <TableHead className="text-center font-semibold">Qty</TableHead>
                                   <TableHead className="font-semibold">Condition</TableHead>
                                   <TableHead className="font-semibold">Status</TableHead>
-                                  <TableHead className="text-right font-semibold">Actions</TableHead>
+                                  {!isOnboardingAccepted && (
+                                    <TableHead className="text-right font-semibold">Actions</TableHead>
+                                  )}
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
@@ -3087,31 +3096,33 @@ export default function CandidateDetailPage() {
                                         {facility.status}
                                       </Badge>
                                     </TableCell>
-                                    <TableCell className="text-right">
-                                      <div className="flex items-center justify-end gap-1">
-                                        <Button
-                                          variant="ghost"
-                                          size="icon"
-                                          className="h-8 w-8"
-                                          onClick={() => handleOpenFacilityDialog("edit", facility)}
-                                        >
-                                          <Pencil className="h-4 w-4" />
-                                        </Button>
-                                        <Button
-                                          variant="ghost"
-                                          size="icon"
-                                          className="h-8 w-8 text-destructive hover:text-destructive"
-                                          onClick={() => setOnboardingDeleteConfirm({
-                                            open: true,
-                                            type: "facility",
-                                            id: facility.id,
-                                            name: facility.item,
-                                          })}
-                                        >
-                                          <Trash2 className="h-4 w-4" />
-                                        </Button>
-                                      </div>
-                                    </TableCell>
+                                    {!isOnboardingAccepted && (
+                                      <TableCell className="text-right">
+                                        <div className="flex items-center justify-end gap-1">
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-8 w-8"
+                                            onClick={() => handleOpenFacilityDialog("edit", facility)}
+                                          >
+                                            <Pencil className="h-4 w-4" />
+                                          </Button>
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-8 w-8 text-destructive hover:text-destructive"
+                                            onClick={() => setOnboardingDeleteConfirm({
+                                              open: true,
+                                              type: "facility",
+                                              id: facility.id,
+                                              name: facility.item,
+                                            })}
+                                          >
+                                            <Trash2 className="h-4 w-4" />
+                                          </Button>
+                                        </div>
+                                      </TableCell>
+                                    )}
                                   </TableRow>
                                 ))}
                               </TableBody>
@@ -3134,10 +3145,12 @@ export default function CandidateDetailPage() {
                               <CardDescription>Training and orientation schedule for the new employee</CardDescription>
                             </div>
                           </div>
-                          <Button size="sm" onClick={() => handleOpenProgramDialog("add")}>
-                            <Plus className="mr-2 h-4 w-4" />
-                            Add Program
-                          </Button>
+                          {!isOnboardingAccepted && (
+                            <Button size="sm" onClick={() => handleOpenProgramDialog("add")}>
+                              <Plus className="mr-2 h-4 w-4" />
+                              Add Program
+                            </Button>
+                          )}
                         </div>
                       </CardHeader>
                       <CardContent>
@@ -3150,15 +3163,17 @@ export default function CandidateDetailPage() {
                             <p className="mt-1 text-sm text-muted-foreground max-w-xs">
                               Schedule training and orientation for the new employee
                             </p>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="mt-4"
-                              onClick={() => handleOpenProgramDialog("add")}
-                            >
-                              <Plus className="mr-2 h-4 w-4" />
-                              Add Program
-                            </Button>
+                            {!isOnboardingAccepted && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="mt-4"
+                                onClick={() => handleOpenProgramDialog("add")}
+                              >
+                                <Plus className="mr-2 h-4 w-4" />
+                                Add Program
+                              </Button>
+                            )}
                           </div>
                         ) : (
                           <div className="rounded-lg border overflow-hidden">
@@ -3170,7 +3185,9 @@ export default function CandidateDetailPage() {
                                   <TableHead className="font-semibold">Location</TableHead>
                                   <TableHead className="font-semibold">PIC</TableHead>
                                   <TableHead className="font-semibold">Status</TableHead>
-                                  <TableHead className="text-right font-semibold">Actions</TableHead>
+                                  {!isOnboardingAccepted && (
+                                    <TableHead className="text-right font-semibold">Actions</TableHead>
+                                  )}
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
@@ -3193,31 +3210,33 @@ export default function CandidateDetailPage() {
                                         {program.status}
                                       </Badge>
                                     </TableCell>
-                                    <TableCell className="text-right">
-                                      <div className="flex items-center justify-end gap-1">
-                                        <Button
-                                          variant="ghost"
-                                          size="icon"
-                                          className="h-8 w-8"
-                                          onClick={() => handleOpenProgramDialog("edit", program)}
-                                        >
-                                          <Pencil className="h-4 w-4" />
-                                        </Button>
-                                        <Button
-                                          variant="ghost"
-                                          size="icon"
-                                          className="h-8 w-8 text-destructive hover:text-destructive"
-                                          onClick={() => setOnboardingDeleteConfirm({
-                                            open: true,
-                                            type: "program",
-                                            id: program.id,
-                                            name: program.program,
-                                          })}
-                                        >
-                                          <Trash2 className="h-4 w-4" />
-                                        </Button>
-                                      </div>
-                                    </TableCell>
+                                    {!isOnboardingAccepted && (
+                                      <TableCell className="text-right">
+                                        <div className="flex items-center justify-end gap-1">
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-8 w-8"
+                                            onClick={() => handleOpenProgramDialog("edit", program)}
+                                          >
+                                            <Pencil className="h-4 w-4" />
+                                          </Button>
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-8 w-8 text-destructive hover:text-destructive"
+                                            onClick={() => setOnboardingDeleteConfirm({
+                                              open: true,
+                                              type: "program",
+                                              id: program.id,
+                                              name: program.program,
+                                            })}
+                                          >
+                                            <Trash2 className="h-4 w-4" />
+                                          </Button>
+                                        </div>
+                                      </TableCell>
+                                    )}
                                   </TableRow>
                                 ))}
                               </TableBody>
@@ -3254,6 +3273,8 @@ export default function CandidateDetailPage() {
                             type="date"
                             value={joinDate}
                             onChange={(e) => setJoinDate(e.target.value)}
+                            disabled={isOnboardingAccepted}
+                            className={isOnboardingAccepted ? "bg-muted" : ""}
                           />
                         </div>
                       </CardContent>
@@ -3314,27 +3335,41 @@ export default function CandidateDetailPage() {
                         </div>
 
                         {/* Send Onboarding CTA */}
-                        <div className="mt-5 rounded-xl bg-gradient-to-b from-blue-50 to-blue-100/50 dark:from-blue-950/40 dark:to-blue-900/20 border border-blue-100 dark:border-blue-900/50 px-6 py-6 flex flex-col items-center text-center gap-3">
-                          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/50">
-                            <Send className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                        {isOnboardingAccepted ? (
+                          <div className="mt-5 rounded-xl bg-gradient-to-b from-emerald-50 to-emerald-100/50 dark:from-emerald-950/40 dark:to-emerald-900/20 border border-emerald-100 dark:border-emerald-900/50 px-6 py-6 flex flex-col items-center text-center gap-3">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/50">
+                              <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                            </div>
+                            <div>
+                              <p className="font-semibold text-sm text-emerald-700 dark:text-emerald-300">Onboarding Accepted</p>
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                Candidate has accepted the onboarding offer
+                              </p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="font-semibold text-sm">Ready to Send?</p>
-                            <p className="text-xs text-muted-foreground mt-0.5">
-                              {canSendOnboarding
-                                ? "All requirements met. Send onboarding details to the candidate."
-                                : "Complete all checklist items above before sending."}
-                            </p>
+                        ) : (
+                          <div className="mt-5 rounded-xl bg-gradient-to-b from-blue-50 to-blue-100/50 dark:from-blue-950/40 dark:to-blue-900/20 border border-blue-100 dark:border-blue-900/50 px-6 py-6 flex flex-col items-center text-center gap-3">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/50">
+                              <Send className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                            </div>
+                            <div>
+                              <p className="font-semibold text-sm">Ready to Send?</p>
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                {canSendOnboarding
+                                  ? "All requirements met. Send onboarding details to the candidate."
+                                  : "Complete all checklist items above before sending."}
+                              </p>
+                            </div>
+                            <Button
+                              className="bg-blue-600 hover:bg-blue-700 px-6 mt-1"
+                              onClick={() => setShowConvertDialog(true)}
+                              disabled={!canSendOnboarding}
+                            >
+                              <Send className="mr-2 h-4 w-4" />
+                              Send Onboarding
+                            </Button>
                           </div>
-                          <Button
-                            className="bg-blue-600 hover:bg-blue-700 px-6 mt-1"
-                            onClick={() => setShowConvertDialog(true)}
-                            disabled={!canSendOnboarding}
-                          >
-                            <Send className="mr-2 h-4 w-4" />
-                            Send Onboarding
-                          </Button>
-                        </div>
+                        )}
                       </CardContent>
                     </Card>
                 </div>

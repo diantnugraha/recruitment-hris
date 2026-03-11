@@ -7,6 +7,7 @@ export const CANDIDATE_STATUS = {
   MCU: 'mcu',
   OFFER: 'offer',
   HIRED: 'hired',
+  ONBOARDING: 'onboarding',
   REJECTED: 'rejected',
   WITHDRAWN: 'withdrawn',
 } as const;
@@ -22,6 +23,7 @@ export const CANDIDATE_STATUS_LABELS: Record<CandidateStatus, string> = {
   mcu: 'MCU',
   offer: 'Offer',
   hired: 'Hired',
+  onboarding: 'Onboarding',
   rejected: 'Rejected',
   withdrawn: 'Withdrawn',
 };
@@ -35,6 +37,7 @@ export const CANDIDATE_STATUS_CONFIG: Record<CandidateStatus, { label: string; v
   mcu: { label: 'MCU', variant: 'default' },
   offer: { label: 'Offer', variant: 'outline' },
   hired: { label: 'Hired', variant: 'success' },
+  onboarding: { label: 'Onboarding', variant: 'default' },
   rejected: { label: 'Rejected', variant: 'destructive' },
   withdrawn: { label: 'Withdrawn', variant: 'outline' },
 };
@@ -74,6 +77,7 @@ export const CANDIDATE_STATUS_OPTIONS = [
   { value: CANDIDATE_STATUS.MCU, label: 'MCU' },
   { value: CANDIDATE_STATUS.OFFER, label: 'Offer' },
   { value: CANDIDATE_STATUS.HIRED, label: 'Hired' },
+  { value: CANDIDATE_STATUS.ONBOARDING, label: 'Onboarding' },
   { value: CANDIDATE_STATUS.REJECTED, label: 'Rejected' },
   { value: CANDIDATE_STATUS.WITHDRAWN, label: 'Withdrawn' },
 ] as const;
@@ -88,4 +92,5 @@ export const PIPELINE_STAGES = [
   { key: CANDIDATE_STATUS.MCU, label: 'MCU', color: 'bg-foreground/40' },
   { key: CANDIDATE_STATUS.OFFER, label: 'Offer', color: 'bg-foreground/30' },
   { key: CANDIDATE_STATUS.HIRED, label: 'Hired', color: 'bg-accent' },
+  { key: CANDIDATE_STATUS.ONBOARDING, label: 'Onboarding', color: 'bg-accent' },
 ] as const;
