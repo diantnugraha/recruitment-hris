@@ -148,10 +148,18 @@ export const departmentService = {
   // Get departments by division ID
   async getByDivisionId(divisionId: string): Promise<ApiResponse<Department[]>> {
     try {
-      const response = await get<ApiResponse<Department[]>>(
-        `/v1/department?divisionId=${divisionId}`
+      const response = await get<unknown>(
+        `/v1/department?division_id=${divisionId}`
       );
-      return response;
+
+      const res = response as { success?: boolean; data?: Department[] };
+      if (res.data && Array.isArray(res.data)) {
+        return { success: true, data: res.data };
+      }
+      if (Array.isArray(response)) {
+        return { success: true, data: response as Department[] };
+      }
+      return { success: false, message: "Unexpected response format" };
     } catch (error: unknown) {
       const err = error as { response?: { data?: ApiResponse<Department[]> } };
       if (err.response?.data) {

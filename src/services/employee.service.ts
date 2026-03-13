@@ -47,6 +47,7 @@ export interface UpdateEmployeeRequest {
   gender?: string;
   status?: string;
   title?: string;
+  department_id?: number; // Required for non-structural positions with multiple departments
   location?: string;
   business_unit?: string;
   extension?: string;
@@ -309,6 +310,9 @@ export function mapFormToUpdateRequest(form: Partial<EmployeeFormData>): UpdateE
   if (form.gender !== undefined) req.gender = form.gender;
   if (form.status !== undefined) req.status = form.status;
   if (form.jobTitleId !== undefined) req.title = form.jobTitleId;
+  if (form.departmentId !== undefined && form.departmentId) {
+    req.department_id = Number(form.departmentId);
+  }
   if (form.location !== undefined) req.location = form.location || undefined;
   if (form.businessUnit !== undefined) req.business_unit = form.businessUnit || undefined;
   if (form.extension !== undefined) req.extension = form.extension || undefined;
@@ -709,6 +713,47 @@ export const employeeService = {
       return { success: false, message: "Failed to delete employee" };
     }
   },
+
+  /**
+   * Check if a structural position is currently occupied
+   * Used for showing confirmation before replacing
+   */
+  async checkStructuralPosition(
+    jobTitle: string,
+    departmentId?: number
+  ): Promise<ApiResponse<StructuralPositionCheck>> {
+    try {
+      const params = new URLSearchParams({ job_title: jobTitle });
+      if (departmentId) {
+        params.append("department_id", String(departmentId));
+      }
+      const response = await get<unknown>(
+        `/v1/employee/check-structural-position?${params.toString()}`
+      );
+      const res = response as { success?: boolean; data?: StructuralPositionCheck };
+
+      if (res.success && res.data) {
+        return { success: true, data: res.data };
+      }
+
+      return { success: false, message: "Unexpected response format" };
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: ApiResponse<StructuralPositionCheck> } };
+      if (err.response?.data) return err.response.data;
+      return { success: false, message: "Failed to check structural position" };
+    }
+  },
 };
+
+// Type for structural position check response
+export interface StructuralPositionCheck {
+  isOccupied: boolean;
+  positionType: "HEAD_OF_DIVISION" | "MANAGER" | null;
+  currentHolder: {
+    employeeId: number;
+    employeeName: string | null;
+  } | null;
+  targetName: string | null;
+}
 
 export default employeeService;

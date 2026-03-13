@@ -150,8 +150,11 @@ export default function JobTitleDetailPage() {
       ? jobTitle.departments.map((d) => d.department.name)
       : [];
 
-  // Resolve division and direct report
-  const divisionName = jobTitle.division?.name || "—";
+  // Resolve division from department relation
+  const divisionName =
+    jobTitle.departments?.[0]?.department?.division?.name ||
+    jobTitle.division?.name ||
+    "—";
   const directReportName = jobTitle.directReport?.name || "—";
 
   return (

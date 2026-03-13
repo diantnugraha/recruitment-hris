@@ -150,6 +150,7 @@ export interface Department {
 export interface JobLevel {
   id: string;
   name: string;
+  code?: string | null; // Structural code: HEAD_OF_DIVISION, MANAGER, etc.
   category: string;
   description?: string;
   order?: number;
@@ -158,6 +159,28 @@ export interface JobLevel {
   createdAt: string;
   updatedAt: string;
 }
+
+// Job Level structural codes for auto-filling Division/Department heads
+export const JOB_LEVEL_CODES = {
+  // Division head positions (fills Division.head_of_division_id)
+  PRESIDENT_DIRECTOR: 'PRESIDENT_DIRECTOR',
+  HEAD_OF_DIVISION: 'HEAD_OF_DIVISION',
+  // Department manager positions (fills Department.manager_id)
+  MANAGER: 'MANAGER',
+} as const;
+
+export type JobLevelCode = typeof JOB_LEVEL_CODES[keyof typeof JOB_LEVEL_CODES];
+
+// Codes that represent division head positions
+export const DIVISION_HEAD_CODES: string[] = [
+  JOB_LEVEL_CODES.PRESIDENT_DIRECTOR,
+  JOB_LEVEL_CODES.HEAD_OF_DIVISION,
+];
+
+// Codes that represent department manager positions
+export const DEPARTMENT_MANAGER_CODES: string[] = [
+  JOB_LEVEL_CODES.MANAGER,
+];
 
 export interface DepartmentJobTitle {
   department: {
@@ -168,6 +191,11 @@ export interface DepartmentJobTitle {
       id: number;
       name: string;
       cluster: string | null;
+    };
+    division?: {
+      id: number;
+      name: string;
+      code: string | null;
     };
   };
 }

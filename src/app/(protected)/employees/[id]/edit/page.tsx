@@ -18,17 +18,32 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import employeeService, {
   mapFormToUpdateRequest,
+  type StructuralPositionCheck,
 } from "@/services/employee.service";
 import jobTitleService from "@/services/job-title.service";
+import departmentService from "@/services/department.service";
 import type {
   EmployeeWithRelations,
   JobTitle,
   EmployeeGender,
   EmployeeStatus,
   MaritalStatus,
+  DepartmentJobTitle,
+  Department,
 } from "@/types";
+import { DIVISION_HEAD_CODES, DEPARTMENT_MANAGER_CODES } from "@/types";
 import { showToast } from "@/lib/utils/toast-messages";
 
 // --- Constants (matching hris-tuv exactly) ---
@@ -112,6 +127,7 @@ interface FormState {
   religion: string;
   ethnic: string;
   jobTitleId: string;
+  departmentId: string; // NEW: for non-structural job titles with multiple departments
   fte: string;
   joinDate: string;
   phone: string;
@@ -174,6 +190,7 @@ function mapEmployeeToFormState(
     religion: emp.religion || "",
     ethnic: emp.ethnicity || "",
     jobTitleId,
+    departmentId: emp.departmentId || "",
     fte: emp.fte != null ? String(emp.fte) : "1",
     joinDate: emp.hireDate || "",
     phone: emp.phone || "",
@@ -207,11 +224,80 @@ export default function EmployeeEditPage() {
   const [jobTitles, setJobTitles] = React.useState<JobTitle[]>([]);
   const [employees, setEmployees] = React.useState<EmployeeWithRelations[]>([]);
 
+  // Departments in division (for HEAD_OF_DIVISION display)
+  const [divisionDepartments, setDivisionDepartments] = React.useState<Department[]>([]);
+
+  // Structural position confirmation dialog
+  const [showReplaceDialog, setShowReplaceDialog] = React.useState(false);
+  const [structuralCheck, setStructuralCheck] = React.useState<StructuralPositionCheck | null>(null);
+
   // Derived read-only fields from selected job title
   const selectedJobTitle = React.useMemo(
     () => (form ? jobTitles.find((jt) => jt.id === form.jobTitleId) : null),
     [jobTitles, form]
   );
+
+  // Determine structural type and department selection requirement
+  const structuralInfo = React.useMemo(() => {
+    if (!selectedJobTitle?.jobLevel) {
+      return { isStructural: false, requireDepartmentSelection: false, departments: [] };
+    }
+
+    const { code } = selectedJobTitle.jobLevel;
+    const isHeadOfDivision = code ? DIVISION_HEAD_CODES.includes(code) : false;
+    const isManager = code ? DEPARTMENT_MANAGER_CODES.includes(code) : false;
+    const isStructural = isHeadOfDivision || isManager;
+
+    const departments = selectedJobTitle.departments || [];
+    const requireDepartmentSelection = !isStructural && departments.length > 1;
+
+    return {
+      isStructural,
+      isHeadOfDivision,
+      isManager,
+      requireDepartmentSelection,
+      departments,
+      // Auto-assigned values for structural positions
+      autoAssignedDivision: isHeadOfDivision ? selectedJobTitle.division : null,
+      autoAssignedDepartment: isManager && departments.length === 1 ? departments[0]?.department : null,
+    };
+  }, [selectedJobTitle]);
+
+  // Auto-set departmentId when job title changes
+  React.useEffect(() => {
+    if (!form || !selectedJobTitle) return;
+
+    const { isManager, departments } = structuralInfo;
+
+    // For MANAGER or single department, auto-set departmentId
+    if (isManager || departments.length === 1) {
+      const deptId = departments[0]?.department?.id;
+      if (deptId && form.departmentId !== String(deptId)) {
+        setForm((prev) => (prev ? { ...prev, departmentId: String(deptId) } : prev));
+      }
+    }
+    // Clear departmentId for HEAD_OF_DIVISION (they manage entire division, not a single dept)
+    else if (structuralInfo.isHeadOfDivision && form.departmentId) {
+      setForm((prev) => (prev ? { ...prev, departmentId: "" } : prev));
+    }
+  }, [form?.jobTitleId, structuralInfo, selectedJobTitle]);
+
+  // Fetch departments by division for HEAD_OF_DIVISION
+  React.useEffect(() => {
+    if (!structuralInfo.isHeadOfDivision || !selectedJobTitle?.division?.id) {
+      setDivisionDepartments([]);
+      return;
+    }
+
+    const fetchDivisionDepartments = async () => {
+      const res = await departmentService.getByDivisionId(String(selectedJobTitle.division!.id));
+      if (res.success && res.data) {
+        setDivisionDepartments(res.data);
+      }
+    };
+
+    fetchDivisionDepartments();
+  }, [structuralInfo.isHeadOfDivision, selectedJobTitle?.division?.id]);
 
   // Fetch data
   const fetchData = React.useCallback(async () => {
@@ -271,8 +357,8 @@ export default function EmployeeEditPage() {
     return date.toISOString().split("T")[0];
   };
 
-  // Submit
-  const handleSubmit = async () => {
+  // Perform the actual update
+  const performUpdate = async () => {
     if (!employee || !form) return;
     setIsSubmitting(true);
 
@@ -290,6 +376,7 @@ export default function EmployeeEditPage() {
       hireDate: form.joinDate,
       status: form.status as EmployeeStatus,
       jobTitleId: selectedJobTitle?.name || "",
+      departmentId: form.departmentId, // Include department for non-structural positions
       managerId: form.superior,
       location: form.location,
       permanentDate: form.status === "Permanent" ? form.permanentDate : "",
@@ -313,6 +400,51 @@ export default function EmployeeEditPage() {
     setIsSubmitting(false);
   };
 
+  // Submit - check structural position first
+  const handleSubmit = async () => {
+    if (!employee || !form || !selectedJobTitle) {
+      await performUpdate();
+      return;
+    }
+
+    // Only check for structural positions (HEAD_OF_DIVISION or MANAGER)
+    if (!structuralInfo.isStructural) {
+      await performUpdate();
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    // Check if position is already occupied by someone else
+    const deptId = form.departmentId ? Number(form.departmentId) : undefined;
+    const checkResult = await employeeService.checkStructuralPosition(
+      selectedJobTitle.name,
+      deptId
+    );
+
+    if (
+      checkResult.success &&
+      checkResult.data?.isOccupied &&
+      String(checkResult.data.currentHolder?.employeeId) !== employee.employeeId
+    ) {
+      // Position occupied by someone else - show confirmation dialog
+      setStructuralCheck(checkResult.data);
+      setShowReplaceDialog(true);
+      setIsSubmitting(false);
+      return;
+    }
+
+    setIsSubmitting(false);
+    await performUpdate();
+  };
+
+  // Handle confirmation to replace position holder
+  const handleConfirmReplace = async () => {
+    setShowReplaceDialog(false);
+    setStructuralCheck(null);
+    await performUpdate();
+  };
+
   // Form validity
   const isFormValid =
     form &&
@@ -320,7 +452,9 @@ export default function EmployeeEditPage() {
     form.birthDate &&
     form.jobTitleId &&
     form.joinDate &&
-    form.email;
+    form.email &&
+    // Department required for non-structural with multiple departments
+    (!structuralInfo.requireDepartmentSelection || form.departmentId);
 
   // Loading state
   if (isLoading) {
@@ -502,28 +636,61 @@ export default function EmployeeEditPage() {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <Label>Department</Label>
-                      <Input
-                        placeholder="Department"
-                        value={
-                          selectedJobTitle?.departments
-                            ?.map((d) => d.department?.name)
-                            .filter(Boolean)
-                            .join(", ") || ""
-                        }
-                        disabled
-                        className="bg-muted"
-                      />
+                      <Label>Department {structuralInfo.requireDepartmentSelection && "*"}</Label>
+                      {structuralInfo.requireDepartmentSelection ? (
+                        // Multiple departments - user must select
+                        <Select
+                          value={form.departmentId}
+                          onValueChange={(v) => handleChange("departmentId", v)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select department" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {structuralInfo.departments.map((d) => (
+                              <SelectItem key={d.department.id} value={String(d.department.id)}>
+                                {d.department.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        // Auto-assigned or single department - read-only
+                        <>
+                          <Input
+                            placeholder="Department"
+                            value={
+                              structuralInfo.isHeadOfDivision
+                                ? "(All departments in division)"
+                                : selectedJobTitle?.departments
+                                    ?.map((d) => d.department?.name)
+                                    .filter(Boolean)
+                                    .join(", ") || ""
+                            }
+                            disabled
+                            className="bg-muted"
+                          />
+                          {/* Show department list for HEAD_OF_DIVISION */}
+                          {structuralInfo.isHeadOfDivision && divisionDepartments.length > 0 && (
+                            <ul className="mt-2 space-y-1 text-sm text-muted-foreground pl-4">
+                              {divisionDepartments.map((dept) => (
+                                <li key={dept.id} className="list-disc">
+                                  {dept.name}
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </>
+                      )}
                     </div>
                     <div className="space-y-1.5">
-                      <Label>OBS</Label>
+                      <Label>Division</Label>
                       <Input
-                        placeholder="OBS"
+                        placeholder="Division"
                         value={
-                          selectedJobTitle?.departments
-                            ?.map((d) => d.department?.obs?.name)
-                            .filter(Boolean)
-                            .join(", ") || ""
+                          structuralInfo.isHeadOfDivision
+                            ? selectedJobTitle?.division?.name || ""
+                            : selectedJobTitle?.departments?.[0]?.department?.division?.name || ""
                         }
                         disabled
                         className="bg-muted"
@@ -810,6 +977,42 @@ export default function EmployeeEditPage() {
           </div>
         </div>
       </PageContainer>
+
+      {/* Structural Position Replacement Confirmation Dialog */}
+      <AlertDialog open={showReplaceDialog} onOpenChange={setShowReplaceDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Replace Current Position Holder?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {structuralCheck?.positionType === "HEAD_OF_DIVISION" ? (
+                <>
+                  The <strong>Head of Division</strong> position for{" "}
+                  <strong>{structuralCheck?.targetName}</strong> is currently held by{" "}
+                  <strong>{structuralCheck?.currentHolder?.employeeName || "Unknown"}</strong>.
+                  <br /><br />
+                  Assigning this position to <strong>{form?.fullName}</strong> will remove the
+                  current holder from this position.
+                </>
+              ) : (
+                <>
+                  The <strong>Manager</strong> position for{" "}
+                  <strong>{structuralCheck?.targetName}</strong> is currently held by{" "}
+                  <strong>{structuralCheck?.currentHolder?.employeeName || "Unknown"}</strong>.
+                  <br /><br />
+                  Assigning this position to <strong>{form?.fullName}</strong> will remove the
+                  current holder from this position.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmReplace}>
+              Yes, Replace
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
