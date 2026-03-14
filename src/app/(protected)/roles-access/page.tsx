@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import {
-  Plus,
   Pencil,
   Trash2,
   Loader2,
@@ -341,7 +340,7 @@ export default function RolesAccessPage() {
                   <p className="text-muted-foreground">{error}</p>
                   <Button
                     variant="outline"
-                    size="sm"
+                   
                     className="mt-4"
                     onClick={fetchRoles}
                   >
@@ -370,9 +369,8 @@ export default function RolesAccessPage() {
                 }}
                 emptyMessage="No roles found"
                 actions={
-                  <Button size="sm" onClick={handleOpenCreate}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Role
+                  <Button onClick={handleOpenCreate}>
+                    New
                   </Button>
                 }
               />
@@ -386,7 +384,7 @@ export default function RolesAccessPage() {
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>
-              {editingRole ? "Edit Role" : "Add New Role"}
+              {editingRole ? "Edit Role" : "New Role"}
             </DialogTitle>
             <DialogDescription>
               {editingRole
@@ -428,7 +426,7 @@ export default function RolesAccessPage() {
               <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="animate-spin" />
                     {editingRole ? "Saving..." : "Creating..."}
                   </>
                 ) : editingRole ? (
@@ -470,7 +468,7 @@ export default function RolesAccessPage() {
             >
               {isDeleting ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="animate-spin" />
                   Deleting...
                 </>
               ) : (

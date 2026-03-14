@@ -287,9 +287,9 @@ export default function BudgetSummaryPage() {
         <div className="space-y-6">
           {/* Back Button */}
           <div className="flex items-center justify-between">
-            <Button variant="ghost" size="sm" asChild>
+            <Button variant="ghost" asChild>
               <Link href="/employee-budget">
-                <ArrowLeft className="mr-2 h-4 w-4" />
+                <ArrowLeft />
                 Back to Budget List
               </Link>
             </Button>
@@ -314,8 +314,8 @@ export default function BudgetSummaryPage() {
                 </Select>
               </div>
 
-              <Button variant="outline" size="sm">
-                <Download className="mr-2 h-4 w-4" />
+              <Button variant="outline">
+                <Download />
                 Export
               </Button>
             </div>

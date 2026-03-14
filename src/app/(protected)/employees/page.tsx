@@ -3,7 +3,6 @@
 import * as React from "react";
 import Link from "next/link";
 import {
-  Plus,
   Download,
   Eye,
   Pencil,
@@ -355,7 +354,7 @@ export default function EmployeesPage() {
               size="icon"
               className="h-8 w-8 text-muted-foreground"
             >
-              <MoreHorizontal className="h-4 w-4" />
+              <MoreHorizontal />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
@@ -484,7 +483,7 @@ export default function EmployeesPage() {
                     {statusFilter !== "all" && (
                       <Button
                         variant="ghost"
-                        size="sm"
+                       
                         className="h-9"
                         onClick={() => {
                           setStatusFilter("all");
@@ -498,14 +497,13 @@ export default function EmployeesPage() {
                 }
                 actions={
                   <>
-                    <Button variant="outline" size="sm">
-                      <Download className="mr-2 h-4 w-4" />
+                    <Button variant="outline">
+                      <Download />
                       Export
                     </Button>
-                    <Button size="sm" asChild>
+                    <Button asChild>
                       <Link href="/employees/new">
-                        <Plus className="mr-2 h-4 w-4" />
-                        Add Employee
+                        New
                       </Link>
                     </Button>
                   </>
@@ -546,7 +544,7 @@ export default function EmployeesPage() {
             >
               {isSubmitting ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="animate-spin" />
                   Deleting...
                 </>
               ) : (

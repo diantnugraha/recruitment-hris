@@ -96,7 +96,7 @@ export default function DashboardPage() {
                       </p>
                       <Button variant="outline" className="mt-2 border-background/20 bg-transparent text-background hover:bg-background/10 hover:border-background/30">
                         View Today&apos;s Tasks
-                        <ArrowRight className="ml-2 h-4 w-4" />
+                        <ArrowRight />
                       </Button>
                     </div>
                     <div className="hidden md:block">
@@ -188,9 +188,9 @@ export default function DashboardPage() {
                     <p className="text-xs uppercase tracking-wider text-muted-foreground">Analytics</p>
                     <CardTitle className="mt-1 font-semibold text-xl">Employee Growth</CardTitle>
                   </div>
-                  <Button variant="ghost" size="sm" className="text-muted-foreground">
+                  <Button variant="ghost" className="text-muted-foreground">
                     View Report
-                    <ArrowRight className="ml-1 h-3.5 w-3.5" />
+                    <ArrowRight />
                   </Button>
                 </CardHeader>
                 <CardContent>
@@ -292,9 +292,9 @@ export default function DashboardPage() {
                     <p className="text-xs uppercase tracking-wider text-muted-foreground">Team</p>
                     <CardTitle className="mt-1 font-semibold text-xl">Recent Hires</CardTitle>
                   </div>
-                  <Button variant="ghost" size="sm" className="text-muted-foreground">
+                  <Button variant="ghost" className="text-muted-foreground">
                     View All
-                    <ArrowRight className="ml-1 h-3.5 w-3.5" />
+                    <ArrowRight />
                   </Button>
                 </CardHeader>
                 <CardContent className="space-y-1">
@@ -330,8 +330,8 @@ export default function DashboardPage() {
                     <p className="text-xs uppercase tracking-wider text-muted-foreground">Schedule</p>
                     <CardTitle className="mt-1 font-semibold text-xl">Upcoming Interviews</CardTitle>
                   </div>
-                  <Button variant="ghost" size="sm" className="text-muted-foreground">
-                    <Calendar className="mr-1.5 h-3.5 w-3.5" />
+                  <Button variant="ghost" className="text-muted-foreground">
+                    <Calendar />
                     Calendar
                   </Button>
                 </CardHeader>

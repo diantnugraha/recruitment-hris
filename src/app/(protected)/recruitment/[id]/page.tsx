@@ -1197,7 +1197,7 @@ export default function CandidateDetailPage() {
             <AlertCircle className="h-12 w-12 text-destructive" />
             <p className="text-muted-foreground">{error || "Candidate not found"}</p>
             <Button variant="outline" onClick={() => router.back()}>
-              <ArrowLeft className="mr-2 h-4 w-4" />
+              <ArrowLeft />
               Go Back
             </Button>
           </div>
@@ -1212,8 +1212,8 @@ export default function CandidateDetailPage() {
       <PageContainer>
         <div className="space-y-6">
           {/* Back Button */}
-          <Button variant="ghost" size="sm" onClick={() => router.back()}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
+          <Button variant="ghost" onClick={() => router.back()}>
+            <ArrowLeft />
             Back to Recruitment
           </Button>
 
@@ -1335,7 +1335,7 @@ export default function CandidateDetailPage() {
                     </div>
                   </div>
                   <Button onClick={() => setShowStartInterviewDialog(true)}>
-                    <ClipboardCheck className="mr-2 h-4 w-4" />
+                    <ClipboardCheck />
                     Schedule Interview
                   </Button>
                 </div>
@@ -1976,7 +1976,7 @@ export default function CandidateDetailPage() {
                               </p>
                             </div>
                           </div>
-                          <Button size="sm" onClick={() => handleTabChange("assessment-user")}>
+                          <Button onClick={() => handleTabChange("assessment-user")}>
                             Assessment User
                             <ChevronRight className="ml-1 h-4 w-4" />
                           </Button>
@@ -2283,10 +2283,10 @@ export default function CandidateDetailPage() {
                             : "Select a conclusion to submit"}
                         </p>
                         <Button
-                          size="sm"
+                         
                           onClick={() => setShowHRPreview(true)}
                         >
-                          <Send className="mr-2 h-3.5 w-3.5" />
+                          <Send />
                           Submit Assessment
                         </Button>
                       </div>
@@ -2357,7 +2357,7 @@ export default function CandidateDetailPage() {
                               </p>
                             </div>
                           </div>
-                          <Button size="sm" onClick={() => handleTabChange("mcu")}>
+                          <Button onClick={() => handleTabChange("mcu")}>
                             Proceed to MCU
                             <ChevronRight className="ml-1 h-4 w-4" />
                           </Button>
@@ -2706,10 +2706,10 @@ export default function CandidateDetailPage() {
                                 : "Select a conclusion to submit"}
                             </p>
                             <Button
-                              size="sm"
+                             
                               onClick={() => setShowUserPreview(true)}
                             >
-                              <Send className="mr-2 h-3.5 w-3.5" />
+                              <Send />
                               Submit Assessment
                             </Button>
                           </div>
@@ -2810,11 +2810,11 @@ export default function CandidateDetailPage() {
                                     {mcuDocument.presignedUrl && (
                                       <Button
                                         variant="outline"
-                                        size="sm"
+                                       
                                         asChild
                                       >
                                         <a href={mcuDocument.presignedUrl} target="_blank" rel="noopener noreferrer">
-                                          <Eye className="mr-1.5 h-3.5 w-3.5" />
+                                          <Eye />
                                           View
                                         </a>
                                       </Button>
@@ -2822,15 +2822,15 @@ export default function CandidateDetailPage() {
                                     {mcuStatus === "pending" && (
                                       <Button
                                         variant="outline"
-                                        size="sm"
+                                       
                                         className="text-destructive hover:text-destructive"
                                         onClick={handleMcuDocumentDelete}
                                         disabled={isDeletingMcuDoc}
                                       >
                                         {isDeletingMcuDoc ? (
-                                          <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                                          <Loader2 className="animate-spin" />
                                         ) : (
-                                          <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+                                          <Trash2 />
                                         )}
                                         Delete
                                       </Button>
@@ -2918,9 +2918,9 @@ export default function CandidateDetailPage() {
                                     })}
                                   >
                                     {isSubmitting === "mcu" ? (
-                                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                      <Loader2 className="animate-spin" />
                                     ) : (
-                                      <CheckCircle2 className="mr-2 h-4 w-4" />
+                                      <CheckCircle2 />
                                     )}
                                     Pass
                                   </Button>
@@ -2934,9 +2934,9 @@ export default function CandidateDetailPage() {
                                     })}
                                   >
                                     {isSubmitting === "mcu" ? (
-                                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                      <Loader2 className="animate-spin" />
                                     ) : (
-                                      <XCircle className="mr-2 h-4 w-4" />
+                                      <XCircle />
                                     )}
                                     Fail
                                   </Button>
@@ -3010,8 +3010,8 @@ export default function CandidateDetailPage() {
                             </div>
                           </div>
                           {!isOnboardingAccepted && (
-                            <Button size="sm" onClick={() => handleOpenFacilityDialog("add")}>
-                              <Plus className="mr-2 h-4 w-4" />
+                            <Button onClick={() => handleOpenFacilityDialog("add")}>
+                              <Plus />
                               Add Facility
                             </Button>
                           )}
@@ -3030,11 +3030,11 @@ export default function CandidateDetailPage() {
                             {!isOnboardingAccepted && (
                               <Button
                                 variant="outline"
-                                size="sm"
+                               
                                 className="mt-4"
                                 onClick={() => handleOpenFacilityDialog("add")}
                               >
-                                <Plus className="mr-2 h-4 w-4" />
+                                <Plus />
                                 Add Facility
                               </Button>
                             )}
@@ -3125,8 +3125,8 @@ export default function CandidateDetailPage() {
                             </div>
                           </div>
                           {!isOnboardingAccepted && (
-                            <Button size="sm" onClick={() => handleOpenProgramDialog("add")}>
-                              <Plus className="mr-2 h-4 w-4" />
+                            <Button onClick={() => handleOpenProgramDialog("add")}>
+                              <Plus />
                               Add Program
                             </Button>
                           )}
@@ -3145,11 +3145,11 @@ export default function CandidateDetailPage() {
                             {!isOnboardingAccepted && (
                               <Button
                                 variant="outline"
-                                size="sm"
+                               
                                 className="mt-4"
                                 onClick={() => handleOpenProgramDialog("add")}
                               >
-                                <Plus className="mr-2 h-4 w-4" />
+                                <Plus />
                                 Add Program
                               </Button>
                             )}
@@ -3344,7 +3344,7 @@ export default function CandidateDetailPage() {
                               onClick={() => setShowConvertDialog(true)}
                               disabled={!canSendOnboarding}
                             >
-                              <Send className="mr-2 h-4 w-4" />
+                              <Send />
                               Send Onboarding
                             </Button>
                           </div>
@@ -4036,11 +4036,11 @@ export default function CandidateDetailPage() {
               )}
             >
               {isSubmitting !== null ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <Loader2 className="animate-spin" />
               ) : confirmDialog?.action === "PASSED" ? (
-                <CheckCircle2 className="mr-2 h-4 w-4" />
+                <CheckCircle2 />
               ) : (
-                <XCircle className="mr-2 h-4 w-4" />
+                <XCircle />
               )}
               Confirm
             </AlertDialogAction>
@@ -4289,8 +4289,8 @@ export default function CandidateDetailPage() {
               disabled={isConverting}
               className="bg-blue-600 hover:bg-blue-700"
             >
-              {isConverting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              <Send className="mr-2 h-4 w-4" />
+              {isConverting && <Loader2 className="animate-spin" />}
+              <Send />
               Send Onboarding
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -4398,9 +4398,9 @@ export default function CandidateDetailPage() {
               disabled={isStartingInterview || !interviewDate || !interviewTime || !interviewType}
             >
               {isStartingInterview ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <Loader2 className="animate-spin" />
               ) : (
-                <ClipboardCheck className="mr-2 h-4 w-4" />
+                <ClipboardCheck />
               )}
               {isStartingInterview ? "Scheduling..." : "Start Interview"}
             </Button>

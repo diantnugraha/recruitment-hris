@@ -98,8 +98,8 @@ export default function ForgotPasswordPage() {
               </div>
 
               <Link href="/login">
-                <Button variant="outline" className="h-11 w-full">
-                  <ArrowLeft className="mr-2 h-4 w-4" />
+                <Button variant="outline" size="lg" className="w-full">
+                  <ArrowLeft />
                   Back to Sign In
                 </Button>
               </Link>
@@ -123,10 +123,10 @@ export default function ForgotPasswordPage() {
                 </div>
               </div>
 
-              <Button type="submit" className="h-11 w-full" disabled={isLoading}>
+              <Button type="submit" size="lg" className="w-full" disabled={isLoading}>
                 {isLoading ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="animate-spin" />
                     Sending...
                   </>
                 ) : (

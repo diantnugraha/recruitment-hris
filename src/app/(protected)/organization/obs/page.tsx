@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import {
-  Plus,
   Eye,
   Pencil,
   Trash2,
@@ -267,8 +266,8 @@ export default function OBSPage() {
       render: (_: unknown, row: Organization) => (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">
-              <MoreHorizontal className="h-4 w-4" />
+            <Button variant="ghost" size="icon-sm" className="text-muted-foreground">
+              <MoreHorizontal />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
@@ -371,8 +370,7 @@ export default function OBSPage() {
               emptyMessage="No organizations found"
               actions={
                 <Button onClick={handleAddClick}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Unit
+                  New
                 </Button>
               }
             />
@@ -383,7 +381,7 @@ export default function OBSPage() {
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Add Organization Unit</DialogTitle>
+              <DialogTitle>New Organization Unit</DialogTitle>
               <DialogDescription>
                 Create a new organization unit.
               </DialogDescription>
@@ -431,11 +429,11 @@ export default function OBSPage() {
               >
                 {isSubmitting ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="animate-spin" />
                     Creating...
                   </>
                 ) : (
-                  "Add Unit"
+                  "Create Unit"
                 )}
               </Button>
             </DialogFooter>
@@ -494,7 +492,7 @@ export default function OBSPage() {
               >
                 {isSubmitting ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="animate-spin" />
                     Saving...
                   </>
                 ) : (
@@ -557,7 +555,7 @@ export default function OBSPage() {
               >
                 {isSubmitting ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="animate-spin" />
                     Deleting...
                   </>
                 ) : (

@@ -391,7 +391,7 @@ export default function RecruitmentRequestDetailPage() {
             <AlertCircle className="h-12 w-12 text-destructive" />
             <p className="text-muted-foreground">{error || "Request not found"}</p>
             <Button onClick={() => router.push("/recruitment")}>
-              <ArrowLeft className="mr-2 h-4 w-4" />
+              <ArrowLeft />
               Back to Recruitment
             </Button>
           </div>
@@ -410,7 +410,7 @@ export default function RecruitmentRequestDetailPage() {
           {/* Top bar: Back + Title + Actions */}
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3 min-w-0">
-              <Button variant="ghost" size="sm" onClick={() => router.push("/recruitment")} className="shrink-0">
+              <Button variant="ghost" onClick={() => router.push("/recruitment")} className="shrink-0">
                 <ArrowLeft className="h-4 w-4" />
               </Button>
               <div className="min-w-0">
@@ -433,31 +433,31 @@ export default function RecruitmentRequestDetailPage() {
             <div className="flex items-center gap-2 shrink-0">
               {request.status === "created" && (
                 <>
-                  <Button variant="outline" size="sm" onClick={() => openActionDialog("revise")}>
-                    <RotateCcw className="mr-2 h-4 w-4" />
+                  <Button variant="outline" onClick={() => openActionDialog("revise")}>
+                    <RotateCcw />
                     Request Revision
                   </Button>
-                  <Button size="sm" onClick={() => openActionDialog("review")}>
-                    <CheckCircle className="mr-2 h-4 w-4" />
+                  <Button onClick={() => openActionDialog("review")}>
+                    <CheckCircle />
                     Mark as Reviewed
                   </Button>
                 </>
               )}
               {request.status === "reviewed" && (
                 <>
-                  <Button variant="destructive" size="sm" onClick={() => openActionDialog("reject")}>
-                    <XCircle className="mr-2 h-4 w-4" />
+                  <Button variant="destructive" onClick={() => openActionDialog("reject")}>
+                    <XCircle />
                     Reject
                   </Button>
-                  <Button size="sm" onClick={() => openActionDialog("approve")}>
-                    <CheckCircle className="mr-2 h-4 w-4" />
+                  <Button onClick={() => openActionDialog("approve")}>
+                    <CheckCircle />
                     Approve
                   </Button>
                 </>
               )}
               {request.status === "approved" && (
-                <Button size="sm" onClick={() => openActionDialog("start_recruitment")}>
-                  <PlayCircle className="mr-2 h-4 w-4" />
+                <Button onClick={() => openActionDialog("start_recruitment")}>
+                  <PlayCircle />
                   Start Recruitment
                 </Button>
               )}
@@ -637,8 +637,8 @@ export default function RecruitmentRequestDetailPage() {
                     </div>
                   )}
                   {canInviteCandidates && (
-                    <Button size="sm" onClick={() => setShowInviteDialog(true)}>
-                      <Mail className="mr-1.5 h-3.5 w-3.5" />
+                    <Button onClick={() => setShowInviteDialog(true)}>
+                      <Mail />
                       Invite
                     </Button>
                   )}
@@ -656,8 +656,8 @@ export default function RecruitmentRequestDetailPage() {
                       Invite candidates to apply for this position
                     </p>
                     {canInviteCandidates && (
-                      <Button variant="outline" size="sm" className="mt-4" onClick={() => setShowInviteDialog(true)}>
-                        <UserPlus className="mr-2 h-4 w-4" />
+                      <Button variant="outline" className="mt-4" onClick={() => setShowInviteDialog(true)}>
+                        <UserPlus />
                         Invite Candidate
                       </Button>
                     )}
@@ -741,7 +741,7 @@ export default function RecruitmentRequestDetailPage() {
               onClick={handleAction}
               disabled={isProcessing || ((actionType === "reject" || actionType === "revise") && !actionComment)}
             >
-              {isProcessing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isProcessing && <Loader2 className="animate-spin" />}
               {dialogContent.buttonText}
             </Button>
           </DialogFooter>
@@ -797,12 +797,12 @@ export default function RecruitmentRequestDetailPage() {
             >
               {isSendingInvite ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="animate-spin" />
                   Sending...
                 </>
               ) : (
                 <>
-                  <Send className="mr-2 h-4 w-4" />
+                  <Send />
                   Send Invitation
                 </>
               )}

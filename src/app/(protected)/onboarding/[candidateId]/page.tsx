@@ -465,7 +465,7 @@ export default function OnboardingDetailPage() {
             <AlertCircle className="h-12 w-12 text-destructive" />
             <p className="text-muted-foreground">{error || "Candidate not found"}</p>
             <Button variant="outline" onClick={() => router.back()}>
-              <ArrowLeft className="mr-2 h-4 w-4" />
+              <ArrowLeft />
               Go Back
             </Button>
           </div>
@@ -480,8 +480,8 @@ export default function OnboardingDetailPage() {
       <PageContainer>
         <div className="space-y-6">
           {/* Back Button */}
-          <Button variant="ghost" size="sm" onClick={() => router.back()}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
+          <Button variant="ghost" onClick={() => router.back()}>
+            <ArrowLeft />
             Back to Recruitment
           </Button>
 
@@ -543,7 +543,7 @@ export default function OnboardingDetailPage() {
                     disabled={!canConvert}
                     className="bg-emerald-600 hover:bg-emerald-700"
                   >
-                    <UserCheck className="mr-2 h-4 w-4" />
+                    <UserCheck />
                     Generate Employee
                   </Button>
                 </div>
@@ -567,8 +567,8 @@ export default function OnboardingDetailPage() {
                         Equipment and items assigned to the new employee
                       </CardDescription>
                     </div>
-                    <Button size="sm" onClick={() => handleOpenFacilityDialog("add")}>
-                      <Plus className="mr-2 h-4 w-4" />
+                    <Button onClick={() => handleOpenFacilityDialog("add")}>
+                      <Plus />
                       Add Facility
                     </Button>
                   </div>
@@ -580,7 +580,7 @@ export default function OnboardingDetailPage() {
                       <p className="mt-2 text-muted-foreground">No facilities assigned yet</p>
                       <Button
                         variant="link"
-                        size="sm"
+                       
                         onClick={() => handleOpenFacilityDialog("add")}
                       >
                         Add the first facility
@@ -665,8 +665,8 @@ export default function OnboardingDetailPage() {
                         Training and orientation schedule for the new employee
                       </CardDescription>
                     </div>
-                    <Button size="sm" onClick={() => handleOpenProgramDialog("add")}>
-                      <Plus className="mr-2 h-4 w-4" />
+                    <Button onClick={() => handleOpenProgramDialog("add")}>
+                      <Plus />
                       Add Program
                     </Button>
                   </div>
@@ -678,7 +678,7 @@ export default function OnboardingDetailPage() {
                       <p className="mt-2 text-muted-foreground">No programs scheduled yet</p>
                       <Button
                         variant="link"
-                        size="sm"
+                       
                         onClick={() => handleOpenProgramDialog("add")}
                       >
                         Schedule the first program
@@ -783,9 +783,9 @@ export default function OnboardingDetailPage() {
                     disabled={isSaving}
                   >
                     {isSaving ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      <Loader2 className="animate-spin" />
                     ) : (
-                      <Save className="mr-2 h-4 w-4" />
+                      <Save />
                     )}
                     Save
                   </Button>
@@ -851,7 +851,7 @@ export default function OnboardingDetailPage() {
                     onClick={() => setShowConvertDialog(true)}
                     disabled={!canConvert}
                   >
-                    <UserCheck className="mr-2 h-4 w-4" />
+                    <UserCheck />
                     Generate Employee
                   </Button>
                   {!canConvert && (
@@ -1106,8 +1106,8 @@ export default function OnboardingDetailPage() {
               disabled={isConverting}
               className="bg-emerald-600 hover:bg-emerald-700"
             >
-              {isConverting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              <UserCheck className="mr-2 h-4 w-4" />
+              {isConverting && <Loader2 className="animate-spin" />}
+              <UserCheck />
               Generate Employee
             </AlertDialogAction>
           </AlertDialogFooter>

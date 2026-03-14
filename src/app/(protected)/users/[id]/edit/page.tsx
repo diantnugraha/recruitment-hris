@@ -201,7 +201,7 @@ export default function EditUserPage() {
             <p className="text-sm text-muted-foreground">User not found</p>
             <Button
               variant="outline"
-              size="sm"
+             
               onClick={() => router.push("/users")}
             >
               Back to Users
@@ -325,9 +325,9 @@ export default function EditUserPage() {
                         onClick={() => setShowPassword(!showPassword)}
                       >
                         {showPassword ? (
-                          <EyeOff className="h-4 w-4 text-muted-foreground" />
+                          <EyeOff className="text-muted-foreground" />
                         ) : (
-                          <Eye className="h-4 w-4 text-muted-foreground" />
+                          <Eye className="text-muted-foreground" />
                         )}
                       </Button>
                     </div>
@@ -358,9 +358,9 @@ export default function EditUserPage() {
                         onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                       >
                         {showConfirmPassword ? (
-                          <EyeOff className="h-4 w-4 text-muted-foreground" />
+                          <EyeOff className="text-muted-foreground" />
                         ) : (
-                          <Eye className="h-4 w-4 text-muted-foreground" />
+                          <Eye className="text-muted-foreground" />
                         )}
                       </Button>
                     </div>
@@ -409,12 +409,12 @@ export default function EditUserPage() {
               <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="animate-spin" />
                     Saving...
                   </>
                 ) : (
                   <>
-                    <Save className="mr-2 h-4 w-4" />
+                    <Save />
                     Save Changes
                   </>
                 )}

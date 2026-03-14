@@ -151,11 +151,11 @@ export function Sidebar() {
           {!sidebarCollapsed && (
             <Button
               variant="ghost"
-              size="icon"
+              size="icon-sm"
               onClick={toggleSidebarCollapse}
-              className="h-8 w-8 text-gray-400 hover:text-gray-600"
+              className="text-gray-400 hover:text-gray-600"
             >
-              <ChevronLeft className="h-4 w-4" />
+              <ChevronLeft />
             </Button>
           )}
         </div>
@@ -165,11 +165,11 @@ export function Sidebar() {
           <div className="flex justify-center py-3 border-b border-gray-100">
             <Button
               variant="ghost"
-              size="icon"
+              size="icon-sm"
               onClick={toggleSidebarCollapse}
-              className="h-8 w-8 text-gray-400 hover:text-gray-600"
+              className="text-gray-400 hover:text-gray-600"
             >
-              <ChevronLeft className="h-4 w-4 rotate-180" />
+              <ChevronLeft className="rotate-180" />
             </Button>
           </div>
         )}

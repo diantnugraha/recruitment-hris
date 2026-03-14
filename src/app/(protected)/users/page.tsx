@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import {
-  Plus,
   Eye,
   Pencil,
   Trash2,
@@ -272,7 +271,7 @@ export default function UsersPage() {
               size="icon"
               className="h-8 w-8 text-muted-foreground"
             >
-              <MoreHorizontal className="h-4 w-4" />
+              <MoreHorizontal />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
@@ -358,7 +357,7 @@ export default function UsersPage() {
                   <p className="text-muted-foreground">{error}</p>
                   <Button
                     variant="outline"
-                    size="sm"
+                   
                     className="mt-4"
                     onClick={fetchUsers}
                   >
@@ -387,9 +386,8 @@ export default function UsersPage() {
                 }}
                 emptyMessage="No users found"
                 actions={
-                  <Button size="sm" onClick={handleAddUser}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add User
+                  <Button onClick={handleAddUser}>
+                    New
                   </Button>
                 }
               />
@@ -445,7 +443,7 @@ export default function UsersPage() {
             >
               {isSubmitting ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="animate-spin" />
                   Deleting...
                 </>
               ) : (

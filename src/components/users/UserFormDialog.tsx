@@ -345,9 +345,9 @@ export function UserFormDialog({
                   onClick={() => setShowPassword(!showPassword)}
                 >
                   {showPassword ? (
-                    <EyeOff className="h-4 w-4 text-muted-foreground" />
+                    <EyeOff className="text-muted-foreground" />
                   ) : (
-                    <Eye className="h-4 w-4 text-muted-foreground" />
+                    <Eye className="text-muted-foreground" />
                   )}
                 </Button>
               </div>
@@ -381,9 +381,9 @@ export function UserFormDialog({
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                 >
                   {showConfirmPassword ? (
-                    <EyeOff className="h-4 w-4 text-muted-foreground" />
+                    <EyeOff className="text-muted-foreground" />
                   ) : (
-                    <Eye className="h-4 w-4 text-muted-foreground" />
+                    <Eye className="text-muted-foreground" />
                   )}
                 </Button>
               </div>
@@ -429,7 +429,7 @@ export function UserFormDialog({
                 Cancel
               </Button>
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isSubmitting && <Loader2 className="animate-spin" />}
                 {isEdit ? "Save Changes" : "Create User"}
               </Button>
             </DialogFooter>

@@ -343,7 +343,7 @@ export default function EmployeeNewPage() {
   if (isLoading) {
     return (
       <>
-        <Header title="Add Employee" />
+        <Header title="New Employee" />
         <PageContainer>
           <div className="flex h-64 items-center justify-center">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -355,7 +355,7 @@ export default function EmployeeNewPage() {
 
   return (
     <>
-      <Header title="Add Employee" />
+      <Header title="New Employee" />
       <PageContainer>
         <div className="space-y-4">
           {/* Top Bar */}
@@ -800,9 +800,9 @@ export default function EmployeeNewPage() {
               disabled={isSubmitting || !isFormValid}
             >
               {isSubmitting ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="animate-spin" />
               ) : (
-                <Save className="h-4 w-4" />
+                <Save />
               )}
               Save
             </Button>

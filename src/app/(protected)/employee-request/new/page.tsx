@@ -234,7 +234,7 @@ export default function NewEmployeeRequestPage() {
           {/* Back button */}
           <div className="flex items-center justify-between">
             <Button variant="ghost" onClick={() => router.push("/employee-request")}>
-              <ArrowLeft className="mr-2 h-4 w-4" />
+              <ArrowLeft />
               Back
             </Button>
             <div className="flex items-center gap-2">
@@ -244,17 +244,17 @@ export default function NewEmployeeRequestPage() {
                 disabled={isSubmitting}
               >
                 {isSubmitting ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="animate-spin" />
                 ) : (
-                  <Save className="mr-2 h-4 w-4" />
+                  <Save />
                 )}
                 Save as Draft
               </Button>
               <Button onClick={handleOpenSubmitDialog} disabled={isSubmitting}>
                 {isSubmitting ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="animate-spin" />
                 ) : (
-                  <Send className="mr-2 h-4 w-4" />
+                  <Send />
                 )}
                 Submit Request
               </Button>
@@ -608,9 +608,9 @@ export default function NewEmployeeRequestPage() {
             </Button>
             <Button onClick={handleConfirmSubmit} disabled={isSubmitting}>
               {isSubmitting ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <Loader2 className="animate-spin" />
               ) : (
-                <Send className="mr-2 h-4 w-4" />
+                <Send />
               )}
               Submit Request
             </Button>

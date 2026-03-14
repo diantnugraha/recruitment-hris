@@ -117,11 +117,11 @@ export function DataTable<T extends object>({
               {searchValue && (
                 <Button
                   variant="ghost"
-                  size="icon"
-                  className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2"
+                  size="icon-sm"
+                  className="absolute right-1 top-1/2 -translate-y-1/2"
                   onClick={() => handleSearch("")}
                 >
-                  <X className="h-4 w-4" />
+                  <X />
                 </Button>
               )}
             </div>
@@ -129,11 +129,11 @@ export function DataTable<T extends object>({
           {filters && (
             <Button
               variant="outline"
-              size="sm"
+             
               onClick={() => setShowFilters(!showFilters)}
               className={cn(showFilters && "bg-secondary")}
             >
-              <SlidersHorizontal className="mr-2 h-4 w-4" />
+              <SlidersHorizontal />
               Filters
             </Button>
           )}
@@ -222,21 +222,19 @@ export function DataTable<T extends object>({
           <div className="flex items-center gap-1">
             <Button
               variant="outline"
-              size="icon"
-              className="h-8 w-8"
+              size="icon-sm"
               onClick={() => onPageChange?.(1)}
               disabled={currentPage === 1}
             >
-              <ChevronsLeft className="h-4 w-4" />
+              <ChevronsLeft />
             </Button>
             <Button
               variant="outline"
-              size="icon"
-              className="h-8 w-8"
+              size="icon-sm"
               onClick={() => onPageChange?.(currentPage - 1)}
               disabled={currentPage === 1}
             >
-              <ChevronLeft className="h-4 w-4" />
+              <ChevronLeft />
             </Button>
             <div className="flex items-center gap-1 px-2">
               {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
@@ -254,8 +252,7 @@ export function DataTable<T extends object>({
                   <Button
                     key={pageNum}
                     variant={currentPage === pageNum ? "default" : "ghost"}
-                    size="icon"
-                    className="h-8 w-8"
+                    size="icon-sm"
                     onClick={() => onPageChange?.(pageNum)}
                   >
                     {pageNum}
@@ -265,21 +262,19 @@ export function DataTable<T extends object>({
             </div>
             <Button
               variant="outline"
-              size="icon"
-              className="h-8 w-8"
+              size="icon-sm"
               onClick={() => onPageChange?.(currentPage + 1)}
               disabled={currentPage === totalPages}
             >
-              <ChevronRight className="h-4 w-4" />
+              <ChevronRight />
             </Button>
             <Button
               variant="outline"
-              size="icon"
-              className="h-8 w-8"
+              size="icon-sm"
               onClick={() => onPageChange?.(totalPages)}
               disabled={currentPage === totalPages}
             >
-              <ChevronsRight className="h-4 w-4" />
+              <ChevronsRight />
             </Button>
           </div>
         </div>

@@ -198,7 +198,7 @@ export default function JobTitleEditPage() {
         <PageContainer>
           <div className="flex h-64 flex-col items-center justify-center gap-3">
             <p className="text-sm text-muted-foreground">{error || "Job title not found"}</p>
-            <Button variant="outline" size="sm" onClick={fetchData}>
+            <Button variant="outline" onClick={fetchData}>
               Try Again
             </Button>
           </div>
@@ -238,7 +238,7 @@ export default function JobTitleEditPage() {
               <span>{error}</span>
               <Button
                 variant="ghost"
-                size="sm"
+               
                 className="ml-auto h-6 px-2 text-xs"
                 onClick={() => setError(null)}
               >
@@ -463,7 +463,7 @@ export default function JobTitleEditPage() {
                 >
                   {isSaving ? (
                     <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      <Loader2 className="animate-spin" />
                       Saving...
                     </>
                   ) : (

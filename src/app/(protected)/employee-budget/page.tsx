@@ -4,7 +4,6 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  Plus,
   Download,
   Loader2,
   Wallet,
@@ -134,7 +133,7 @@ function AddDepartmentDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Add Department Budget</DialogTitle>
+          <DialogTitle>New Department Budget</DialogTitle>
           <DialogDescription>
             Select a department to manage its budget allocation.
           </DialogDescription>
@@ -410,13 +409,12 @@ export default function EmployeeBudgetPage() {
                 emptyMessage="No department budgets found"
                 actions={
                   <>
-                    <Button variant="outline" size="sm">
-                      <Download className="mr-2 h-4 w-4" />
+                    <Button variant="outline">
+                      <Download />
                       Export
                     </Button>
-                    <Button size="sm" onClick={handleAddDepartmentClick}>
-                      <Plus className="mr-2 h-4 w-4" />
-                      Add Department Budget
+                    <Button onClick={handleAddDepartmentClick}>
+                      New
                     </Button>
                   </>
                 }

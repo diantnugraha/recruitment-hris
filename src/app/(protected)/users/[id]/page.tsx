@@ -123,7 +123,7 @@ export default function UserDetailPage() {
         <PageContainer>
           <div className="flex h-64 flex-col items-center justify-center gap-3">
             <p className="text-sm text-muted-foreground">{error || "User not found"}</p>
-            <Button variant="outline" size="sm" onClick={fetchData}>
+            <Button variant="outline" onClick={fetchData}>
               Try Again
             </Button>
           </div>
@@ -150,18 +150,18 @@ export default function UserDetailPage() {
               <span>Back to Users</span>
             </button>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" asChild>
+              <Button variant="outline" asChild>
                 <Link href={`/users/${user.id}/edit`}>
-                  <Pencil className="mr-2 h-4 w-4" />
+                  <Pencil />
                   Edit
                 </Link>
               </Button>
               <Button
                 variant="destructive"
-                size="sm"
+               
                 onClick={() => setIsDeleteDialogOpen(true)}
               >
-                <Trash2 className="mr-2 h-4 w-4" />
+                <Trash2 />
                 Delete
               </Button>
             </div>
@@ -292,7 +292,7 @@ export default function UserDetailPage() {
             >
               {isDeleting ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="animate-spin" />
                   Deleting...
                 </>
               ) : (

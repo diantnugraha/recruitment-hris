@@ -304,7 +304,7 @@ export default function EmployeeRequestDetailPage() {
             <AlertCircle className="h-12 w-12 text-destructive" />
             <p className="text-muted-foreground">{error || "Request not found"}</p>
             <Button onClick={() => router.push("/employee-request")}>
-              <ArrowLeft className="mr-2 h-4 w-4" />
+              <ArrowLeft />
               Back to List
             </Button>
           </div>
@@ -333,11 +333,11 @@ export default function EmployeeRequestDetailPage() {
               {request.status === "created" && (
                 <>
                   <Button variant="outline" onClick={() => openActionDialog("revise")}>
-                    <RotateCcw className="mr-2 h-4 w-4" />
+                    <RotateCcw />
                     Request Revision
                   </Button>
                   <Button onClick={() => openActionDialog("hod_review")}>
-                    <CheckCircle className="mr-2 h-4 w-4" />
+                    <CheckCircle />
                     HOD Approve
                   </Button>
                 </>
@@ -346,11 +346,11 @@ export default function EmployeeRequestDetailPage() {
               {request.status === "hod_reviewed" && (
                 <>
                   <Button variant="outline" onClick={() => openActionDialog("revise")}>
-                    <RotateCcw className="mr-2 h-4 w-4" />
+                    <RotateCcw />
                     Request Revision
                   </Button>
                   <Button onClick={() => openActionDialog("hr_review")}>
-                    <CheckCircle className="mr-2 h-4 w-4" />
+                    <CheckCircle />
                     HR Approve
                   </Button>
                 </>
@@ -359,29 +359,29 @@ export default function EmployeeRequestDetailPage() {
               {request.status === "reviewed" && (
                 <>
                   <Button variant="destructive" onClick={() => openActionDialog("reject")}>
-                    <XCircle className="mr-2 h-4 w-4" />
+                    <XCircle />
                     Reject
                   </Button>
                   <Button onClick={() => openActionDialog("approve")}>
-                    <CheckCircle className="mr-2 h-4 w-4" />
+                    <CheckCircle />
                     Management Approve
                   </Button>
                 </>
               )}
               {request.status === "approved" && (
                 <Button onClick={handleStartRecruitment} disabled={isProcessing}>
-                  {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlayCircle className="mr-2 h-4 w-4" />}
+                  {isProcessing ? <Loader2 className="animate-spin" /> : <PlayCircle />}
                   Start Recruitment
                 </Button>
               )}
               {["draft", "revise"].includes(request.status) && (
                 <>
                   <Button variant="outline" onClick={() => router.push(`/employee-request/${id}/edit`)}>
-                    <Pencil className="mr-2 h-4 w-4" />
+                    <Pencil />
                     Edit
                   </Button>
                   <Button variant="destructive" onClick={() => setShowDeleteDialog(true)}>
-                    <Trash2 className="mr-2 h-4 w-4" />
+                    <Trash2 />
                     Delete
                   </Button>
                 </>
@@ -806,7 +806,7 @@ export default function EmployeeRequestDetailPage() {
               onClick={handleAction}
               disabled={isProcessing || ((actionType === "reject" || actionType === "revise") && !actionComment)}
             >
-              {isProcessing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isProcessing && <Loader2 className="animate-spin" />}
               {dialogContent.buttonText}
             </Button>
           </DialogFooter>

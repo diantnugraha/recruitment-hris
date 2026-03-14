@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import {
-  Plus,
   Eye,
   Pencil,
   Trash2,
@@ -279,8 +278,8 @@ export default function DivisionsPage() {
       render: (_: unknown, row: Division) => (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">
-              <MoreHorizontal className="h-4 w-4" />
+            <Button variant="ghost" size="icon-sm" className="text-muted-foreground">
+              <MoreHorizontal />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
@@ -383,8 +382,7 @@ export default function DivisionsPage() {
               emptyMessage="No divisions found"
               actions={
                 <Button onClick={handleAddClick}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Division
+                  New
                 </Button>
               }
             />
@@ -395,7 +393,7 @@ export default function DivisionsPage() {
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Add New Division</DialogTitle>
+              <DialogTitle>New Division</DialogTitle>
               <DialogDescription>
                 Create a new division in your organization.
               </DialogDescription>
@@ -445,11 +443,11 @@ export default function DivisionsPage() {
               >
                 {isSubmitting ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="animate-spin" />
                     Creating...
                   </>
                 ) : (
-                  "Add Division"
+                  "Create Division"
                 )}
               </Button>
             </DialogFooter>
@@ -510,7 +508,7 @@ export default function DivisionsPage() {
               >
                 {isSubmitting ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="animate-spin" />
                     Saving...
                   </>
                 ) : (
@@ -574,7 +572,7 @@ export default function DivisionsPage() {
               >
                 {isSubmitting ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="animate-spin" />
                     Deleting...
                   </>
                 ) : (

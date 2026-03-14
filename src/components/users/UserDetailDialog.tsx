@@ -229,21 +229,21 @@ export function UserDetailDialog({
               <div className="flex justify-end gap-2">
                 <Button
                   variant="outline"
-                  size="sm"
+                 
                   onClick={() => {
                     onOpenChange(false);
                     onEdit(user);
                   }}
                 >
-                  <Pencil className="mr-2 h-4 w-4" />
+                  <Pencil />
                   Edit
                 </Button>
                 <Button
                   variant="destructive"
-                  size="sm"
+                 
                   onClick={() => setIsDeleteDialogOpen(true)}
                 >
-                  <Trash2 className="mr-2 h-4 w-4" />
+                  <Trash2 />
                   Delete
                 </Button>
               </div>
@@ -272,7 +272,7 @@ export function UserDetailDialog({
             >
               {isDeleting ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="animate-spin" />
                   Deleting...
                 </>
               ) : (

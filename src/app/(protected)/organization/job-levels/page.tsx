@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import {
-  Plus,
   Eye,
   Pencil,
   Trash2,
@@ -283,7 +282,7 @@ export default function JobLevelsPage() {
               size="icon"
               className="h-8 w-8 text-muted-foreground"
             >
-              <MoreHorizontal className="h-4 w-4" />
+              <MoreHorizontal />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
@@ -461,8 +460,7 @@ export default function JobLevelsPage() {
               emptyMessage="No job levels found"
               actions={
                 <Button onClick={handleAddClick}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Job Level
+                  New
                 </Button>
               }
             />
@@ -473,7 +471,7 @@ export default function JobLevelsPage() {
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Add New Job Level</DialogTitle>
+              <DialogTitle>New Job Level</DialogTitle>
               <DialogDescription>
                 Create a new job level for your organization.
               </DialogDescription>
@@ -497,11 +495,11 @@ export default function JobLevelsPage() {
               >
                 {isSubmitting ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="animate-spin" />
                     Creating...
                   </>
                 ) : (
-                  "Add Job Level"
+                  "Create Job Level"
                 )}
               </Button>
             </DialogFooter>
@@ -536,7 +534,7 @@ export default function JobLevelsPage() {
               >
                 {isSubmitting ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="animate-spin" />
                     Saving...
                   </>
                 ) : (
@@ -621,7 +619,7 @@ export default function JobLevelsPage() {
               >
                 {isSubmitting ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="animate-spin" />
                     Deleting...
                   </>
                 ) : (

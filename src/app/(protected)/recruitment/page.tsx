@@ -409,7 +409,7 @@ export default function RecruitmentPage() {
                         </p>
                         <Button
                           variant="link"
-                          size="sm"
+                         
                           onClick={() => router.push("/employee-request")}
                         >
                           Go to Employee Requests
@@ -499,14 +499,14 @@ export default function RecruitmentPage() {
                       <TableCell>
                         <Button
                           variant="ghost"
-                          size="sm"
+                         
                           className="opacity-0 group-hover:opacity-100 transition-opacity"
                           onClick={(e) => {
                             e.stopPropagation();
                             router.push(`/recruitment/request/${request.id}`);
                           }}
                         >
-                          <Eye className="h-4 w-4 mr-1" />
+                          <Eye />
                           View
                         </Button>
                       </TableCell>

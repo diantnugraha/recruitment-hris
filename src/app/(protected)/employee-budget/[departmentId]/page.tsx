@@ -13,7 +13,6 @@ import {
   Briefcase,
   CalendarDays,
   Pencil,
-  Plus,
   Upload,
   X,
   File,
@@ -187,7 +186,7 @@ function BudgetFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg overflow-hidden">
         <DialogHeader>
-          <DialogTitle>{isEdit ? "Edit Budget" : "Add Budget"}</DialogTitle>
+          <DialogTitle>{isEdit ? "Edit Budget" : "New Budget"}</DialogTitle>
           <DialogDescription>
             {isEdit
               ? "Update the budget allocation for this year."
@@ -347,7 +346,7 @@ function BudgetFormDialog({
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="animate-spin" />
                   {isEdit ? "Updating..." : "Creating..."}
                 </>
               ) : (
@@ -544,9 +543,9 @@ export default function EmployeeBudgetDetailPage() {
         <div className="space-y-6">
           {/* Back Button & Actions */}
           <div className="flex items-center justify-between">
-            <Button variant="ghost" size="sm" asChild>
+            <Button variant="ghost" asChild>
               <Link href="/employee-budget">
-                <ArrowLeft className="mr-2 h-4 w-4" />
+                <ArrowLeft />
                 Back to Budget List
               </Link>
             </Button>
@@ -661,9 +660,8 @@ export default function EmployeeBudgetDetailPage() {
                     Year-by-year budget allocation and comparison
                   </CardDescription>
                 </div>
-                <Button size="sm" onClick={handleAddClick}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Budget
+                <Button onClick={handleAddClick}>
+                  New
                 </Button>
               </div>
             </CardHeader>
@@ -672,8 +670,7 @@ export default function EmployeeBudgetDetailPage() {
                 <div className="flex flex-col items-center justify-center py-8 text-center">
                   <p className="text-muted-foreground">No budget records found for this department.</p>
                   <Button variant="outline" onClick={handleAddClick} className="mt-4">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add First Budget
+                    New
                   </Button>
                 </div>
               ) : (
@@ -752,7 +749,7 @@ export default function EmployeeBudgetDetailPage() {
                                       <TooltipTrigger asChild>
                                         <Button
                                           variant="ghost"
-                                          size="sm"
+                                         
                                           onClick={() => {
                                             const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
                                             window.open(`${apiUrl}/${budget.document}`, "_blank");
@@ -769,7 +766,7 @@ export default function EmployeeBudgetDetailPage() {
                                 )}
                                 <Button
                                   variant="ghost"
-                                  size="sm"
+                                 
                                   onClick={() => handleEditClick(budget)}
                                 >
                                   <Pencil className="h-4 w-4" />

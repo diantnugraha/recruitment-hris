@@ -192,7 +192,7 @@ export default function CandidateEditPage() {
         <PageContainer>
           <div className="flex h-64 flex-col items-center justify-center gap-3">
             <p className="text-sm text-muted-foreground">{error || "Candidate not found"}</p>
-            <Button variant="outline" size="sm" onClick={fetchData}>
+            <Button variant="outline" onClick={fetchData}>
               Try Again
             </Button>
           </div>
@@ -480,9 +480,9 @@ export default function CandidateEditPage() {
               disabled={isSubmitting || !isFormValid}
             >
               {isSubmitting ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="animate-spin" />
               ) : (
-                <Save className="h-4 w-4" />
+                <Save />
               )}
               Save Changes
             </Button>

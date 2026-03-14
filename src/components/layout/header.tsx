@@ -64,10 +64,10 @@ export function Header({ title, subtitle }: HeaderProps) {
         <Button
           variant="ghost"
           size="icon"
-          className="h-9 w-9 lg:hidden"
+          className="lg:hidden"
           onClick={toggleSidebar}
         >
-          <Menu className="h-5 w-5" />
+          <Menu />
         </Button>
         <div>
           {title && (
@@ -124,10 +124,10 @@ export function Header({ title, subtitle }: HeaderProps) {
         <Button
           variant="ghost"
           size="icon"
-          className="h-9 w-9 text-gray-500 hover:text-red-600"
+          className="text-gray-500 hover:text-red-600"
           onClick={() => setShowLogoutDialog(true)}
         >
-          <LogOut className="h-5 w-5" />
+          <LogOut />
         </Button>
 
         {/* Logout Dialog */}

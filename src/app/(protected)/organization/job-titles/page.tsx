@@ -3,7 +3,6 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import {
-  Plus,
   Pencil,
   Trash2,
   Briefcase,
@@ -340,7 +339,7 @@ export default function JobTitlesPage() {
               size="icon"
               className="h-8 w-8 text-muted-foreground"
             >
-              <MoreHorizontal className="h-4 w-4" />
+              <MoreHorizontal />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
@@ -448,7 +447,7 @@ export default function JobTitlesPage() {
               <span>{error}</span>
               <Button
                 variant="ghost"
-                size="sm"
+               
                 className="ml-auto h-6 px-2 text-xs"
                 onClick={() => setError(null)}
               >
@@ -515,9 +514,8 @@ export default function JobTitlesPage() {
               }}
               emptyMessage="No job titles found"
               actions={
-                <Button size="sm" onClick={handleAddClick}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Job Title
+                <Button onClick={handleAddClick}>
+                  New
                 </Button>
               }
             />
@@ -528,7 +526,7 @@ export default function JobTitlesPage() {
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogContent className="max-w-lg">
             <DialogHeader>
-              <DialogTitle>Add New Job Title</DialogTitle>
+              <DialogTitle>New Job Title</DialogTitle>
               <DialogDescription>
                 Create a new job title for your organization.
               </DialogDescription>
@@ -675,11 +673,11 @@ export default function JobTitlesPage() {
               >
                 {isSubmitting ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="animate-spin" />
                     Creating...
                   </>
                 ) : (
-                  "Add Job Title"
+                  "Create Job Title"
                 )}
               </Button>
             </DialogFooter>
@@ -705,7 +703,7 @@ export default function JobTitlesPage() {
               >
                 {isSubmitting ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="animate-spin" />
                     Deleting...
                   </>
                 ) : (

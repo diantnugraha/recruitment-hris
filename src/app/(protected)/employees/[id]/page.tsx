@@ -179,7 +179,7 @@ export default function EmployeeDetailPage() {
         <PageContainer>
           <div className="flex h-64 flex-col items-center justify-center gap-3">
             <p className="text-sm text-muted-foreground">{error || "Employee not found"}</p>
-            <Button variant="outline" size="sm" onClick={fetchData}>
+            <Button variant="outline" onClick={fetchData}>
               Try Again
             </Button>
           </div>
@@ -216,20 +216,20 @@ export default function EmployeeDetailPage() {
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
-                size="sm"
+               
                 className="gap-2"
                 onClick={() => router.push(`/employees/${employee.id}/edit`)}
               >
-                <Pencil className="h-4 w-4" />
+                <Pencil />
                 Edit
               </Button>
               <Button
                 variant="outline"
-                size="sm"
+               
                 className="gap-2 text-destructive hover:bg-destructive hover:text-destructive-foreground"
                 onClick={() => setIsDeleteDialogOpen(true)}
               >
-                <Trash2 className="h-4 w-4" />
+                <Trash2 />
                 Delete
               </Button>
             </div>
@@ -441,7 +441,7 @@ export default function EmployeeDetailPage() {
             >
               {isDeleting ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="animate-spin" />
                   Deleting...
                 </>
               ) : (

@@ -3,7 +3,6 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import {
-  Plus,
   FileText,
   CheckCircle,
   Clock,
@@ -219,7 +218,7 @@ export default function EmployeeRequestPage() {
             <AlertCircle className="h-12 w-12 text-destructive" />
             <p className="text-muted-foreground">{error}</p>
             <Button onClick={handleRefresh}>
-              <RefreshCw className="mr-2 h-4 w-4" />
+              <RefreshCw />
               Try Again
             </Button>
           </div>
@@ -316,8 +315,7 @@ export default function EmployeeRequestPage() {
               />
             </div>
             <Button onClick={() => router.push("/employee-request/new")}>
-              <Plus className="mr-2 h-4 w-4" />
-              New Request
+              New
             </Button>
           </div>
 
@@ -352,7 +350,7 @@ export default function EmployeeRequestPage() {
                               {!searchQuery && (
                                 <Button
                                   variant="link"
-                                  size="sm"
+                                 
                                   onClick={() => router.push("/employee-request/new")}
                                 >
                                   Create New Request
@@ -437,7 +435,7 @@ export default function EmployeeRequestPage() {
             >
               {isDeleting ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="animate-spin" />
                   Deleting...
                 </>
               ) : (

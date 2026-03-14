@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import {
-  Plus,
   Eye,
   Pencil,
   Trash2,
@@ -350,7 +349,7 @@ export default function DepartmentsPage() {
               size="icon"
               className="h-8 w-8 text-muted-foreground"
             >
-              <MoreHorizontal className="h-4 w-4" />
+              <MoreHorizontal />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
@@ -461,8 +460,7 @@ export default function DepartmentsPage() {
               emptyMessage="No departments found"
               actions={
                 <Button onClick={handleAddClick}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Department
+                  New
                 </Button>
               }
             />
@@ -473,7 +471,7 @@ export default function DepartmentsPage() {
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Add New Department</DialogTitle>
+              <DialogTitle>New Department</DialogTitle>
               <DialogDescription>
                 Create a new department in your organization.
               </DialogDescription>
@@ -596,11 +594,11 @@ export default function DepartmentsPage() {
               >
                 {isSubmitting ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="animate-spin" />
                     Creating...
                   </>
                 ) : (
-                  "Add Department"
+                  "Create Department"
                 )}
               </Button>
             </DialogFooter>
@@ -734,7 +732,7 @@ export default function DepartmentsPage() {
               >
                 {isSubmitting ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="animate-spin" />
                     Saving...
                   </>
                 ) : (
@@ -828,7 +826,7 @@ export default function DepartmentsPage() {
               >
                 {isSubmitting ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="animate-spin" />
                     Deleting...
                   </>
                 ) : (
