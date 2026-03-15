@@ -2,13 +2,11 @@
 
 import * as React from "react";
 import {
-  Eye,
   Pencil,
   Trash2,
   Building,
   Users,
   Loader2,
-  MoreHorizontal,
   Layers,
 } from "lucide-react";
 
@@ -18,13 +16,6 @@ import { DataTable } from "@/components/shared/data-table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   Dialog,
   DialogContent,
@@ -311,7 +302,13 @@ export default function DepartmentsPage() {
       key: "name",
       label: "Department",
       render: (_: unknown, row: Department) => (
-        <p className="font-medium">{row.name}</p>
+        <button
+          type="button"
+          className="font-medium text-accent hover:underline text-left"
+          onClick={() => handleDetailClick(row)}
+        >
+          {row.name}
+        </button>
       ),
     },
     {
@@ -335,42 +332,6 @@ export default function DepartmentsPage() {
       label: "Division",
       render: (_: unknown, row: Department) => (
         <span className="text-sm">{getDivisionName(row.divisionId)}</span>
-      ),
-    },
-    {
-      key: "actions",
-      label: "",
-      className: "w-[50px]",
-      render: (_: unknown, row: Department) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-muted-foreground"
-            >
-              <MoreHorizontal />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => handleDetailClick(row)}>
-              <Eye className="mr-2 h-4 w-4" />
-              Detail
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleEditClick(row)}>
-              <Pencil className="mr-2 h-4 w-4" />
-              Edit
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              className="text-destructive focus:text-destructive"
-              onClick={() => handleDeleteClick(row)}
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Delete
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
       ),
     },
   ];
@@ -791,13 +752,34 @@ export default function DepartmentsPage() {
                 />
               </div>
             </div>
-            <DialogFooter>
+            <DialogFooter className="flex-row justify-between sm:justify-between">
               <Button
-                variant="outline"
-                onClick={() => setIsDetailDialogOpen(false)}
+                variant="destructive"
+                onClick={() => {
+                  setIsDetailDialogOpen(false);
+                  if (selectedDepartment) handleDeleteClick(selectedDepartment);
+                }}
               >
-                Close
+                <Trash2 className="h-4 w-4" />
+                Delete
               </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setIsDetailDialogOpen(false)}
+                >
+                  Close
+                </Button>
+                <Button
+                  onClick={() => {
+                    setIsDetailDialogOpen(false);
+                    if (selectedDepartment) handleEditClick(selectedDepartment);
+                  }}
+                >
+                  <Pencil className="h-4 w-4" />
+                  Edit
+                </Button>
+              </div>
             </DialogFooter>
           </DialogContent>
         </Dialog>

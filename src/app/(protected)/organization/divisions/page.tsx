@@ -2,13 +2,11 @@
 
 import * as React from "react";
 import {
-  Eye,
   Pencil,
   Trash2,
   Layers,
   Users,
   Loader2,
-  MoreHorizontal,
   Building2,
 } from "lucide-react";
 
@@ -36,13 +34,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -257,7 +248,13 @@ export default function DivisionsPage() {
       label: "Division",
       render: (_: unknown, row: Division) => (
         <div>
-          <p className="font-medium">{row.name}</p>
+          <button
+            type="button"
+            className="font-medium text-accent hover:underline text-left"
+            onClick={() => handleDetailClick(row)}
+          >
+            {row.name}
+          </button>
           <p className="text-xs text-muted-foreground line-clamp-1">
             {row.description || "-"}
           </p>
@@ -269,38 +266,6 @@ export default function DivisionsPage() {
       label: "Code",
       render: (_: unknown, row: Division) => (
         <Badge variant="outline">{row.code}</Badge>
-      ),
-    },
-    {
-      key: "actions",
-      label: "",
-      className: "w-[50px]",
-      render: (_: unknown, row: Division) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon-sm" className="text-muted-foreground">
-              <MoreHorizontal />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => handleDetailClick(row)}>
-              <Eye className="mr-2 h-4 w-4" />
-              Detail
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleEditClick(row)}>
-              <Pencil className="mr-2 h-4 w-4" />
-              Edit
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              className="text-destructive focus:text-destructive"
-              onClick={() => handleDeleteClick(row)}
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Delete
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
       ),
     },
   ];
@@ -542,13 +507,34 @@ export default function DivisionsPage() {
                 <Textarea value={selectedDivision?.description || "-"} disabled />
               </div>
             </div>
-            <DialogFooter>
+            <DialogFooter className="flex-row justify-between sm:justify-between">
               <Button
-                variant="outline"
-                onClick={() => setIsDetailDialogOpen(false)}
+                variant="destructive"
+                onClick={() => {
+                  setIsDetailDialogOpen(false);
+                  if (selectedDivision) handleDeleteClick(selectedDivision);
+                }}
               >
-                Close
+                <Trash2 className="h-4 w-4" />
+                Delete
               </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setIsDetailDialogOpen(false)}
+                >
+                  Close
+                </Button>
+                <Button
+                  onClick={() => {
+                    setIsDetailDialogOpen(false);
+                    if (selectedDivision) handleEditClick(selectedDivision);
+                  }}
+                >
+                  <Pencil className="h-4 w-4" />
+                  Edit
+                </Button>
+              </div>
             </DialogFooter>
           </DialogContent>
         </Dialog>
