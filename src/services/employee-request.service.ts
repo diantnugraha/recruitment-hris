@@ -44,6 +44,16 @@ interface ApiEmployeeRequest {
   recruitment_code?: string;
   requested_by_id?: string;
   requested_by_name?: string;
+  hod_reviewed_by?: number | null;
+  hod_reviewed_at?: string | null;
+  hr_reviewed_by?: number | null;
+  hr_reviewed_at?: string | null;
+  approved_by?: number | null;
+  approved_at?: string | null;
+  revised_by?: number | null;
+  revised_at?: string | null;
+  rejected_by?: number | null;
+  rejected_at?: string | null;
   created_at: string;
   updated_at: string;
   job_title?: { id: number; name: string } | null;
@@ -124,6 +134,16 @@ function mapEmployeeRequest(api: ApiEmployeeRequest): EmployeeRequestWithRelatio
     jobRequirement: api.job_requirement,
     status, // Use the computed status variable
     recruitmentCode: api.recruitment_code,
+    hodReviewedBy: api.hod_reviewed_by ?? null,
+    hodReviewedAt: api.hod_reviewed_at ?? null,
+    hrReviewedBy: api.hr_reviewed_by ?? null,
+    hrReviewedAt: api.hr_reviewed_at ?? null,
+    approvedBy: api.approved_by ?? null,
+    approvedAt: api.approved_at ?? null,
+    revisedBy: api.revised_by ?? null,
+    revisedAt: api.revised_at ?? null,
+    rejectedBy: api.rejected_by ?? null,
+    rejectedAt: api.rejected_at ?? null,
     requestedById: api.requested_by_id || "",
     requestedByName: api.requested_by_name,
     createdAt: api.created_at,
@@ -426,6 +446,32 @@ export const employeeRequestService = {
   /**
    * Start recruitment from approved request
    */
+  /**
+   * Download PDF for employee request
+   */
+  async downloadPdf(id: string | number): Promise<void> {
+    const baseURL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+    const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
+
+    const response = await fetch(`${baseURL}/v1/employee-request/${id}/pdf`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to generate PDF");
+    }
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `Employee-Request-${id}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  },
+
   async startRecruitment(id: string | number): Promise<ApiResponse<EmployeeRequestWithRelations>> {
     try {
       const response = await post<unknown, Record<string, never>>(
