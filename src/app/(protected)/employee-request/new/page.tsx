@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { ArrowLeft, Loader2, Save, Send } from "lucide-react";
+import { ArrowLeft, Loader2, Save, Send, AlertTriangle, Info } from "lucide-react";
 
 import { Header } from "@/components/layout/header";
 import { PageContainer } from "@/components/layout/page-container";
@@ -36,6 +36,7 @@ import {
 import { jobTitleService } from "@/services/job-title.service";
 import { departmentService } from "@/services/department.service";
 import { employeeRequestService } from "@/services/employee-request.service";
+import { employeeBudgetService } from "@/services/employee-budget.service";
 import { showToast } from "@/lib/utils/toast-messages";
 import {
   REQUEST_REASON_OPTIONS,
@@ -43,8 +44,10 @@ import {
   EDUCATION_LEVEL_OPTIONS,
   GENDER_PREFERENCE_OPTIONS,
   WORK_LOCATION_OPTIONS,
+  ROLES,
 } from "@/lib/constants/employeeRequest";
-import type { JobTitle, Department } from "@/types";
+import { useAuthStore } from "@/stores/auth-store";
+import type { JobTitle, Department, RestBudgetData } from "@/types";
 
 // --- Schema ---
 
@@ -71,6 +74,15 @@ type EmployeeRequestFormData = z.infer<typeof employeeRequestSchema>;
 
 export default function NewEmployeeRequestPage() {
   const router = useRouter();
+  const { user } = useAuthStore();
+  const userRole = user?.role ?? '';
+
+  // Access guard — only admin and manager can create requests
+  React.useEffect(() => {
+    if (userRole && userRole !== ROLES.ADMIN && userRole !== ROLES.MANAGER) {
+      router.push('/employee-request');
+    }
+  }, [userRole, router]);
 
   // State
   const [jobTitles, setJobTitles] = React.useState<JobTitle[]>([]);
@@ -79,6 +91,8 @@ export default function NewEmployeeRequestPage() {
   const [isSubmitDialogOpen, setIsSubmitDialogOpen] = React.useState(false);
   const [submitComment, setSubmitComment] = React.useState("");
   const [pendingFormData, setPendingFormData] = React.useState<EmployeeRequestFormData | null>(null);
+  const [restBudget, setRestBudget] = React.useState<RestBudgetData | null>(null);
+  const [isLoadingBudget, setIsLoadingBudget] = React.useState(false);
 
   const {
     register,
@@ -131,6 +145,16 @@ export default function NewEmployeeRequestPage() {
     fetchData();
   }, []);
 
+  const isManager = userRole === ROLES.MANAGER;
+
+  // Auto-populate department for Manager from their managedDepartments
+  React.useEffect(() => {
+    if (isManager && user?.managedDepartments?.length) {
+      const dept = user.managedDepartments[0];
+      setValue('departmentId', String(dept.id));
+    }
+  }, [isManager, user, setValue]);
+
   // Auto-populate department when job title is selected
   React.useEffect(() => {
     if (!watchedJobTitleId) return;
@@ -146,6 +170,44 @@ export default function NewEmployeeRequestPage() {
       }
     }
   }, [watchedJobTitleId, jobTitles, setValue]);
+
+  // Derive job title category from selected job title
+  const selectedJobTitle = jobTitles.find(
+    (jt) => String(jt.id) === watchedJobTitleId
+  );
+  const jobTitleCategory = selectedJobTitle?.type as "Technical" | "Administration" | undefined;
+  const budgetCategory = jobTitleCategory === "Technical" ? "technical" : jobTitleCategory === "Administration" ? "admin" : null;
+  const availableBudget = restBudget && budgetCategory ? restBudget.rest[budgetCategory] : null;
+
+  // Fetch rest budget when department changes
+  React.useEffect(() => {
+    if (!watchedDepartmentId) {
+      setRestBudget(null);
+      return;
+    }
+
+    const controller = new AbortController();
+    const fetchBudget = async () => {
+      setIsLoadingBudget(true);
+      try {
+        const res = await employeeBudgetService.getRestBudget(Number(watchedDepartmentId));
+        if (!controller.signal.aborted && res.success && res.data) {
+          setRestBudget(res.data);
+        }
+      } catch {
+        if (!controller.signal.aborted) {
+          setRestBudget(null);
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setIsLoadingBudget(false);
+        }
+      }
+    };
+
+    fetchBudget();
+    return () => controller.abort();
+  }, [watchedDepartmentId]);
 
   // Handlers
   const onSubmit = async (data: EmployeeRequestFormData, status: "draft" | "created", comment?: string) => {
@@ -197,8 +259,16 @@ export default function NewEmployeeRequestPage() {
 
   const handleSaveDraft = handleSubmit((data) => onSubmit(data, "draft"));
 
-  // Open dialog for submit with comment
+  // Open dialog for submit with comment (validate budget first)
   const handleOpenSubmitDialog = handleSubmit((data) => {
+    if (!jobTitleCategory) {
+      showToast.error("Job title does not have a category (Technical/Administration). Please update the job title first.");
+      return;
+    }
+    if (availableBudget !== null && availableBudget <= 0) {
+      showToast.error("Insufficient budget for this department. Please check the employee budget allocation.");
+      return;
+    }
     setPendingFormData(data);
     setSubmitComment("");
     setIsSubmitDialogOpen(true);
@@ -232,7 +302,7 @@ export default function NewEmployeeRequestPage() {
       <PageContainer>
         <div className="space-y-6">
           {/* Back button */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <Button variant="ghost" onClick={() => router.push("/employee-request")}>
               <ArrowLeft />
               Back
@@ -306,12 +376,90 @@ export default function NewEmployeeRequestPage() {
                       placeholder="Select department"
                       searchPlaceholder="Search department..."
                       emptyText="No department found."
+                      disabled={isManager}
                     />
                     {errors.departmentId && (
                       <p className="text-sm text-destructive">{errors.departmentId.message}</p>
                     )}
                   </div>
                 </div>
+
+                {/* Budget Info Card */}
+                {watchedDepartmentId && watchedJobTitleId && (
+                  <div className={`rounded-lg border p-4 ${
+                    !jobTitleCategory
+                      ? "border-yellow-200 bg-yellow-50 dark:border-yellow-900 dark:bg-yellow-950"
+                      : availableBudget !== null && availableBudget <= 0
+                        ? "border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950"
+                        : "border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950"
+                  }`}>
+                    {isLoadingBudget ? (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Loading budget info...
+                      </div>
+                    ) : !jobTitleCategory ? (
+                      <div className="flex items-start gap-2">
+                        <AlertTriangle className="h-5 w-5 text-yellow-600 shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
+                            Job title has no category
+                          </p>
+                          <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">
+                            This job title does not have a category (Technical/Administration). Please update the job title first before submitting.
+                          </p>
+                        </div>
+                      </div>
+                    ) : restBudget ? (
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2">
+                          {availableBudget !== null && availableBudget <= 0 ? (
+                            <AlertTriangle className="h-5 w-5 text-red-600 shrink-0" />
+                          ) : (
+                            <Info className="h-5 w-5 text-blue-600 shrink-0" />
+                          )}
+                          <p className="text-sm font-medium">
+                            Budget Info — {jobTitleCategory}
+                          </p>
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+                          <div>
+                            <p className="text-xs text-muted-foreground">Budget</p>
+                            <p className="text-lg font-semibold">{restBudget.budget[budgetCategory!]}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground">Active</p>
+                            <p className="text-lg font-semibold">{restBudget.activeEmployees[budgetCategory!]}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground">Pending</p>
+                            <p className="text-lg font-semibold">{restBudget.pendingRequests[budgetCategory!]}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground">Available</p>
+                            <p className={`text-lg font-semibold ${
+                              availableBudget !== null && availableBudget <= 0
+                                ? "text-red-600"
+                                : "text-green-600"
+                            }`}>
+                              {availableBudget}
+                            </p>
+                          </div>
+                        </div>
+                        {availableBudget !== null && availableBudget <= 0 && (
+                          <p className="text-xs text-red-600 dark:text-red-400">
+                            Insufficient budget. You cannot submit this request until more budget is available.
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Info className="h-4 w-4" />
+                        No budget allocated for this department in the current year.
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
