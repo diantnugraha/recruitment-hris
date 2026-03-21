@@ -29,6 +29,7 @@ import {
   FileText,
   Activity,
   User,
+  Download,
 } from "lucide-react";
 
 import { Header } from "@/components/layout/header";
@@ -69,6 +70,7 @@ import {
   EDUCATION_LEVEL_LABELS,
   GENDER_PREFERENCE_LABELS,
   WORK_LOCATION_LABELS,
+  ROLES,
   type EmployeeRequestStatus,
   type EmploymentType,
   type RequestReason,
@@ -76,6 +78,7 @@ import {
   type GenderPreference,
   type WorkLocation,
 } from "@/lib/constants/employeeRequest";
+import { useAuthStore } from "@/stores/auth-store";
 import type { EmployeeRequestWithRelations } from "@/types/employee-request";
 
 // Workflow steps visualization
@@ -94,6 +97,16 @@ export default function EmployeeRequestDetailPage() {
   const router = useRouter();
   const id = params.id as string;
 
+  // Auth
+  const { user } = useAuthStore();
+  const userRole = user?.role ?? '';
+  const isAdmin = userRole === ROLES.ADMIN;
+
+  const canPerformAction = (allowedRoles: string[]) => {
+    if (isAdmin) return true;
+    return allowedRoles.includes(userRole);
+  };
+
   // State
   const [request, setRequest] = React.useState<EmployeeRequestWithRelations | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -102,7 +115,7 @@ export default function EmployeeRequestDetailPage() {
   // Dialog states
   const [showDeleteDialog, setShowDeleteDialog] = React.useState(false);
   const [showActionDialog, setShowActionDialog] = React.useState(false);
-  const [actionType, setActionType] = React.useState<"hod_review" | "hr_review" | "approve" | "reject" | "revise" | null>(null);
+  const [actionType, setActionType] = React.useState<"submit" | "resubmit" | "hod_review" | "hr_review" | "approve" | "reject" | "revise" | "complete" | null>(null);
   const [actionComment, setActionComment] = React.useState("");
   const [isProcessing, setIsProcessing] = React.useState(false);
 
@@ -141,6 +154,14 @@ export default function EmployeeRequestDetailPage() {
       let message = "";
 
       switch (actionType) {
+        case "submit":
+          newStatus = "created";
+          message = "Request submitted for review";
+          break;
+        case "resubmit":
+          newStatus = "created";
+          message = "Request resubmitted for review";
+          break;
         case "hod_review":
           newStatus = "hod_reviewed";
           message = "Request reviewed by HOD, forwarded to HR";
@@ -160,6 +181,10 @@ export default function EmployeeRequestDetailPage() {
         case "revise":
           newStatus = "revise";
           message = "Request returned for revision";
+          break;
+        case "complete":
+          newStatus = "completed";
+          message = "Request marked as completed";
           break;
       }
 
@@ -220,6 +245,19 @@ export default function EmployeeRequestDetailPage() {
     }
   };
 
+  const handleDownloadPdf = async () => {
+    if (!request) return;
+
+    setIsProcessing(true);
+    try {
+      await employeeRequestService.downloadPdf(id);
+    } catch (err) {
+      showToast.error("Failed to download PDF");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const openActionDialog = (type: typeof actionType) => {
     setActionType(type);
     setShowActionDialog(true);
@@ -236,6 +274,20 @@ export default function EmployeeRequestDetailPage() {
 
   const getActionDialogContent = () => {
     switch (actionType) {
+      case "submit":
+        return {
+          title: "Submit Request",
+          description: "Submit this request for HOD review.",
+          buttonText: "Submit",
+          buttonVariant: "default" as const,
+        };
+      case "resubmit":
+        return {
+          title: "Resubmit Request",
+          description: "Resubmit this revised request for HOD review.",
+          buttonText: "Resubmit",
+          buttonVariant: "default" as const,
+        };
       case "hod_review":
         return {
           title: "HOD Review",
@@ -270,6 +322,13 @@ export default function EmployeeRequestDetailPage() {
           description: "Return this request for revision. Please specify what needs to be changed.",
           buttonText: "Request Revision",
           buttonVariant: "outline" as const,
+        };
+      case "complete":
+        return {
+          title: "Complete Request",
+          description: "Mark this recruitment request as completed.",
+          buttonText: "Complete",
+          buttonVariant: "default" as const,
         };
       default:
         return { title: "", description: "", buttonText: "", buttonVariant: "default" as const };
@@ -323,14 +382,34 @@ export default function EmployeeRequestDetailPage() {
       <PageContainer>
         <div className="space-y-6">
           {/* Back button and actions */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <Button variant="ghost" onClick={() => router.push("/employee-request")} className="gap-2">
               <ArrowLeft className="h-4 w-4" />
               Back to Requests
             </Button>
             <div className="flex items-center gap-2">
-              {/* HOD Review - status: created */}
-              {request.status === "created" && (
+              {/* Manager actions: draft, revise — owner or admin */}
+              {["draft", "revise"].includes(request.status) && (request.requestedById === String(user?.id) || isAdmin) && (
+                <>
+                  <Button variant="outline" onClick={() => router.push(`/employee-request/${id}/edit`)}>
+                    <Pencil />
+                    Edit
+                  </Button>
+                  {request.status === "draft" && (
+                    <Button variant="destructive" onClick={() => setShowDeleteDialog(true)}>
+                      <Trash2 />
+                      Delete
+                    </Button>
+                  )}
+                  <Button onClick={() => openActionDialog(request.status === "draft" ? "submit" : "resubmit")}>
+                    <Send />
+                    {request.status === "draft" ? "Submit" : "Resubmit"}
+                  </Button>
+                </>
+              )}
+
+              {/* HOD actions: created */}
+              {request.status === "created" && canPerformAction([ROLES.HOD]) && (
                 <>
                   <Button variant="outline" onClick={() => openActionDialog("revise")}>
                     <RotateCcw />
@@ -342,8 +421,9 @@ export default function EmployeeRequestDetailPage() {
                   </Button>
                 </>
               )}
-              {/* HR Review - status: hod_reviewed */}
-              {request.status === "hod_reviewed" && (
+
+              {/* HR actions: hod_reviewed */}
+              {request.status === "hod_reviewed" && canPerformAction([ROLES.HR]) && (
                 <>
                   <Button variant="outline" onClick={() => openActionDialog("revise")}>
                     <RotateCcw />
@@ -355,9 +435,14 @@ export default function EmployeeRequestDetailPage() {
                   </Button>
                 </>
               )}
-              {/* Management Approval - status: reviewed */}
-              {request.status === "reviewed" && (
+
+              {/* Management actions: reviewed */}
+              {request.status === "reviewed" && canPerformAction([ROLES.MANAGEMENT]) && (
                 <>
+                  <Button variant="outline" onClick={() => openActionDialog("revise")}>
+                    <RotateCcw />
+                    Request Revision
+                  </Button>
                   <Button variant="destructive" onClick={() => openActionDialog("reject")}>
                     <XCircle />
                     Reject
@@ -368,23 +453,35 @@ export default function EmployeeRequestDetailPage() {
                   </Button>
                 </>
               )}
-              {request.status === "approved" && (
-                <Button onClick={handleStartRecruitment} disabled={isProcessing}>
-                  {isProcessing ? <Loader2 className="animate-spin" /> : <PlayCircle />}
-                  Start Recruitment
-                </Button>
-              )}
-              {["draft", "revise"].includes(request.status) && (
+
+              {/* HR actions: approved */}
+              {request.status === "approved" && canPerformAction([ROLES.HR]) && (
                 <>
-                  <Button variant="outline" onClick={() => router.push(`/employee-request/${id}/edit`)}>
-                    <Pencil />
-                    Edit
+                  <Button variant="outline" onClick={handleDownloadPdf} disabled={isProcessing}>
+                    <Download />
+                    Download PDF
                   </Button>
-                  <Button variant="destructive" onClick={() => setShowDeleteDialog(true)}>
-                    <Trash2 />
-                    Delete
+                  <Button onClick={handleStartRecruitment} disabled={isProcessing}>
+                    {isProcessing ? <Loader2 className="animate-spin" /> : <PlayCircle />}
+                    Start Recruitment
                   </Button>
                 </>
+              )}
+
+              {/* HR actions: in_recruitment */}
+              {request.status === "in_recruitment" && canPerformAction([ROLES.HR]) && (
+                <Button onClick={() => openActionDialog("complete")}>
+                  <Check />
+                  Complete
+                </Button>
+              )}
+
+              {/* Download PDF for completed/in_recruitment — visible to all */}
+              {["in_recruitment", "completed"].includes(request.status) && (
+                <Button variant="outline" onClick={handleDownloadPdf} disabled={isProcessing}>
+                  <Download />
+                  Download PDF
+                </Button>
               )}
             </div>
           </div>
@@ -393,7 +490,8 @@ export default function EmployeeRequestDetailPage() {
           {request.status !== "rejected" && (
             <Card className="overflow-hidden border-accent/10 bg-gradient-to-br from-accent/5 to-transparent">
               <CardContent className="p-4">
-                <div className="flex items-center justify-between">
+                <div className="overflow-x-auto pb-2">
+                <div className="flex items-center justify-between min-w-[600px]">
                   {WORKFLOW_STEPS.map((step, index) => {
                     const StepIcon = step.icon;
                     const isActive = index === currentStepIndex;
@@ -435,6 +533,7 @@ export default function EmployeeRequestDetailPage() {
                       </React.Fragment>
                     );
                   })}
+                </div>
                 </div>
               </CardContent>
             </Card>
