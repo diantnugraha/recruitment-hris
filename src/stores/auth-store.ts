@@ -34,8 +34,12 @@ export const useAuthStore = create<AuthStore>()(
           const response = await authService.login(credentials);
 
           if (response.success && response.data) {
+            const userData = response.data.user;
             set({
-              user: response.data.user,
+              user: {
+                ...userData,
+                role: (userData as unknown as { roleName?: string }).roleName ?? userData.role,
+              },
               token: response.data.token,
               isAuthenticated: true,
               isLoading: false,
@@ -98,8 +102,12 @@ export const useAuthStore = create<AuthStore>()(
         try {
           const response = await authService.getCurrentUser();
           if (response.success && response.data) {
+            const userData = response.data;
             set({
-              user: response.data,
+              user: {
+                ...userData,
+                role: (userData as unknown as { roleName?: string }).roleName ?? userData.role,
+              },
               token,
               isAuthenticated: true,
             });
