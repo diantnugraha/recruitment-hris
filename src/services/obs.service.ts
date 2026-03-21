@@ -3,7 +3,7 @@ import { Organization, ApiResponse } from "@/types";
 
 export interface CreateOrganizationRequest {
   name: string;
-  cluster: string;
+  cluster?: string;
   description?: string;
 }
 

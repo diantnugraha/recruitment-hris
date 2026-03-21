@@ -59,7 +59,7 @@ import { employeeBudgetService } from "@/services/employee-budget.service";
 import { departmentService } from "@/services/department.service";
 import { employeeService } from "@/services/employee.service";
 import { jobTitleService } from "@/services/job-title.service";
-import { EmployeeBudget, Department, EmployeeWithRelations, JobTitle } from "@/types";
+import { EmployeeBudget, Department, EmployeeWithRelations, JobTitle, RestBudgetData } from "@/types";
 import { showToast } from "@/lib/utils/toast-messages";
 
 // --- Constants ---
@@ -371,6 +371,7 @@ export default function EmployeeBudgetDetailPage() {
   const [budgets, setBudgets] = React.useState<EmployeeBudget[]>([]);
   const [employees, setEmployees] = React.useState<EmployeeWithRelations[]>([]);
   const [deptJobTitles, setDeptJobTitles] = React.useState<JobTitle[]>([]);
+  const [restBudgetData, setRestBudgetData] = React.useState<RestBudgetData | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -383,11 +384,12 @@ export default function EmployeeBudgetDetailPage() {
     setIsLoading(true);
     setError(null);
 
-    const [deptRes, budgetsRes, jobTitlesRes, employeesRes] = await Promise.all([
+    const [deptRes, budgetsRes, jobTitlesRes, employeesRes, restBudgetRes] = await Promise.all([
       departmentService.getById(departmentId),
       employeeBudgetService.fetchAll(),
       jobTitleService.getByDepartmentId(Number(departmentId)),
       employeeService.getAll(1, 1000),
+      employeeBudgetService.getRestBudget(Number(departmentId)),
     ]);
 
     if (deptRes.success && deptRes.data) {
@@ -416,6 +418,11 @@ export default function EmployeeBudgetDetailPage() {
         (e) => String(e.departmentId) === String(departmentId)
       );
       setEmployees(filteredEmployees);
+    }
+
+    // Rest budget from backend (accurate: budget - active - pending)
+    if (restBudgetRes.success && restBudgetRes.data) {
+      setRestBudgetData(restBudgetRes.data);
     }
 
     setIsLoading(false);
@@ -485,15 +492,11 @@ export default function EmployeeBudgetDetailPage() {
   const currentYearBudget = getBudgetByYear(CURRENT_YEAR);
   const nextYearBudget = getBudgetByYear(CURRENT_YEAR + 1);
 
-  // Rest budget = total budget allocation for current year
+  // Rest budget from backend API (budget - activeEmployees - pendingRequests)
   const restBudget = React.useMemo(() => {
-    if (!currentYearBudget) return { technical: 0, admin: 0, total: 0 };
-    return {
-      technical: currentYearBudget.technical,
-      admin: currentYearBudget.admin,
-      total: currentYearBudget.technical + currentYearBudget.admin,
-    };
-  }, [currentYearBudget]);
+    if (!restBudgetData) return { technical: 0, admin: 0, total: 0 };
+    return restBudgetData.rest;
+  }, [restBudgetData]);
 
   const handleAddClick = () => {
     setSelectedBudget(null);
@@ -569,78 +572,64 @@ export default function EmployeeBudgetDetailPage() {
           </Card>
 
           {/* Current Employee Stats */}
-          <div className="grid gap-4 sm:grid-cols-4">
-            <Card>
-              <CardContent className="p-5">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs uppercase tracking-wider text-muted-foreground">
-                      Total Employees
-                    </p>
-                    <p className="mt-1 text-3xl font-semibold">{employeeStats.total}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">Current headcount</p>
+          <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+            <Card className="overflow-hidden">
+              <CardContent className="p-0">
+                <div className="flex items-stretch">
+                  <div className="flex w-12 shrink-0 items-center justify-center bg-accent/10">
+                    <Users className="h-4 w-4 text-accent" />
                   </div>
-                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-secondary">
-                    <Users className="h-5 w-5 text-muted-foreground" />
+                  <div className="flex-1 px-3 py-2.5">
+                    <p className="text-[11px] font-medium text-muted-foreground">Total Employees</p>
+                    <p className="text-lg font-bold tabular-nums">{restBudgetData ? restBudgetData.activeEmployees.total : employeeStats.total}</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardContent className="p-5">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs uppercase tracking-wider text-muted-foreground">
-                      Technical Staff
-                    </p>
-                    <p className="mt-1 text-3xl font-semibold">{employeeStats.technical.total}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">Current headcount</p>
+            <Card className="overflow-hidden">
+              <CardContent className="p-0">
+                <div className="flex items-stretch">
+                  <div className="flex w-12 shrink-0 items-center justify-center bg-blue-500/10">
+                    <UserCheck className="h-4 w-4 text-blue-600" />
                   </div>
-                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-100">
-                    <UserCheck className="h-5 w-5 text-blue-600" />
+                  <div className="flex-1 px-3 py-2.5">
+                    <p className="text-[11px] font-medium text-muted-foreground">Technical Staff</p>
+                    <p className="text-lg font-bold tabular-nums">{restBudgetData ? restBudgetData.activeEmployees.technical : employeeStats.technical.total}</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardContent className="p-5">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs uppercase tracking-wider text-muted-foreground">
-                      Admin Staff
-                    </p>
-                    <p className="mt-1 text-3xl font-semibold">{employeeStats.admin.total}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">Current headcount</p>
+            <Card className="overflow-hidden">
+              <CardContent className="p-0">
+                <div className="flex items-stretch">
+                  <div className="flex w-12 shrink-0 items-center justify-center bg-purple-500/10">
+                    <Briefcase className="h-4 w-4 text-purple-600" />
                   </div>
-                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-purple-100">
-                    <Briefcase className="h-5 w-5 text-purple-600" />
+                  <div className="flex-1 px-3 py-2.5">
+                    <p className="text-[11px] font-medium text-muted-foreground">Admin Staff</p>
+                    <p className="text-lg font-bold tabular-nums">{restBudgetData ? restBudgetData.activeEmployees.admin : employeeStats.admin.total}</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className={restBudget.total >= 0 ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"}>
-              <CardContent className="p-5">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs uppercase tracking-wider text-muted-foreground">
-                      Rest Budget
-                    </p>
-                    <p className={`mt-1 text-3xl font-semibold ${restBudget.total >= 0 ? "text-green-600" : "text-red-600"}`}>
+            <Card className="overflow-hidden">
+              <CardContent className="p-0">
+                <div className="flex items-stretch">
+                  <div className={`flex w-12 shrink-0 items-center justify-center ${restBudget.total >= 0 ? "bg-green-500/10" : "bg-red-500/10"}`}>
+                    {restBudget.total >= 0 ? (
+                      <TrendingUp className="h-4 w-4 text-green-600" />
+                    ) : (
+                      <TrendingDown className="h-4 w-4 text-red-600" />
+                    )}
+                  </div>
+                  <div className="flex-1 px-3 py-2.5">
+                    <p className="text-[11px] font-medium text-muted-foreground">Rest Budget</p>
+                    <p className={`text-lg font-bold tabular-nums ${restBudget.total >= 0 ? "text-green-600" : "text-red-600"}`}>
                       {restBudget.total >= 0 ? "+" : ""}{restBudget.total}
                     </p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Available positions ({CURRENT_YEAR})
-                    </p>
-                  </div>
-                  <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${restBudget.total >= 0 ? "bg-green-100" : "bg-red-100"}`}>
-                    {restBudget.total >= 0 ? (
-                      <TrendingUp className="h-5 w-5 text-green-600" />
-                    ) : (
-                      <TrendingDown className="h-5 w-5 text-red-600" />
-                    )}
                   </div>
                 </div>
               </CardContent>
@@ -674,6 +663,7 @@ export default function EmployeeBudgetDetailPage() {
                   </Button>
                 </div>
               ) : (
+                <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -699,46 +689,50 @@ export default function EmployeeBudgetDetailPage() {
                         return (
                           <TableRow key={budget.id}>
                             <TableCell>
-                              <Badge
-                                variant={budget.year === CURRENT_YEAR ? "default" : "outline"}
-                                                              >
+                              <Badge variant={budget.year === CURRENT_YEAR ? "default" : "outline"}>
                                 {budget.year}
                                 {budget.year === CURRENT_YEAR && " (Current)"}
                               </Badge>
                             </TableCell>
-                            <TableCell className="text-center font-semibold">
-                              {budget.technical}
-                            </TableCell>
-                            <TableCell className="text-center font-semibold">
-                              {budget.admin}
+                            <TableCell className="text-center">
+                              <span className="font-semibold tabular-nums">{budget.technical}</span>
                             </TableCell>
                             <TableCell className="text-center">
-                              <Badge variant="secondary">
+                              <span className="font-semibold tabular-nums">{budget.admin}</span>
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <span className="inline-flex items-center gap-1.5 rounded-md bg-accent/10 px-2.5 py-1 text-sm font-bold tabular-nums text-accent">
                                 {currentTotal}
-                              </Badge>
+                                <span className="text-[10px] font-medium text-accent/70">total</span>
+                              </span>
                             </TableCell>
                             <TableCell className="text-center">
                               {prevBudget ? (
-                                <Badge
-                                  variant={
-                                    growth > 0
-                                      ? "success"
-                                      : growth < 0
-                                      ? "destructive"
-                                      : "outline"
-                                  }
-                                  className="gap-1"
-                                >
-                                  {growth > 0 ? (
-                                    <TrendingUp className="h-3 w-3" />
-                                  ) : growth < 0 ? (
-                                    <TrendingDown className="h-3 w-3" />
-                                  ) : null}
-                                  {growth > 0 ? "+" : ""}
-                                  {growth}%
-                                </Badge>
+                                <div className="inline-flex flex-col items-center gap-0.5">
+                                  <Badge
+                                    variant={
+                                      growth > 0
+                                        ? "success"
+                                        : growth < 0
+                                        ? "destructive"
+                                        : "outline"
+                                    }
+                                    className="gap-1"
+                                  >
+                                    {growth > 0 ? (
+                                      <TrendingUp className="h-3 w-3" />
+                                    ) : growth < 0 ? (
+                                      <TrendingDown className="h-3 w-3" />
+                                    ) : null}
+                                    {growth > 0 ? "+" : ""}
+                                    {growth}%
+                                  </Badge>
+                                  <span className="text-[10px] text-muted-foreground tabular-nums">
+                                    {currentTotal - prevTotal >= 0 ? "+" : ""}{currentTotal - prevTotal} positions
+                                  </span>
+                                </div>
                               ) : (
-                                <span className="text-muted-foreground">-</span>
+                                <span className="text-xs text-muted-foreground">First year</span>
                               )}
                             </TableCell>
                             <TableCell className="text-right">
@@ -749,7 +743,7 @@ export default function EmployeeBudgetDetailPage() {
                                       <TooltipTrigger asChild>
                                         <Button
                                           variant="ghost"
-                                         
+                                          size="icon"
                                           onClick={() => {
                                             const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
                                             window.open(`${apiUrl}/${budget.document}`, "_blank");
@@ -766,7 +760,7 @@ export default function EmployeeBudgetDetailPage() {
                                 )}
                                 <Button
                                   variant="ghost"
-                                 
+                                  size="icon"
                                   onClick={() => handleEditClick(budget)}
                                 >
                                   <Pencil className="h-4 w-4" />
@@ -778,6 +772,7 @@ export default function EmployeeBudgetDetailPage() {
                       })}
                   </TableBody>
                 </Table>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -792,65 +787,144 @@ export default function EmployeeBudgetDetailPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
+                <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Type</TableHead>
                       <TableHead className="text-center">Budget</TableHead>
-                      <TableHead className="text-center">Actual</TableHead>
-                      <TableHead className="text-center">Remaining</TableHead>
+                      <TableHead className="text-center">Active</TableHead>
+                      <TableHead className="text-center">Pending</TableHead>
+                      <TableHead>Utilization</TableHead>
+                      <TableHead className="text-center">Rest</TableHead>
                       <TableHead className="text-center">Status</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    <TableRow>
-                      <TableCell className="font-medium">Technical</TableCell>
-                      <TableCell className="text-center">{currentYearBudget.technical}</TableCell>
-                      <TableCell className="text-center">{employeeStats.technical.total}</TableCell>
-                      <TableCell className="text-center">
-                        <span
-                          className={
-                            restBudget.technical >= 0 ? "text-green-600" : "text-red-600"
-                          }
-                        >
-                          {restBudget.technical >= 0 ? "+" : ""}
-                          {restBudget.technical}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Badge
-                          variant={
-                            restBudget.technical >= 0 ? "success" : "destructive"
-                          }
-                        >
-                          {restBudget.technical >= 0 ? "Under Budget" : "Over Budget"}
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell className="font-medium">Admin</TableCell>
-                      <TableCell className="text-center">{currentYearBudget.admin}</TableCell>
-                      <TableCell className="text-center">{employeeStats.admin.total}</TableCell>
-                      <TableCell className="text-center">
-                        <span
-                          className={
-                            restBudget.admin >= 0 ? "text-green-600" : "text-red-600"
-                          }
-                        >
-                          {restBudget.admin >= 0 ? "+" : ""}
-                          {restBudget.admin}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Badge
-                          variant={restBudget.admin >= 0 ? "success" : "destructive"}
-                        >
-                          {restBudget.admin >= 0 ? "Under Budget" : "Over Budget"}
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
+                    {(() => {
+                      const rows = [
+                        {
+                          label: "Technical",
+                          budget: restBudgetData?.budget.technical ?? currentYearBudget.technical,
+                          active: restBudgetData?.activeEmployees.technical ?? employeeStats.technical.total,
+                          pending: restBudgetData?.pendingRequests.technical ?? 0,
+                          remaining: restBudget.technical,
+                        },
+                        {
+                          label: "Admin",
+                          budget: restBudgetData?.budget.admin ?? currentYearBudget.admin,
+                          active: restBudgetData?.activeEmployees.admin ?? employeeStats.admin.total,
+                          pending: restBudgetData?.pendingRequests.admin ?? 0,
+                          remaining: restBudget.admin,
+                        },
+                      ];
+
+                      const totalBudget = rows.reduce((s, r) => s + r.budget, 0);
+                      const totalActive = rows.reduce((s, r) => s + r.active, 0);
+                      const totalPending = rows.reduce((s, r) => s + r.pending, 0);
+                      const totalRemaining = rows.reduce((s, r) => s + r.remaining, 0);
+                      const totalUsed = totalActive + totalPending;
+                      const totalPct = totalBudget > 0 ? Math.round((totalUsed / totalBudget) * 100) : 0;
+                      const totalIsOver = totalRemaining < 0;
+
+                      return (
+                        <>
+                          {rows.map((row) => {
+                            const used = row.active + row.pending;
+                            const pct = row.budget > 0 ? Math.round((used / row.budget) * 100) : 0;
+                            const isOver = row.remaining < 0;
+
+                            return (
+                              <TableRow key={row.label}>
+                                <TableCell className="font-medium">{row.label}</TableCell>
+                                <TableCell className="text-center">
+                                  <span className="font-semibold tabular-nums">{row.budget}</span>
+                                </TableCell>
+                                <TableCell className="text-center">
+                                  <span className="font-semibold tabular-nums">{row.active}</span>
+                                </TableCell>
+                                <TableCell className="text-center">
+                                  {row.pending > 0 ? (
+                                    <span className="font-semibold tabular-nums text-amber-600">{row.pending}</span>
+                                  ) : (
+                                    <span className="text-muted-foreground">-</span>
+                                  )}
+                                </TableCell>
+                                <TableCell className="min-w-[140px]">
+                                  <div className="flex items-center gap-2">
+                                    <div className="h-2 flex-1 rounded-full bg-muted">
+                                      <div
+                                        className={`h-full rounded-full transition-all ${
+                                          isOver ? "bg-red-500" : pct >= 80 ? "bg-amber-500" : "bg-green-500"
+                                        }`}
+                                        style={{ width: `${Math.min(pct, 100)}%` }}
+                                      />
+                                    </div>
+                                    <span className={`text-xs font-medium tabular-nums ${
+                                      isOver ? "text-red-600" : pct >= 80 ? "text-amber-600" : "text-green-600"
+                                    }`}>
+                                      {pct}%
+                                    </span>
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-center">
+                                  <span className={`font-semibold tabular-nums ${isOver ? "text-red-600" : "text-green-600"}`}>
+                                    {row.remaining >= 0 ? "+" : ""}{row.remaining}
+                                  </span>
+                                </TableCell>
+                                <TableCell className="text-center">
+                                  <Badge variant={isOver ? "destructive" : "success"}>
+                                    {isOver ? "Over Budget" : "Under Budget"}
+                                  </Badge>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                          <TableRow className="bg-muted/50 font-semibold">
+                            <TableCell>Total</TableCell>
+                            <TableCell className="text-center tabular-nums">{totalBudget}</TableCell>
+                            <TableCell className="text-center tabular-nums">{totalActive}</TableCell>
+                            <TableCell className="text-center tabular-nums">
+                              {totalPending > 0 ? (
+                                <span className="text-amber-600">{totalPending}</span>
+                              ) : (
+                                <span className="text-muted-foreground">-</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="min-w-[140px]">
+                              <div className="flex items-center gap-2">
+                                <div className="h-2 flex-1 rounded-full bg-muted">
+                                  <div
+                                    className={`h-full rounded-full transition-all ${
+                                      totalIsOver ? "bg-red-500" : totalPct >= 80 ? "bg-amber-500" : "bg-green-500"
+                                    }`}
+                                    style={{ width: `${Math.min(totalPct, 100)}%` }}
+                                  />
+                                </div>
+                                <span className={`text-xs font-medium tabular-nums ${
+                                  totalIsOver ? "text-red-600" : totalPct >= 80 ? "text-amber-600" : "text-green-600"
+                                }`}>
+                                  {totalPct}%
+                                </span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <span className={`tabular-nums ${totalIsOver ? "text-red-600" : "text-green-600"}`}>
+                                {totalRemaining >= 0 ? "+" : ""}{totalRemaining}
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <Badge variant={totalIsOver ? "destructive" : "success"}>
+                                {totalIsOver ? "Over Budget" : "Under Budget"}
+                              </Badge>
+                            </TableCell>
+                          </TableRow>
+                        </>
+                      );
+                    })()}
                   </TableBody>
                 </Table>
+                </div>
               </CardContent>
             </Card>
           )}

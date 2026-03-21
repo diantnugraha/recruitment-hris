@@ -180,7 +180,7 @@ export default function CandidateNewPage() {
                   Personal Information
                 </h2>
                 <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <Label htmlFor="firstName">First Name *</Label>
                       <Input
@@ -201,7 +201,7 @@ export default function CandidateNewPage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <Label htmlFor="email">Email *</Label>
                       <Input
@@ -233,7 +233,7 @@ export default function CandidateNewPage() {
                   Application Details
                 </h2>
                 <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <Label>Source</Label>
                       <Select
@@ -254,7 +254,7 @@ export default function CandidateNewPage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <Label>Job Title</Label>
                       <SearchableSelect
@@ -295,7 +295,7 @@ export default function CandidateNewPage() {
                   Current Position
                 </h2>
                 <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <Label htmlFor="currentCompany">Current Company</Label>
                       <Input
@@ -316,7 +316,7 @@ export default function CandidateNewPage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <Label htmlFor="expectedSalary">Expected Salary (IDR)</Label>
                       <Input
@@ -358,7 +358,7 @@ export default function CandidateNewPage() {
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <Label htmlFor="linkedinUrl">LinkedIn URL</Label>
                       <Input

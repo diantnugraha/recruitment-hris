@@ -163,7 +163,7 @@ export default function JobTitleDetailPage() {
       <PageContainer>
         <div className="space-y-6">
           {/* Top Bar: Back + Actions */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <button
               onClick={() => router.push("/organization/job-titles")}
               className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
@@ -243,7 +243,7 @@ export default function JobTitleDetailPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 <InfoTile icon={Briefcase} label="Job Title" value={jobTitle.name} />
                 <InfoTile icon={Layers} label="Job Level" value={jobLevelName} />
                 <InfoTile icon={Tag} label="Type" value={jobTitle.type || "—"} />

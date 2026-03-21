@@ -4,10 +4,7 @@ import * as React from "react";
 import {
   Pencil,
   Trash2,
-  Layers,
-  Users,
   Loader2,
-  Building2,
 } from "lucide-react";
 
 import { Header } from "@/components/layout/header";
@@ -39,7 +36,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
 import { useOrganizationStore } from "@/stores/organization-store";
-import { divisionService, CreateDivisionRequest, DivisionStats } from "@/services/division.service";
+import { divisionService, CreateDivisionRequest } from "@/services/division.service";
 import { obsService } from "@/services/obs.service";
 import { showToast } from "@/lib/utils/toast-messages";
 import { Division } from "@/types";
@@ -70,12 +67,6 @@ export default function DivisionsPage() {
     setLoading,
   } = useOrganizationStore();
 
-  const [stats, setStats] = React.useState<DivisionStats>({
-    totalDivisions: 0,
-    totalDepartments: 0,
-    totalEmployees: 0,
-  });
-
   const [currentPage, setCurrentPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(10);
   const [totalItems, setTotalItems] = React.useState(0);
@@ -97,7 +88,6 @@ export default function DivisionsPage() {
 
   React.useEffect(() => {
     fetchOrganizations();
-    fetchStats();
   }, []);
 
   const fetchDivisions = async (page: number, limit: number) => {
@@ -122,13 +112,6 @@ export default function DivisionsPage() {
     if (response.success && response.data) {
       const orgData = Array.isArray(response.data) ? response.data : [];
       setOrganizations(orgData);
-    }
-  };
-
-  const fetchStats = async () => {
-    const response = await divisionService.getStats();
-    if (response.success && response.data) {
-      setStats(response.data);
     }
   };
 
@@ -187,7 +170,7 @@ export default function DivisionsPage() {
       setIsAddDialogOpen(false);
       setFormData(initialFormData);
       setTotalItems((prev) => prev + 1);
-      fetchStats();
+
       showToast.created("Division");
     } else {
       showToast.createError("division", response.message);
@@ -233,7 +216,7 @@ export default function DivisionsPage() {
       setIsDeleteDialogOpen(false);
       setSelectedDivision(null);
       setTotalItems((prev) => prev - 1);
-      fetchStats();
+
       showToast.deleted("Division");
     } else {
       showToast.deleteError("division", response.message);
@@ -246,76 +229,35 @@ export default function DivisionsPage() {
     {
       key: "name",
       label: "Division",
-      render: (_: unknown, row: Division) => (
-        <div>
-          <button
-            type="button"
-            className="font-medium text-accent hover:underline text-left"
-            onClick={() => handleDetailClick(row)}
-          >
-            {row.name}
-          </button>
-          <p className="text-xs text-muted-foreground line-clamp-1">
-            {row.description || "-"}
-          </p>
-        </div>
+      className: "w-1/2",
+      render: (row: Division) => (
+        <button
+          type="button"
+          className="font-medium text-accent hover:underline text-left"
+          onClick={() => handleDetailClick(row)}
+        >
+          {row.name}
+        </button>
       ),
     },
     {
       key: "code",
       label: "Code",
-      render: (_: unknown, row: Division) => (
-        <Badge variant="outline">{row.code}</Badge>
+      className: "w-1/2",
+      render: (row: Division) => (
+        <Badge variant="secondary">{row.code}</Badge>
       ),
     },
   ];
 
   return (
     <>
-      <Header title="Divisions" />
+      <Header title="Organization" />
       <PageContainer>
         <div className="space-y-6">
-          {/* Stats */}
-          <div className="grid gap-4 sm:grid-cols-3">
-            <Card>
-              <CardContent className="flex items-center gap-4 p-5">
-                <div className="flex h-10 w-10 items-center justify-center rounded-md bg-secondary">
-                  <Layers className="h-5 w-5 text-muted-foreground" />
-                </div>
-                <div>
-                  <p className="text-2xl font-semibold">
-                    {isLoading ? "-" : stats.totalDivisions || totalItems}
-                  </p>
-                  <p className="text-sm text-muted-foreground">Total Divisions</p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="flex items-center gap-4 p-5">
-                <div className="flex h-10 w-10 items-center justify-center rounded-md bg-secondary">
-                  <Users className="h-5 w-5 text-muted-foreground" />
-                </div>
-                <div>
-                  <p className="text-2xl font-semibold">
-                    {isLoading ? "-" : stats.totalEmployees}
-                  </p>
-                  <p className="text-sm text-muted-foreground">Total Employees</p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="flex items-center gap-4 p-5">
-                <div className="flex h-10 w-10 items-center justify-center rounded-md bg-secondary">
-                  <Building2 className="h-5 w-5 text-muted-foreground" />
-                </div>
-                <div>
-                  <p className="text-2xl font-semibold">
-                    {isLoading ? "-" : stats.totalDepartments}
-                  </p>
-                  <p className="text-sm text-muted-foreground">Total Departments</p>
-                </div>
-              </CardContent>
-            </Card>
+          <div>
+            <h2 className="text-lg font-semibold">Divisions</h2>
+            <p className="text-sm text-muted-foreground">Manage divisions within your organization structure.</p>
           </div>
 
           {/* Table */}
@@ -493,23 +435,28 @@ export default function DivisionsPage() {
                 Viewing division information.
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="space-y-1.5">
-                <Label>Name</Label>
-                <Input value={selectedDivision?.name || ""} disabled />
+            <div className="space-y-4 py-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Name</p>
+                  <p className="text-sm font-medium">{selectedDivision?.name || "-"}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Code</p>
+                  <p className="text-sm font-medium">{selectedDivision?.code || "-"}</p>
+                </div>
               </div>
-              <div className="space-y-1.5">
-                <Label>Code</Label>
-                <Input value={selectedDivision?.code || ""} disabled />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Description</Label>
-                <Textarea value={selectedDivision?.description || "-"} disabled />
-              </div>
+              {selectedDivision?.description && (
+                <div className="space-y-1 border-t pt-3">
+                  <p className="text-xs text-muted-foreground">Description</p>
+                  <p className="text-sm text-muted-foreground">{selectedDivision.description}</p>
+                </div>
+              )}
             </div>
-            <DialogFooter className="flex-row justify-between sm:justify-between">
+            <DialogFooter className="flex-row gap-2 sm:justify-end">
               <Button
-                variant="destructive"
+                variant="ghost"
+                className="mr-auto text-destructive hover:text-destructive hover:bg-destructive/10"
                 onClick={() => {
                   setIsDetailDialogOpen(false);
                   if (selectedDivision) handleDeleteClick(selectedDivision);
@@ -518,23 +465,21 @@ export default function DivisionsPage() {
                 <Trash2 className="h-4 w-4" />
                 Delete
               </Button>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => setIsDetailDialogOpen(false)}
-                >
-                  Close
-                </Button>
-                <Button
-                  onClick={() => {
-                    setIsDetailDialogOpen(false);
-                    if (selectedDivision) handleEditClick(selectedDivision);
-                  }}
-                >
-                  <Pencil className="h-4 w-4" />
-                  Edit
-                </Button>
-              </div>
+              <Button
+                variant="outline"
+                onClick={() => setIsDetailDialogOpen(false)}
+              >
+                Close
+              </Button>
+              <Button
+                onClick={() => {
+                  setIsDetailDialogOpen(false);
+                  if (selectedDivision) handleEditClick(selectedDivision);
+                }}
+              >
+                <Pencil className="h-4 w-4" />
+                Edit
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

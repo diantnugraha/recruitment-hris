@@ -3,6 +3,7 @@ import {
   EmployeeBudget,
   EmployeeBudgetSummary,
   BudgetCalculation,
+  RestBudgetData,
   ApiResponse,
   Department,
 } from "@/types";
@@ -303,31 +304,84 @@ export const employeeBudgetService = {
     }
   },
 
-  // Upload document
-  async uploadDocument(file: File): Promise<ApiResponse<{ path: string }>> {
+  // Get rest budget for a department
+  async getRestBudget(
+    departmentId: number,
+    year?: number
+  ): Promise<ApiResponse<RestBudgetData>> {
     try {
-      const formData = new FormData();
-      formData.append("file", file);
+      let url = `/v1/employee-budget/rest-budget?department_id=${departmentId}`;
+      if (year) {
+        url += `&year=${year}`;
+      }
 
-      const response = await post<unknown, FormData>(
-        "/v1/employee-budget/upload",
-        formData
-      );
-      const res = response as { success?: boolean; data?: { path: string } };
+      const response = await get<unknown>(url);
+      const res = response as { success?: boolean; data?: RestBudgetData };
 
       if (res.success && res.data) {
         return { success: true, data: res.data };
       }
 
-      if (response && typeof response === "object" && "path" in response) {
-        return { success: true, data: response as { path: string } };
+      if (response && typeof response === "object") {
+        return { success: true, data: response as RestBudgetData };
+      }
+
+      return { success: false, message: "Unexpected response format" };
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: ApiResponse<RestBudgetData> } };
+      if (err.response?.data) return err.response.data;
+      return { success: false, message: "Failed to fetch rest budget" };
+    }
+  },
+
+  // Upload document to S3 via backend
+  async uploadDocument(budgetId: string, file: File): Promise<ApiResponse<{ url: string; name: string }>> {
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await post<unknown, FormData>(
+        `/v1/employee-budget/${budgetId}/document`,
+        formData,
+        { headers: { "Content-Type": "multipart/form-data" } }
+      );
+      const res = response as { success?: boolean; data?: { url: string; name: string } };
+
+      if (res.success && res.data) {
+        return { success: true, data: res.data };
+      }
+
+      if (response && typeof response === "object" && "url" in response) {
+        return { success: true, data: response as { url: string; name: string } };
       }
 
       return { success: false, message: "Failed to upload document" };
     } catch (error: unknown) {
-      const err = error as { response?: { data?: ApiResponse<{ path: string }> } };
+      const err = error as { response?: { data?: ApiResponse<{ url: string; name: string }> } };
       if (err.response?.data) return err.response.data;
       return { success: false, message: "Failed to upload document" };
+    }
+  },
+
+  // Get document presigned URL from S3
+  async getDocumentUrl(budgetId: string): Promise<ApiResponse<{ url: string | null; name: string | null; presignedUrl: string | null }>> {
+    try {
+      const response = await get<unknown>(`/v1/employee-budget/${budgetId}/document`);
+      const res = response as { success?: boolean; data?: { url: string | null; name: string | null; presignedUrl: string | null } };
+
+      if (res.success && res.data) {
+        return { success: true, data: res.data };
+      }
+
+      if (response && typeof response === "object") {
+        return { success: true, data: response as { url: string | null; name: string | null; presignedUrl: string | null } };
+      }
+
+      return { success: false, message: "Failed to get document URL" };
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: ApiResponse<{ url: string | null; name: string | null; presignedUrl: string | null }> } };
+      if (err.response?.data) return err.response.data;
+      return { success: false, message: "Failed to get document URL" };
     }
   },
 };

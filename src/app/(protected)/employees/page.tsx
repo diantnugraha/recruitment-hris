@@ -2,18 +2,9 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
-  Download,
-  Eye,
-  Pencil,
-  Trash2,
-  Users,
-  UserCheck,
-  UserX,
   Loader2,
-  MoreHorizontal,
-  Briefcase,
-  ShieldCheck,
 } from "lucide-react";
 
 import { Header } from "@/components/layout/header";
@@ -22,24 +13,6 @@ import { DataTable } from "@/components/shared/data-table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -51,11 +24,7 @@ import {
 
 import { useEmployeeStore } from "@/stores/employee-store";
 import employeeService from "@/services/employee.service";
-import {
-  EmployeeWithRelations,
-  EmployeeStatus,
-} from "@/types";
-import { getInitials, formatShortDate } from "@/lib/utils";
+import { EmployeeWithRelations, EmployeeStatus } from "@/types";
 import { showToast } from "@/lib/utils/toast-messages";
 
 // --- Constants ---
@@ -100,11 +69,12 @@ function getStatusConfig(status: string) {
 const ACTIVE_STATUSES = new Set<string>(["active", "permanent", "contract", "probation", "outsource"]);
 
 export default function EmployeesPage() {
+  const router = useRouter();
+
   // Store
   const {
     employees,
     setEmployees,
-    deleteEmployee,
     isLoading,
     setLoading,
     error,
@@ -116,12 +86,6 @@ export default function EmployeesPage() {
   const [pageSize, setPageSize] = React.useState(10);
   const [searchQuery, setSearchQuery] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState<string>("all");
-
-  // Delete dialog states
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
-  const [selectedEmployee, setSelectedEmployee] =
-    React.useState<EmployeeWithRelations | null>(null);
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   // Fetch all employees (multi-page)
   const fetchEmployees = React.useCallback(async () => {
@@ -219,168 +183,79 @@ export default function EmployeesPage() {
     const probationCount = empArray.filter((e) => e.status === "probation").length;
 
     return [
-      {
-        label: "Total Employees",
-        value: empArray.length,
-        icon: Users,
-        description: "All employees",
-        accent: true,
-      },
-      {
-        label: "Active",
-        value: activeCount,
-        icon: UserCheck,
-        description: "Currently working",
-        accent: false,
-      },
-      {
-        label: "Permanent",
-        value: permanentCount,
-        icon: ShieldCheck,
-        description: "Permanent status",
-        accent: false,
-      },
-      {
-        label: "Contract",
-        value: contractCount,
-        icon: Briefcase,
-        description: "Contract employees",
-        accent: false,
-      },
-      {
-        label: "Probation",
-        value: probationCount,
-        icon: UserX,
-        description: "On probation",
-        accent: false,
-      },
+      { label: "Total Employees", value: empArray.length, accent: true },
+      { label: "Active", value: activeCount, accent: false },
+      { label: "Permanent", value: permanentCount, accent: false },
+      { label: "Contract", value: contractCount, accent: false },
+      { label: "Probation", value: probationCount, accent: false },
     ];
   }, [employees]);
-
-  // Delete handler
-  const handleDelete = async () => {
-    if (!selectedEmployee) return;
-    setIsSubmitting(true);
-
-    const response = await employeeService.delete(selectedEmployee.id);
-
-    if (response.success) {
-      deleteEmployee(selectedEmployee.id);
-      setIsDeleteDialogOpen(false);
-      setSelectedEmployee(null);
-      showToast.deleted("Employee");
-    } else {
-      showToast.deleteError("employee", response.message);
-    }
-
-    setIsSubmitting(false);
-  };
-
-  const handleDeleteClick = (employee: EmployeeWithRelations) => {
-    setSelectedEmployee(employee);
-    setIsDeleteDialogOpen(true);
-  };
 
   // Table columns
   const columns = [
     {
       key: "employee",
       label: "Employee",
-      render: (_: unknown, row: EmployeeWithRelations) => (
-        <div className="flex items-center gap-3">
-          <Avatar className="h-9 w-9 border border-border">
-            <AvatarFallback className="bg-accent/10 text-xs font-semibold text-accent">
-              {getInitials(`${row.firstName || ""} ${row.lastName || ""}`)}
-            </AvatarFallback>
-          </Avatar>
-          <div>
-            <p className="font-medium">
-              {row.firstName || ""} {row.lastName || ""}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {row.employeeNik || "No Data"}
-            </p>
-          </div>
-        </div>
-      ),
+      render: (row: EmployeeWithRelations) => {
+        const fullName = `${row.firstName || ""} ${row.lastName || ""}`.trim();
+        const initials = fullName
+          .split(" ")
+          .map((n) => n[0])
+          .slice(0, 2)
+          .join("")
+          .toUpperCase();
+
+        return (
+          <button
+            type="button"
+            className="flex items-center gap-3 text-left"
+            onClick={() => router.push(`/employees/${row.id}`)}
+          >
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent/10 text-sm font-semibold text-accent">
+              {initials || "?"}
+            </div>
+            <div className="min-w-0">
+              <p className="font-medium text-accent hover:underline truncate">
+                {fullName || "—"}
+              </p>
+              <p className="text-xs text-muted-foreground truncate">
+                {row.email || "—"}
+              </p>
+            </div>
+          </button>
+        );
+      },
     },
     {
-      key: "email",
-      label: "Email",
-      render: (_: unknown, row: EmployeeWithRelations) => (
-        <span className="text-sm text-muted-foreground">{row.email || "—"}</span>
+      key: "nik",
+      label: "NIK",
+      render: (row: EmployeeWithRelations) => (
+        <span className="text-sm text-muted-foreground">
+          {row.employeeNik || "No Data"}
+        </span>
       ),
     },
     {
       key: "department",
       label: "Department",
-      render: (_: unknown, row: EmployeeWithRelations) => (
+      render: (row: EmployeeWithRelations) => (
         <span className="text-sm">{row.department?.name || "—"}</span>
       ),
     },
     {
       key: "position",
       label: "Position",
-      render: (_: unknown, row: EmployeeWithRelations) => (
+      render: (row: EmployeeWithRelations) => (
         <span className="text-sm">{row.jobTitle?.name || "—"}</span>
       ),
     },
-    {
-      key: "hireDate",
-      label: "Hire Date",
-      render: (_: unknown, row: EmployeeWithRelations) => (
-        <span className="text-sm text-muted-foreground">
-          {row.hireDate ? formatShortDate(row.hireDate) : "—"}
-        </span>
-      ),
-    },
-    {
+{
       key: "status",
       label: "Status",
-      render: (_: unknown, row: EmployeeWithRelations) => {
+      render: (row: EmployeeWithRelations) => {
         const config = getStatusConfig(row.status);
         return <Badge variant={config.variant}>{config.label}</Badge>;
       },
-    },
-    {
-      key: "actions",
-      label: "",
-      className: "w-[50px]",
-      render: (_: unknown, row: EmployeeWithRelations) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-muted-foreground"
-            >
-              <MoreHorizontal />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem asChild>
-              <Link href={`/employees/${row.id}`}>
-                <Eye className="mr-2 h-4 w-4" />
-                View Detail
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link href={`/employees/${row.id}/edit`}>
-                <Pencil className="mr-2 h-4 w-4" />
-                Edit
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              className="text-destructive focus:text-destructive"
-              onClick={() => handleDeleteClick(row)}
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Delete
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      ),
     },
   ];
 
@@ -389,41 +264,22 @@ export default function EmployeesPage() {
       <Header title="Employees" />
       <PageContainer>
         <div className="space-y-6">
-          {/* Stats */}
-          <div className="grid gap-4 sm:grid-cols-5">
-            {stats.map((stat) => (
-              <Card key={stat.label} className={stat.accent ? "border-accent/20 bg-accent/5" : ""}>
-                <CardContent className="p-5">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs uppercase tracking-wider text-muted-foreground">
-                        {stat.label}
-                      </p>
-                      <p
-                        className={`mt-1 text-3xl font-semibold ${
-                          stat.accent ? "text-accent" : ""
-                        }`}
-                      >
-                        {isLoading ? "-" : stat.value}
-                      </p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {stat.description}
-                      </p>
-                    </div>
-                    <div
-                      className={`flex h-11 w-11 items-center justify-center rounded-xl ${
-                        stat.accent ? "bg-accent/10" : "bg-secondary"
-                      }`}
-                    >
-                      <stat.icon
-                        className={`h-5 w-5 ${
-                          stat.accent ? "text-accent" : "text-muted-foreground"
-                        }`}
-                      />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+          {/* Header & Stats */}
+          <div>
+            <h2 className="text-lg font-semibold text-foreground">Employee Overview</h2>
+            <p className="text-sm text-muted-foreground">Manage and monitor all employee data across your organization.</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-sm text-muted-foreground">
+            {stats.map((stat, i) => (
+              <React.Fragment key={stat.label}>
+                {i > 0 && <span className="text-border">|</span>}
+                <span>
+                  {stat.label}:{" "}
+                  <span className={`font-semibold tabular-nums ${stat.accent ? "text-accent" : "text-foreground"}`}>
+                    {isLoading ? "-" : stat.value}
+                  </span>
+                </span>
+              </React.Fragment>
             ))}
           </div>
 
@@ -496,64 +352,17 @@ export default function EmployeesPage() {
                   </div>
                 }
                 actions={
-                  <>
-                    <Button variant="outline">
-                      <Download />
-                      Export
-                    </Button>
-                    <Button asChild>
-                      <Link href="/employees/new">
-                        New
-                      </Link>
-                    </Button>
-                  </>
+                  <Button asChild>
+                    <Link href="/employees/new">
+                      New
+                    </Link>
+                  </Button>
                 }
               />
             )}
           </div>
         </div>
       </PageContainer>
-
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Employee</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete{" "}
-              <span className="font-semibold">
-                {selectedEmployee?.firstName || ""} {selectedEmployee?.lastName || ""}
-              </span>
-              ? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel
-              onClick={() => {
-                setIsDeleteDialogOpen(false);
-                setSelectedEmployee(null);
-              }}
-              disabled={isSubmitting}
-            >
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              disabled={isSubmitting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="animate-spin" />
-                  Deleting...
-                </>
-              ) : (
-                "Delete"
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   );
 }

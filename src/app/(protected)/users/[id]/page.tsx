@@ -170,7 +170,7 @@ export default function UserDetailPage() {
           {/* User Profile Card */}
           <Card>
             <CardContent className="p-6">
-              <div className="flex items-start gap-6">
+              <div className="flex flex-col sm:flex-row sm:items-start gap-4 sm:gap-6">
                 {/* Avatar */}
                 <Avatar className="h-20 w-20 border-2 border-border">
                   <AvatarFallback className="bg-accent/10 text-xl font-semibold text-accent">

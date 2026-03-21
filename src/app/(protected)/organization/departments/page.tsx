@@ -4,10 +4,7 @@ import * as React from "react";
 import {
   Pencil,
   Trash2,
-  Building,
-  Users,
   Loader2,
-  Layers,
 } from "lucide-react";
 
 import { Header } from "@/components/layout/header";
@@ -49,10 +46,8 @@ import { useOrganizationStore } from "@/stores/organization-store";
 import {
   departmentService,
   CreateDepartmentRequest,
-  DepartmentStats,
 } from "@/services/department.service";
 import { divisionService } from "@/services/division.service";
-import { obsService } from "@/services/obs.service";
 import { showToast } from "@/lib/utils/toast-messages";
 import { Department } from "@/types";
 
@@ -90,16 +85,9 @@ export default function DepartmentsPage() {
     deleteDepartment,
     divisions,
     setDivisions,
-    organizations,
-    setOrganizations,
     isLoading,
     setLoading,
   } = useOrganizationStore();
-
-  const [stats, setStats] = React.useState<DepartmentStats>({
-    totalDepartments: 0,
-    totalEmployees: 0,
-  });
 
   const [currentPage, setCurrentPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(10);
@@ -123,8 +111,6 @@ export default function DepartmentsPage() {
 
   React.useEffect(() => {
     fetchDivisions();
-    fetchOrganizations();
-    fetchStats();
   }, []);
 
   const fetchDepartments = async (page: number, limit: number) => {
@@ -149,21 +135,6 @@ export default function DepartmentsPage() {
     if (response.success && response.data) {
       const divData = Array.isArray(response.data) ? response.data : [];
       setDivisions(divData);
-    }
-  };
-
-  const fetchOrganizations = async () => {
-    const response = await obsService.fetchAll();
-    if (response.success && response.data) {
-      const orgData = Array.isArray(response.data) ? response.data : [];
-      setOrganizations(orgData);
-    }
-  };
-
-  const fetchStats = async () => {
-    const response = await departmentService.getStats();
-    if (response.success && response.data) {
-      setStats(response.data);
     }
   };
 
@@ -233,7 +204,7 @@ export default function DepartmentsPage() {
       setIsAddDialogOpen(false);
       setFormData(initialFormData);
       setTotalItems((prev) => prev + 1);
-      fetchStats();
+
       showToast.created("Department");
     } else {
       showToast.createError("department", response.message);
@@ -281,7 +252,7 @@ export default function DepartmentsPage() {
       setIsDeleteDialogOpen(false);
       setSelectedDepartment(null);
       setTotalItems((prev) => prev - 1);
-      fetchStats();
+
       showToast.deleted("Department");
     } else {
       showToast.deleteError("department", response.message);
@@ -294,14 +265,14 @@ export default function DepartmentsPage() {
     {
       key: "code",
       label: "Code",
-      render: (_: unknown, row: Department) => (
-        <Badge variant="outline">{row.code}</Badge>
+      render: (row: Department) => (
+        <Badge variant="secondary">{row.code}</Badge>
       ),
     },
     {
       key: "name",
       label: "Department",
-      render: (_: unknown, row: Department) => (
+      render: (row: Department) => (
         <button
           type="button"
           className="font-medium text-accent hover:underline text-left"
@@ -314,7 +285,7 @@ export default function DepartmentsPage() {
     {
       key: "category",
       label: "Category",
-      render: (_: unknown, row: Department) => {
+      render: (row: Department) => {
         const displayCategory = formatCategory(row.category);
         return (
           <Badge
@@ -330,7 +301,7 @@ export default function DepartmentsPage() {
     {
       key: "division",
       label: "Division",
-      render: (_: unknown, row: Department) => (
+      render: (row: Department) => (
         <span className="text-sm">{getDivisionName(row.divisionId)}</span>
       ),
     },
@@ -338,58 +309,12 @@ export default function DepartmentsPage() {
 
   return (
     <>
-      <Header title="Departments" />
+      <Header title="Organization" />
       <PageContainer>
         <div className="space-y-6">
-          {/* Stats */}
-          <div className="grid gap-4 sm:grid-cols-3">
-            <Card>
-              <CardContent className="flex items-center gap-4 p-5">
-                <div className="flex h-10 w-10 items-center justify-center rounded-md bg-secondary">
-                  <Building className="h-5 w-5 text-muted-foreground" />
-                </div>
-                <div>
-                  <p className="text-2xl font-semibold">
-                    {isLoading
-                      ? "-"
-                      : stats.totalDepartments || totalItems}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Total Departments
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="flex items-center gap-4 p-5">
-                <div className="flex h-10 w-10 items-center justify-center rounded-md bg-secondary">
-                  <Users className="h-5 w-5 text-muted-foreground" />
-                </div>
-                <div>
-                  <p className="text-2xl font-semibold">
-                    {isLoading ? "-" : stats.totalEmployees}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Total Employees
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="flex items-center gap-4 p-5">
-                <div className="flex h-10 w-10 items-center justify-center rounded-md bg-secondary">
-                  <Layers className="h-5 w-5 text-muted-foreground" />
-                </div>
-                <div>
-                  <p className="text-2xl font-semibold">
-                    {isLoading ? "-" : divisions.length}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Total Divisions
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
+          <div>
+            <h2 className="text-lg font-semibold">Departments</h2>
+            <p className="text-sm text-muted-foreground">Manage departments, categories, and their division assignments.</p>
           </div>
 
           {/* Table */}
@@ -484,26 +409,6 @@ export default function DepartmentsPage() {
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="obs">OBS *</Label>
-                <Select
-                  value={formData.obsId}
-                  onValueChange={(value) =>
-                    setFormData({ ...formData, obsId: value })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select OBS" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {organizations.map((org) => (
-                      <SelectItem key={org.id} value={org.id}>
-                        {org.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
                 <Label htmlFor="division">Division</Label>
                 <Select
                   value={formData.divisionId}
@@ -549,7 +454,6 @@ export default function DepartmentsPage() {
                   isSubmitting ||
                   !formData.name ||
                   !formData.code ||
-                  !formData.obsId ||
                   !formData.category
                 }
               >
@@ -622,26 +526,6 @@ export default function DepartmentsPage() {
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="edit-obs">OBS *</Label>
-                <Select
-                  value={formData.obsId}
-                  onValueChange={(value) =>
-                    setFormData({ ...formData, obsId: value })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select OBS" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {organizations.map((org) => (
-                      <SelectItem key={org.id} value={org.id}>
-                        {org.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
                 <Label htmlFor="edit-division">Division</Label>
                 <Select
                   value={formData.divisionId}
@@ -687,7 +571,6 @@ export default function DepartmentsPage() {
                   isSubmitting ||
                   !formData.name ||
                   !formData.code ||
-                  !formData.obsId ||
                   !formData.category
                 }
               >
@@ -713,48 +596,36 @@ export default function DepartmentsPage() {
                 Viewing department information.
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="space-y-1.5">
-                <Label>Name</Label>
-                <Input value={selectedDepartment?.name || ""} disabled />
+            <div className="space-y-4 py-4">
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">Name</p>
+                <p className="text-sm font-medium">{selectedDepartment?.name || "-"}</p>
               </div>
-              <div className="space-y-1.5">
-                <Label>Code</Label>
-                <Input value={selectedDepartment?.code || ""} disabled />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Code</p>
+                  <p className="text-sm font-medium">{selectedDepartment?.code || "-"}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Category</p>
+                  <p className="text-sm font-medium">{selectedDepartment ? formatCategory(selectedDepartment.category) : "-"}</p>
+                </div>
               </div>
-              <div className="space-y-1.5">
-                <Label>Category</Label>
-                <Input value={selectedDepartment ? formatCategory(selectedDepartment.category) : ""} disabled />
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">Division</p>
+                <p className="text-sm font-medium">{getDivisionName(selectedDepartment?.divisionId)}</p>
               </div>
-              <div className="space-y-1.5">
-                <Label>OBS</Label>
-                <Input
-                  value={
-                    organizations.find(
-                      (org) => org.id === selectedDepartment?.obsId
-                    )?.name || "-"
-                  }
-                  disabled
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Division</Label>
-                <Input
-                  value={getDivisionName(selectedDepartment?.divisionId)}
-                  disabled
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Description</Label>
-                <Textarea
-                  value={selectedDepartment?.description || "-"}
-                  disabled
-                />
-              </div>
+              {selectedDepartment?.description && (
+                <div className="space-y-1 border-t pt-3">
+                  <p className="text-xs text-muted-foreground">Description</p>
+                  <p className="text-sm text-muted-foreground">{selectedDepartment.description}</p>
+                </div>
+              )}
             </div>
-            <DialogFooter className="flex-row justify-between sm:justify-between">
+            <DialogFooter className="flex-row gap-2 sm:justify-end">
               <Button
-                variant="destructive"
+                variant="ghost"
+                className="mr-auto text-destructive hover:text-destructive hover:bg-destructive/10"
                 onClick={() => {
                   setIsDetailDialogOpen(false);
                   if (selectedDepartment) handleDeleteClick(selectedDepartment);
@@ -763,23 +634,21 @@ export default function DepartmentsPage() {
                 <Trash2 className="h-4 w-4" />
                 Delete
               </Button>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => setIsDetailDialogOpen(false)}
-                >
-                  Close
-                </Button>
-                <Button
-                  onClick={() => {
-                    setIsDetailDialogOpen(false);
-                    if (selectedDepartment) handleEditClick(selectedDepartment);
-                  }}
-                >
-                  <Pencil className="h-4 w-4" />
-                  Edit
-                </Button>
-              </div>
+              <Button
+                variant="outline"
+                onClick={() => setIsDetailDialogOpen(false)}
+              >
+                Close
+              </Button>
+              <Button
+                onClick={() => {
+                  setIsDetailDialogOpen(false);
+                  if (selectedDepartment) handleEditClick(selectedDepartment);
+                }}
+              >
+                <Pencil className="h-4 w-4" />
+                Edit
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

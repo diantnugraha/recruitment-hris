@@ -557,7 +557,7 @@ export default function RecruitmentRequestDetailPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
                   <Briefcase className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
                   <div className="min-w-0">
@@ -663,13 +663,14 @@ export default function RecruitmentRequestDetailPage() {
                     )}
                   </div>
                 ) : (
+                  <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-secondary/30 hover:bg-secondary/30">
-                        <TableHead className="pl-6 w-[140px] font-semibold">Code</TableHead>
-                        <TableHead className="w-[100px] font-semibold">Status</TableHead>
-                        <TableHead className="font-semibold">Name</TableHead>
-                        <TableHead className="w-[120px] font-semibold">Applied</TableHead>
+                        <TableHead className="pl-6 w-1/4 font-semibold">Code</TableHead>
+                        <TableHead className="w-1/4 font-semibold">Name</TableHead>
+                        <TableHead className="w-1/4 font-semibold">Applied</TableHead>
+                        <TableHead className="w-1/4 font-semibold">Status</TableHead>
                         <TableHead className="w-10 pr-6"></TableHead>
                       </TableRow>
                     </TableHeader>
@@ -686,14 +687,14 @@ export default function RecruitmentRequestDetailPage() {
                             </span>
                           </TableCell>
                           <TableCell className="py-4">
-                            {getCandidateStatusBadge(deriveCandidateStatus(candidate))}
-                          </TableCell>
-                          <TableCell className="py-4">
                             <p className="text-sm font-medium">{candidate.fullname}</p>
                             <p className="text-xs text-muted-foreground">{candidate.email}</p>
                           </TableCell>
                           <TableCell className="py-4 text-sm text-muted-foreground">
                             {candidate.createdAt ? formatShortDate(candidate.createdAt) : "—"}
+                          </TableCell>
+                          <TableCell className="py-4">
+                            {getCandidateStatusBadge(deriveCandidateStatus(candidate))}
                           </TableCell>
                           <TableCell className="pr-6 py-4">
                             <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -702,6 +703,7 @@ export default function RecruitmentRequestDetailPage() {
                       ))}
                     </TableBody>
                   </Table>
+                  </div>
                 )}
               </CardContent>
           </Card>

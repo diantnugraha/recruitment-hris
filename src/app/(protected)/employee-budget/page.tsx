@@ -4,12 +4,11 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  Download,
   Loader2,
+  Users,
   Wallet,
   TrendingUp,
   TrendingDown,
-  Users,
 } from "lucide-react";
 
 import { Header } from "@/components/layout/header";
@@ -26,6 +25,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 
 import { employeeBudgetService } from "@/services/employee-budget.service";
@@ -57,7 +63,7 @@ const columns = [
   {
     key: "departmentName",
     label: "Department Name",
-    render: (_: unknown, row: DepartmentBudgetRow) => (
+    render: (row: DepartmentBudgetRow) => (
       <Link
         href={`/employee-budget/${row.departmentId}`}
         className="font-medium text-accent hover:underline"
@@ -69,7 +75,7 @@ const columns = [
   {
     key: "divisionName",
     label: "Division",
-    render: (_: unknown, row: DepartmentBudgetRow) => (
+    render: (row: DepartmentBudgetRow) => (
       <span className="text-sm">{row.divisionName}</span>
     ),
   },
@@ -77,7 +83,7 @@ const columns = [
     key: "category",
     label: "Category",
     className: "w-[180px]",
-    render: (_: unknown, row: DepartmentBudgetRow) => (
+    render: (row: DepartmentBudgetRow) => (
       <Badge variant={row.category === "Profit Center" ? "default" : "secondary"}>
         {row.category}
       </Badge>
@@ -85,9 +91,9 @@ const columns = [
   },
   {
     key: "budgetYears",
-    label: "Periode",
+    label: "Period",
     className: "w-[120px] text-center",
-    render: (_: unknown, row: DepartmentBudgetRow) => (
+    render: (row: DepartmentBudgetRow) => (
       <span className="tabular-nums">
         {row.budgetYears} {row.budgetYears === 1 ? "year" : "years"}
       </span>
@@ -259,31 +265,46 @@ export default function EmployeeBudgetPage() {
     });
   }, [budgets, departments, divisions]);
 
+  // Search & filter
+  const [searchQuery, setSearchQuery] = React.useState("");
+  const [categoryFilter, setCategoryFilter] = React.useState<string>("all");
+
+  const filteredData = React.useMemo(() => {
+    let result = departmentRows;
+
+    if (categoryFilter && categoryFilter !== "all") {
+      result = result.filter((row) => row.category === categoryFilter);
+    }
+
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(
+        (row) =>
+          row.departmentName.toLowerCase().includes(query) ||
+          row.divisionName.toLowerCase().includes(query)
+      );
+    }
+
+    return result;
+  }, [departmentRows, searchQuery, categoryFilter]);
+
   // Paginate
   const paginatedData = React.useMemo(() => {
     const start = (currentPage - 1) * pageSize;
-    return departmentRows.slice(start, start + pageSize);
-  }, [departmentRows, currentPage, pageSize]);
+    return filteredData.slice(start, start + pageSize);
+  }, [filteredData, currentPage, pageSize]);
 
   // Stats
   const stats = React.useMemo(() => {
+    const totalDepartments = new Set(budgets.map((b) => b.departmentId)).size;
     const currentYearBudgets = budgets.filter((b) => b.year === CURRENT_YEAR);
     const nextYearBudgets = budgets.filter((b) => b.year === CURRENT_YEAR + 1);
 
-    const totalCurrentTechnical = currentYearBudgets.reduce((sum, b) => sum + b.technical, 0);
-    const totalCurrentAdmin = currentYearBudgets.reduce((sum, b) => sum + b.admin, 0);
-    const totalNextTechnical = nextYearBudgets.reduce((sum, b) => sum + b.technical, 0);
-    const totalNextAdmin = nextYearBudgets.reduce((sum, b) => sum + b.admin, 0);
+    const currentYearTotal = currentYearBudgets.reduce((sum, b) => sum + b.technical + b.admin, 0);
+    const nextYearTotal = nextYearBudgets.reduce((sum, b) => sum + b.technical + b.admin, 0);
+    const growth = calculateGrowth(nextYearTotal, currentYearTotal);
 
-    return {
-      totalDepartments: new Set(budgets.map((b) => b.departmentId)).size,
-      currentYearTotal: totalCurrentTechnical + totalCurrentAdmin,
-      nextYearTotal: totalNextTechnical + totalNextAdmin,
-      growth: calculateGrowth(
-        totalNextTechnical + totalNextAdmin,
-        totalCurrentTechnical + totalCurrentAdmin
-      ),
-    };
+    return { totalDepartments, currentYearTotal, nextYearTotal, growth };
   }, [budgets]);
 
   // Handlers
@@ -300,17 +321,22 @@ export default function EmployeeBudgetPage() {
       <Header title="Employee Budget" />
       <PageContainer>
         <div className="space-y-6">
-          {/* Stats Cards */}
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {/* Header & Stats */}
+          <div>
+            <h2 className="text-lg font-semibold text-foreground">Budget Overview</h2>
+            <p className="text-sm text-muted-foreground">Manage and monitor employee budget allocation across departments.</p>
+          </div>
+
+          <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
             <Card className="overflow-hidden">
               <CardContent className="p-0">
                 <div className="flex items-stretch">
-                  <div className="flex w-14 shrink-0 items-center justify-center bg-accent/10">
-                    <Users className="h-5 w-5 text-accent" />
+                  <div className="flex w-12 shrink-0 items-center justify-center bg-accent/10">
+                    <Users className="h-4 w-4 text-accent" />
                   </div>
-                  <div className="flex-1 p-4">
-                    <p className="text-xs font-medium text-muted-foreground">Departments</p>
-                    <p className="mt-1 text-2xl font-bold tabular-nums">
+                  <div className="flex-1 px-3 py-2.5">
+                    <p className="text-[11px] font-medium text-muted-foreground">Departments</p>
+                    <p className="text-lg font-bold tabular-nums">
                       {isLoading ? "-" : stats.totalDepartments}
                     </p>
                   </div>
@@ -321,13 +347,14 @@ export default function EmployeeBudgetPage() {
             <Card className="overflow-hidden">
               <CardContent className="p-0">
                 <div className="flex items-stretch">
-                  <div className="flex w-14 shrink-0 items-center justify-center bg-blue-500/10">
-                    <Wallet className="h-5 w-5 text-blue-600" />
+                  <div className="flex w-12 shrink-0 items-center justify-center bg-blue-500/10">
+                    <Wallet className="h-4 w-4 text-blue-600" />
                   </div>
-                  <div className="flex-1 p-4">
-                    <p className="text-xs font-medium text-muted-foreground">{CURRENT_YEAR} Budget</p>
-                    <p className="mt-1 text-2xl font-bold tabular-nums">
+                  <div className="flex-1 px-3 py-2.5">
+                    <p className="text-[11px] font-medium text-muted-foreground">{CURRENT_YEAR} Budget</p>
+                    <p className="text-lg font-bold tabular-nums">
                       {isLoading ? "-" : stats.currentYearTotal}
+                      {!isLoading && <span className="ml-1 text-xs font-medium text-muted-foreground">positions</span>}
                     </p>
                   </div>
                 </div>
@@ -337,13 +364,14 @@ export default function EmployeeBudgetPage() {
             <Card className="overflow-hidden">
               <CardContent className="p-0">
                 <div className="flex items-stretch">
-                  <div className="flex w-14 shrink-0 items-center justify-center bg-emerald-500/10">
-                    <Wallet className="h-5 w-5 text-emerald-600" />
+                  <div className="flex w-12 shrink-0 items-center justify-center bg-emerald-500/10">
+                    <Wallet className="h-4 w-4 text-emerald-600" />
                   </div>
-                  <div className="flex-1 p-4">
-                    <p className="text-xs font-medium text-muted-foreground">{CURRENT_YEAR + 1} Budget</p>
-                    <p className="mt-1 text-2xl font-bold tabular-nums">
+                  <div className="flex-1 px-3 py-2.5">
+                    <p className="text-[11px] font-medium text-muted-foreground">{CURRENT_YEAR + 1} Budget</p>
+                    <p className="text-lg font-bold tabular-nums">
                       {isLoading ? "-" : stats.nextYearTotal}
+                      {!isLoading && <span className="ml-1 text-xs font-medium text-muted-foreground">positions</span>}
                     </p>
                   </div>
                 </div>
@@ -353,18 +381,18 @@ export default function EmployeeBudgetPage() {
             <Card className="overflow-hidden">
               <CardContent className="p-0">
                 <div className="flex items-stretch">
-                  <div className={`flex w-14 shrink-0 items-center justify-center ${
+                  <div className={`flex w-12 shrink-0 items-center justify-center ${
                     stats.growth >= 0 ? "bg-green-500/10" : "bg-red-500/10"
                   }`}>
                     {stats.growth >= 0 ? (
-                      <TrendingUp className="h-5 w-5 text-green-600" />
+                      <TrendingUp className="h-4 w-4 text-green-600" />
                     ) : (
-                      <TrendingDown className="h-5 w-5 text-red-600" />
+                      <TrendingDown className="h-4 w-4 text-red-600" />
                     )}
                   </div>
-                  <div className="flex-1 p-4">
-                    <p className="text-xs font-medium text-muted-foreground">YoY Growth</p>
-                    <p className={`mt-1 text-2xl font-bold tabular-nums ${
+                  <div className="flex-1 px-3 py-2.5">
+                    <p className="text-[11px] font-medium text-muted-foreground">YoY Growth</p>
+                    <p className={`text-lg font-bold tabular-nums ${
                       stats.growth >= 0 ? "text-green-600" : "text-red-600"
                     }`}>
                       {isLoading ? "-" : `${stats.growth > 0 ? "+" : ""}${stats.growth}%`}
@@ -375,15 +403,9 @@ export default function EmployeeBudgetPage() {
             </Card>
           </div>
 
-          {/* Data Table */}
-          <div className="animate-fade-in stagger-3">
-            {isLoading ? (
-              <Card>
-                <CardContent className="flex items-center justify-center py-12">
-                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                </CardContent>
-              </Card>
-            ) : error ? (
+          {/* Table */}
+          <div>
+            {error ? (
               <Card>
                 <CardContent className="flex flex-col items-center justify-center py-12 text-center">
                   <p className="text-muted-foreground">{error}</p>
@@ -392,14 +414,25 @@ export default function EmployeeBudgetPage() {
                   </Button>
                 </CardContent>
               </Card>
+            ) : isLoading ? (
+              <Card>
+                <CardContent className="flex items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                </CardContent>
+              </Card>
             ) : (
               <DataTable
                 data={paginatedData}
                 columns={columns}
-                searchable={false}
+                searchable
+                searchPlaceholder="Search by department or division..."
+                onSearch={(value) => {
+                  setSearchQuery(value);
+                  setCurrentPage(1);
+                }}
                 pagination
                 pageSize={pageSize}
-                totalItems={departmentRows.length}
+                totalItems={filteredData.length}
                 currentPage={currentPage}
                 onPageChange={setCurrentPage}
                 onPageSizeChange={(size) => {
@@ -407,16 +440,45 @@ export default function EmployeeBudgetPage() {
                   setCurrentPage(1);
                 }}
                 emptyMessage="No department budgets found"
+                filters={
+                  <div className="flex flex-wrap items-end gap-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Category</Label>
+                      <Select
+                        value={categoryFilter}
+                        onValueChange={(value) => {
+                          setCategoryFilter(value);
+                          setCurrentPage(1);
+                        }}
+                      >
+                        <SelectTrigger className="h-9 w-[180px]">
+                          <SelectValue placeholder="All Categories" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Categories</SelectItem>
+                          <SelectItem value="Profit Center">Profit Center</SelectItem>
+                          <SelectItem value="Cost Center">Cost Center</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {categoryFilter !== "all" && (
+                      <Button
+                        variant="ghost"
+                        className="h-9"
+                        onClick={() => {
+                          setCategoryFilter("all");
+                          setCurrentPage(1);
+                        }}
+                      >
+                        Clear Filters
+                      </Button>
+                    )}
+                  </div>
+                }
                 actions={
-                  <>
-                    <Button variant="outline">
-                      <Download />
-                      Export
-                    </Button>
-                    <Button onClick={handleAddDepartmentClick}>
-                      New
-                    </Button>
-                  </>
+                  <Button onClick={handleAddDepartmentClick}>
+                    New
+                  </Button>
                 }
               />
             )}

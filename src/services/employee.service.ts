@@ -78,7 +78,6 @@ export interface EmployeeFormData {
   email: string;
   phone: string;
   dateOfBirth: string;
-  gender: string;
   address: string;
   hireDate: string;
   status: string;
@@ -267,11 +266,11 @@ export function mapFormToRequest(form: EmployeeFormData): CreateEmployeeRequest 
   const name = `${form.firstName} ${form.lastName}`.trim();
   const req: CreateEmployeeRequest = { name };
 
+  req.gender = "Any";
   if (form.employeeNik) req.nik = form.employeeNik;
   if (form.nickname) req.nickname = form.nickname;
   if (form.email) req.email = form.email;
   if (form.phone) req.contact = form.phone;
-  if (form.gender) req.gender = form.gender;
   if (form.status) req.status = form.status;
   if (form.jobTitleId) req.title = form.jobTitleId;
   if (form.location) req.location = form.location;
@@ -307,7 +306,6 @@ export function mapFormToUpdateRequest(form: Partial<EmployeeFormData>): UpdateE
   if (form.nickname !== undefined) req.nickname = form.nickname;
   if (form.email !== undefined) req.email = form.email;
   if (form.phone !== undefined) req.contact = form.phone;
-  if (form.gender !== undefined) req.gender = form.gender;
   if (form.status !== undefined) req.status = form.status;
   if (form.jobTitleId !== undefined) req.title = form.jobTitleId;
   if (form.departmentId !== undefined && form.departmentId) {

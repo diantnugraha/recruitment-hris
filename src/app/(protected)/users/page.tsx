@@ -208,7 +208,7 @@ export default function UsersPage() {
     {
       key: "user",
       label: "User",
-      render: (_: unknown, row: UserManagement) => (
+      render: (row: UserManagement) => (
         <div className="flex items-center gap-3">
           <Avatar className="h-9 w-9 border border-border">
             <AvatarFallback className="bg-accent/10 text-xs font-semibold text-accent">
@@ -225,13 +225,13 @@ export default function UsersPage() {
     {
       key: "role",
       label: "Role",
-      render: (_: unknown, row: UserManagement) =>
+      render: (row: UserManagement) =>
         getRoleBadge(row.roleId, row.role?.roleName),
     },
     {
       key: "employee",
       label: "Linked Employee",
-      render: (_: unknown, row: UserManagement) => (
+      render: (row: UserManagement) => (
         <span className="text-sm text-muted-foreground">
           {row.employee?.employeeName || "—"}
         </span>
@@ -240,7 +240,7 @@ export default function UsersPage() {
     {
       key: "emailVerified",
       label: "Email Verified",
-      render: (_: unknown, row: UserManagement) => (
+      render: (row: UserManagement) => (
         <span className="text-sm">
           {row.emailVerifiedAt ? (
             <Badge variant="success">Verified</Badge>
@@ -253,7 +253,7 @@ export default function UsersPage() {
     {
       key: "createdAt",
       label: "Created",
-      render: (_: unknown, row: UserManagement) => (
+      render: (row: UserManagement) => (
         <span className="text-sm text-muted-foreground">
           {row.created_at ? formatShortDate(row.created_at) : "—"}
         </span>
@@ -263,7 +263,7 @@ export default function UsersPage() {
       key: "actions",
       label: "",
       className: "w-[50px]",
-      render: (_: unknown, row: UserManagement) => (
+      render: (row: UserManagement) => (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -303,7 +303,7 @@ export default function UsersPage() {
       <PageContainer>
         <div className="space-y-6">
           {/* Stats */}
-          <div className="grid gap-4 sm:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {stats.map((stat) => (
               <Card
                 key={stat.label}

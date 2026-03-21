@@ -37,7 +37,6 @@ import departmentService from "@/services/department.service";
 import type {
   EmployeeWithRelations,
   JobTitle,
-  EmployeeGender,
   EmployeeStatus,
   MaritalStatus,
   DepartmentJobTitle,
@@ -48,10 +47,6 @@ import { showToast } from "@/lib/utils/toast-messages";
 
 // --- Constants (matching hris-tuv exactly) ---
 
-const GENDERS = [
-  { value: "Male", label: "Male" },
-  { value: "Female", label: "Female" },
-] as const;
 
 const RELIGIONS = [
   { value: "Islam", label: "Islam" },
@@ -122,7 +117,6 @@ const PROBATION_PERIODS = [
 interface FormState {
   nik: string;
   fullName: string;
-  gender: string;
   birthDate: string;
   religion: string;
   ethnic: string;
@@ -185,7 +179,6 @@ function mapEmployeeToFormState(
   return {
     nik: emp.employeeNik || "",
     fullName,
-    gender: capitalize(emp.gender) || "Male",
     birthDate: emp.dateOfBirth || "",
     religion: emp.religion || "",
     ethnic: emp.ethnicity || "",
@@ -372,7 +365,6 @@ export default function EmployeeEditPage() {
       email: form.email,
       phone: form.phone,
       dateOfBirth: form.birthDate,
-      gender: form.gender as EmployeeGender,
       hireDate: form.joinDate,
       status: form.status as EmployeeStatus,
       jobTitleId: selectedJobTitle?.name || "",
@@ -512,7 +504,7 @@ export default function EmployeeEditPage() {
                   Biodata
                 </h2>
                 <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <Label>NIK</Label>
                       <Input
@@ -533,25 +525,7 @@ export default function EmployeeEditPage() {
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <Label>Gender</Label>
-                      <Select
-                        value={form.gender}
-                        onValueChange={(v) => handleChange("gender", v)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {GENDERS.map((g) => (
-                            <SelectItem key={g.value} value={g.value}>
-                              {g.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <Label htmlFor="birthDate">Birth Date *</Label>
                       <Input
@@ -563,7 +537,7 @@ export default function EmployeeEditPage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <Label>Religion</Label>
                       <Select
@@ -613,7 +587,7 @@ export default function EmployeeEditPage() {
                   Work Details
                 </h2>
                 <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <Label>Employee Type</Label>
                       <Input
@@ -634,7 +608,7 @@ export default function EmployeeEditPage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <Label>Department {structuralInfo.requireDepartmentSelection && "*"}</Label>
                       {structuralInfo.requireDepartmentSelection ? (
@@ -698,7 +672,7 @@ export default function EmployeeEditPage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-[1fr_120px] gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-[1fr_120px] gap-4">
                     <div className="space-y-1.5">
                       <Label>Job Title *</Label>
                       <SearchableSelect
@@ -727,7 +701,7 @@ export default function EmployeeEditPage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <Label htmlFor="joinDate">Join Date *</Label>
                       <Input
@@ -748,7 +722,7 @@ export default function EmployeeEditPage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <Label htmlFor="email">Email Address *</Label>
                       <Input
@@ -779,7 +753,7 @@ export default function EmployeeEditPage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <Label>Status</Label>
                       <Select
@@ -868,24 +842,22 @@ export default function EmployeeEditPage() {
 
                   <div className="space-y-1.5">
                     <Label>Superior</Label>
-                    <Select
+                    <SearchableSelect
                       value={form.superior || "0"}
                       onValueChange={(v) => handleChange("superior", v)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select superior" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="0">— No Superior —</SelectItem>
-                        {employees
+                      placeholder="Select superior"
+                      searchPlaceholder="Search employee..."
+                      emptyText="No employee found."
+                      options={[
+                        { value: "0", label: "— No Superior —" },
+                        ...employees
                           .filter((emp) => emp.id !== employee?.id)
-                          .map((emp) => (
-                            <SelectItem key={emp.id} value={emp.id}>
-                              {`${emp.firstName} ${emp.lastName}`.trim()}
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
+                          .map((emp) => ({
+                            value: emp.id,
+                            label: `${emp.firstName} ${emp.lastName}`.trim(),
+                          })),
+                      ]}
+                    />
                   </div>
                 </div>
               </div>

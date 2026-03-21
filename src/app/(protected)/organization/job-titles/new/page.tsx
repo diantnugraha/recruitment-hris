@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   Loader2,
@@ -27,7 +27,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { LexicalEditor } from "@/components/shared/lexical-editor";
 import { showToast } from "@/lib/utils/toast-messages";
-import { jobTitleService, UpdateJobTitleRequest } from "@/services/job-title.service";
+import { jobTitleService, CreateJobTitleRequest } from "@/services/job-title.service";
 import { jobLevelService } from "@/services/job-level.service";
 import { departmentService } from "@/services/department.service";
 import { divisionService } from "@/services/division.service";
@@ -57,12 +57,9 @@ const initialFormData: FormData = {
   requirement: "",
 };
 
-export default function JobTitleEditPage() {
-  const params = useParams();
+export default function JobTitleNewPage() {
   const router = useRouter();
-  const id = params.id as string;
 
-  const [jobTitle, setJobTitle] = React.useState<JobTitle | null>(null);
   const [jobLevels, setJobLevels] = React.useState<JobLevel[]>([]);
   const [departments, setDepartments] = React.useState<Department[]>([]);
   const [divisions, setDivisions] = React.useState<Division[]>([]);
@@ -71,7 +68,6 @@ export default function JobTitleEditPage() {
   const [formData, setFormData] = React.useState<FormData>(initialFormData);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isSaving, setIsSaving] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
 
   // Department multi-select dropdown
   const [isDeptDropdownOpen, setIsDeptDropdownOpen] = React.useState(false);
@@ -101,79 +97,51 @@ export default function JobTitleEditPage() {
     }
   }, [isDeptDropdownOpen, isDirectReportOpen]);
 
-  // Fetch all data on mount
-  const fetchData = React.useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-
-    const [titleRes, levelsRes, deptsRes, divsRes, allTitlesRes] = await Promise.all([
-      jobTitleService.getById(id),
-      jobLevelService.fetchAll(),
-      departmentService.fetchAll(),
-      divisionService.fetchAll(),
-      jobTitleService.fetchAll(),
-    ]);
-
-    if (levelsRes.success && levelsRes.data) setJobLevels(levelsRes.data);
-    if (deptsRes.success && deptsRes.data) setDepartments(deptsRes.data);
-    if (divsRes.success && divsRes.data) setDivisions(divsRes.data);
-    if (allTitlesRes.success && allTitlesRes.data) setAllJobTitles(allTitlesRes.data);
-
-    if (titleRes.success && titleRes.data) {
-      const jt = titleRes.data;
-      setJobTitle(jt);
-
-      // Extract department IDs from many-to-many relation
-      const deptIds = jt.departments
-        ? jt.departments.map((d) => String(d.department.id))
-        : [];
-
-      setFormData({
-        name: jt.name || "",
-        jobLevelId: String(jt.jobLevelId || ""),
-        type: jt.type || "",
-        divisionId: jt.divisionId ? String(jt.divisionId) : "",
-        directReportId: jt.directReportId ? String(jt.directReportId) : "",
-        departmentIds: deptIds,
-        // Rich text fields - pass as-is, LexicalEditor handles parsing
-        purpose: typeof jt.purpose === "string" ? jt.purpose : JSON.stringify(jt.purpose || ""),
-        description: typeof jt.description === "string" ? jt.description : JSON.stringify(jt.description || ""),
-        requirement: typeof jt.requirement === "string" ? jt.requirement : JSON.stringify(jt.requirement || ""),
-      });
-    } else {
-      setError(titleRes.message || "Failed to fetch job title");
-    }
-
-    setIsLoading(false);
-  }, [id]);
-
+  // Fetch reference data on mount
   React.useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+
+      const [levelsRes, deptsRes, divsRes, titlesRes] = await Promise.all([
+        jobLevelService.fetchAll(),
+        departmentService.fetchAll(),
+        divisionService.fetchAll(),
+        jobTitleService.fetchAll(),
+      ]);
+
+      if (levelsRes.success && levelsRes.data) setJobLevels(levelsRes.data);
+      if (deptsRes.success && deptsRes.data) setDepartments(deptsRes.data);
+      if (divsRes.success && divsRes.data) setDivisions(divsRes.data);
+      if (titlesRes.success && titlesRes.data) setAllJobTitles(titlesRes.data);
+
+      setIsLoading(false);
+    };
+
     fetchData();
-  }, [fetchData]);
+  }, []);
 
-  const handleSave = async () => {
+  const handleCreate = async () => {
     setIsSaving(true);
-    setError(null);
 
-    const data: UpdateJobTitleRequest = {
+    const data: CreateJobTitleRequest = {
       name: formData.name,
       job_level_id: Number(formData.jobLevelId),
       type: formData.type === "Administration" || formData.type === "Technical" ? formData.type : undefined,
       division_id: formData.divisionId ? Number(formData.divisionId) : undefined,
       direct_report_id: formData.directReportId ? Number(formData.directReportId) : undefined,
-      purpose: formData.purpose,
-      description: formData.description,
-      requirement: formData.requirement,
+      purpose: formData.purpose || undefined,
+      description: formData.description || undefined,
+      requirement: formData.requirement || undefined,
       department_sync: formData.departmentIds.map(Number),
     };
 
-    const response = await jobTitleService.update(id, data);
+    const response = await jobTitleService.create(data);
 
-    if (response.success) {
-      showToast.updated("Job Title");
-      router.push(`/organization/job-titles/${id}`);
+    if (response.success && response.data) {
+      showToast.created("Job Title");
+      router.push(`/organization/job-titles/${response.data.id}`);
     } else {
-      showToast.updateError("job title", response.message);
+      showToast.createError("job title", response.message);
       setIsSaving(false);
     }
   };
@@ -191,7 +159,7 @@ export default function JobTitleEditPage() {
   if (isLoading) {
     return (
       <>
-        <Header title="Edit Job Title" />
+        <Header title="Position" />
         <PageContainer>
           <div className="flex h-64 items-center justify-center">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -201,26 +169,6 @@ export default function JobTitleEditPage() {
     );
   }
 
-  // Error state (no data loaded)
-  if (!jobTitle) {
-    return (
-      <>
-        <Header title="Edit Job Title" />
-        <PageContainer>
-          <div className="flex h-64 flex-col items-center justify-center gap-3">
-            <p className="text-sm text-muted-foreground">{error || "Job title not found"}</p>
-            <Button variant="outline" onClick={fetchData}>
-              Try Again
-            </Button>
-          </div>
-        </PageContainer>
-      </>
-    );
-  }
-
-  // Filter out current job title from direct report options
-  const directReportOptions = allJobTitles.filter((jt) => jt.id !== id);
-
   const selectedDeptNames = formData.departmentIds
     .map((did) => departments.find((d) => String(d.id) === did)?.name)
     .filter(Boolean);
@@ -229,34 +177,19 @@ export default function JobTitleEditPage() {
 
   return (
     <>
-      <Header title="Edit Job Title" />
+      <Header title="Position" />
       <PageContainer>
         <div className="space-y-4">
           {/* Top Bar: Back */}
           <div className="flex items-center justify-between">
             <button
-              onClick={() => router.push(`/organization/job-titles/${id}`)}
+              onClick={() => router.push("/organization/job-titles")}
               className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
               <ArrowLeft className="h-4 w-4" />
-              Back to Job Title Detail
+              Back to Job Titles
             </button>
           </div>
-
-          {/* Error Banner */}
-          {error && (
-            <div className="flex items-center gap-2 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
-              <span>{error}</span>
-              <Button
-                variant="ghost"
-               
-                className="ml-auto h-6 px-2 text-xs"
-                onClick={() => setError(null)}
-              >
-                Dismiss
-              </Button>
-            </div>
-          )}
 
           {/* Form Card */}
           <Card className="border-0 shadow-none">
@@ -430,7 +363,7 @@ export default function JobTitleEditPage() {
                       >
                         <span className={!formData.directReportId ? "text-muted-foreground" : ""}>
                           {formData.directReportId
-                            ? directReportOptions.find((jt) => String(jt.id) === formData.directReportId)?.name || "Select direct report"
+                            ? allJobTitles.find((jt) => String(jt.id) === formData.directReportId)?.name || "Select direct report"
                             : "Select direct report"}
                         </span>
                         <ChevronsUpDown className="h-4 w-4 opacity-50" />
@@ -461,7 +394,7 @@ export default function JobTitleEditPage() {
                                 Clear selection
                               </button>
                             )}
-                            {directReportOptions
+                            {allJobTitles
                               .filter((jt) =>
                                 jt.name.toLowerCase().includes(directReportSearch.toLowerCase())
                               )
@@ -481,7 +414,7 @@ export default function JobTitleEditPage() {
                                   {jt.name}
                                 </button>
                               ))}
-                            {directReportOptions.filter((jt) =>
+                            {allJobTitles.filter((jt) =>
                               jt.name.toLowerCase().includes(directReportSearch.toLowerCase())
                             ).length === 0 && (
                               <p className="px-2 py-3 text-sm text-center text-muted-foreground">
@@ -536,22 +469,22 @@ export default function JobTitleEditPage() {
               <div className="border-t border-dashed pt-6 flex items-center justify-end gap-3">
                 <Button
                   variant="outline"
-                  onClick={() => router.push(`/organization/job-titles/${id}`)}
+                  onClick={() => router.push("/organization/job-titles")}
                   disabled={isSaving}
                 >
                   Cancel
                 </Button>
                 <Button
-                  onClick={handleSave}
+                  onClick={handleCreate}
                   disabled={isSaving || !isFormValid}
                 >
                   {isSaving ? (
                     <>
                       <Loader2 className="animate-spin" />
-                      Saving...
+                      Creating...
                     </>
                   ) : (
-                    "Save Changes"
+                    "Create Job Title"
                   )}
                 </Button>
               </div>

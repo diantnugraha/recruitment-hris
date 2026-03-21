@@ -7,7 +7,21 @@
       "Bash(npx prisma migrate dev --name add_assessment_scoring --create-only)",
       "Bash(npx prisma migrate deploy)",
       "Bash(npx prisma generate)",
-      "Bash(npx tsc --noEmit --pretty)"
+      "Bash(npx tsc --noEmit --pretty)",
+      "Bash(cat \"/Users/diantnugraha/Documents/Documents/Development/recruitment-hris/src/app/\\(protected\\)/employee-budget/page.tsx\")",
+      "Bash(cat \"/Users/diantnugraha/Documents/Documents/Development/recruitment-hris/src/app/\\(protected\\)/employee-request/page.tsx\")",
+      "Bash(cat \"/Users/diantnugraha/Documents/Documents/Development/recruitment-hris/src/app/\\(protected\\)/employee-budget/summary/page.tsx\")",
+      "Bash(cat \"/Users/diantnugraha/Documents/Documents/Development/recruitment-hris/src/app/\\(protected\\)/organization/job-titles/page.tsx\")",
+      "Bash(git checkout:*)",
+      "Bash(npx tsc:*)",
+      "Bash(find /Users/diantnugraha/Documents/Documents/Development/recruitment-hris/public/ -name *logo* -o -name *tuv*)",
+      "Bash(npm install:*)",
+      "Bash(mkdir -p /Users/diantnugraha/Documents/Documents/Development/recruitment-hris-api/src/assets)",
+      "Bash(cp /Users/diantnugraha/Documents/Documents/Development/recruitment-hris/public/images/tuv-nord-logo.png /Users/diantnugraha/Documents/Documents/Development/recruitment-hris-api/src/assets/tuv-nord-logo.png)",
+      "Bash(ls /Users/diantnugraha/Documents/Documents/Development/recruitment-hris/src/app/\\\\\\(protected\\\\\\)/employee-request/[id]/)",
+      "Bash(git -C /Users/diantnugraha/Documents/Documents/Development/recruitment-hris diff HEAD -- \"src/app/\\(protected\\)/employee-request/[id]/page.tsx\")",
+      "Bash(npx prisma:*)",
+      "Bash(node -e \":*)"
     ]
   }
 }

@@ -13,7 +13,6 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
-  const { isAuthenticated, logout } = useAuthStore();
   const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
@@ -32,7 +31,7 @@ export default function DashboardLayout({
     }
 
     setIsChecking(false);
-  }, [isAuthenticated, router]);
+  }, [router]);
 
   // Listen for storage changes (e.g. user clears localStorage from another tab or devtools)
   useEffect(() => {

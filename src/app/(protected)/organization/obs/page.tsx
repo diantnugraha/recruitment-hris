@@ -4,8 +4,6 @@ import * as React from "react";
 import {
   Pencil,
   Trash2,
-  Network,
-  Building2,
   Loader2,
 } from "lucide-react";
 
@@ -37,7 +35,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useOrganizationStore } from "@/stores/organization-store";
-import { obsService, CreateOrganizationRequest, OrganizationStats } from "@/services/obs.service";
+import { obsService, CreateOrganizationRequest } from "@/services/obs.service";
 import { showToast } from "@/lib/utils/toast-messages";
 import { Organization } from "@/types";
 
@@ -65,12 +63,6 @@ export default function OBSPage() {
     setLoading,
   } = useOrganizationStore();
 
-  const [stats, setStats] = React.useState<OrganizationStats>({
-    totalUnits: 0,
-    totalDivisions: 0,
-    totalDepartments: 0,
-  });
-
   const [currentPage, setCurrentPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(10);
   const [totalItems, setTotalItems] = React.useState(0);
@@ -90,10 +82,6 @@ export default function OBSPage() {
     fetchOrganizations(currentPage, pageSize);
   }, [currentPage, pageSize]);
 
-  React.useEffect(() => {
-    fetchStats();
-  }, []);
-
   const fetchOrganizations = async (page: number, limit: number) => {
     setLoading(true);
 
@@ -111,13 +99,6 @@ export default function OBSPage() {
     setLoading(false);
   };
 
-  const fetchStats = async () => {
-    const response = await obsService.getStats();
-    if (response.success && response.data) {
-      setStats(response.data);
-    }
-  };
-
   // Client-side search on current page data
   const filteredData = React.useMemo(() => {
     const orgArray = Array.isArray(organizations) ? organizations : [];
@@ -126,7 +107,7 @@ export default function OBSPage() {
     return orgArray.filter(
       (org) =>
         org.name.toLowerCase().includes(query) ||
-        org.cluster.toLowerCase().includes(query) ||
+        (org.cluster && org.cluster.toLowerCase().includes(query)) ||
         (org.description && org.description.toLowerCase().includes(query))
     );
   }, [searchQuery, organizations]);
@@ -145,7 +126,7 @@ export default function OBSPage() {
     setSelectedOrg(org);
     setFormData({
       name: org.name,
-      cluster: org.cluster,
+      cluster: org.cluster || "",
       description: org.description || "",
     });
     setIsEditDialogOpen(true);
@@ -161,7 +142,7 @@ export default function OBSPage() {
 
     const data: CreateOrganizationRequest = {
       name: formData.name,
-      cluster: formData.cluster,
+      cluster: formData.cluster || undefined,
       description: formData.description || undefined,
     };
 
@@ -172,7 +153,7 @@ export default function OBSPage() {
       setIsAddDialogOpen(false);
       setFormData(initialFormData);
       setTotalItems((prev) => prev + 1);
-      fetchStats();
+
       showToast.created("Organization");
     } else {
       showToast.createError("organization", response.message);
@@ -188,7 +169,7 @@ export default function OBSPage() {
 
     const response = await obsService.update(selectedOrg.id, {
       name: formData.name,
-      cluster: formData.cluster,
+      cluster: formData.cluster || undefined,
       description: formData.description || undefined,
     });
 
@@ -217,7 +198,7 @@ export default function OBSPage() {
       setIsDeleteDialogOpen(false);
       setSelectedOrg(null);
       setTotalItems((prev) => prev - 1);
-      fetchStats();
+
       showToast.deleted("Organization");
     } else {
       showToast.deleteError("organization", response.message);
@@ -230,7 +211,8 @@ export default function OBSPage() {
     {
       key: "name",
       label: "Name",
-      render: (_: unknown, row: Organization) => (
+      className: "w-1/2",
+      render: (row: Organization) => (
         <button
           type="button"
           className="font-medium text-accent hover:underline text-left"
@@ -243,67 +225,21 @@ export default function OBSPage() {
     {
       key: "cluster",
       label: "Cluster",
-      render: (_: unknown, row: Organization) => (
-        <Badge variant="secondary">{row.cluster}</Badge>
-      ),
-    },
-    {
-      key: "description",
-      label: "Description",
-      render: (_: unknown, row: Organization) => (
-        <span className="text-sm text-muted-foreground line-clamp-2">
-          {row.description || "-"}
-        </span>
+      className: "w-1/2",
+      render: (row: Organization) => (
+        <Badge variant="secondary">{row.cluster || "-"}</Badge>
       ),
     },
   ];
 
   return (
     <>
-      <Header title="Organization Structure" />
+      <Header title="Organization" />
       <PageContainer>
         <div className="space-y-6">
-          {/* Stats */}
-          <div className="grid gap-4 sm:grid-cols-3">
-            <Card>
-              <CardContent className="flex items-center gap-4 p-5">
-                <div className="flex h-10 w-10 items-center justify-center rounded-md bg-secondary">
-                  <Network className="h-5 w-5 text-muted-foreground" />
-                </div>
-                <div>
-                  <p className="text-2xl font-semibold">
-                    {isLoading ? "-" : stats.totalUnits || totalItems}
-                  </p>
-                  <p className="text-sm text-muted-foreground">Total Units</p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="flex items-center gap-4 p-5">
-                <div className="flex h-10 w-10 items-center justify-center rounded-md bg-secondary">
-                  <Building2 className="h-5 w-5 text-muted-foreground" />
-                </div>
-                <div>
-                  <p className="text-2xl font-semibold">
-                    {isLoading ? "-" : stats.totalDivisions}
-                  </p>
-                  <p className="text-sm text-muted-foreground">Divisions</p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="flex items-center gap-4 p-5">
-                <div className="flex h-10 w-10 items-center justify-center rounded-md bg-secondary">
-                  <Building2 className="h-5 w-5 text-muted-foreground" />
-                </div>
-                <div>
-                  <p className="text-2xl font-semibold">
-                    {isLoading ? "-" : stats.totalDepartments}
-                  </p>
-                  <p className="text-sm text-muted-foreground">Departments</p>
-                </div>
-              </CardContent>
-            </Card>
+          <div>
+            <h2 className="text-lg font-semibold">Organization Breakdown Structure (OBS)</h2>
+            <p className="text-sm text-muted-foreground">Manage business units and their cluster groupings.</p>
           </div>
 
           {/* Table */}
@@ -390,7 +326,7 @@ export default function OBSPage() {
               </Button>
               <Button
                 onClick={handleCreate}
-                disabled={isSubmitting || !formData.name || !formData.cluster}
+                disabled={isSubmitting || !formData.name}
               >
                 {isSubmitting ? (
                   <>
@@ -453,7 +389,7 @@ export default function OBSPage() {
               </Button>
               <Button
                 onClick={handleUpdate}
-                disabled={isSubmitting || !formData.name || !formData.cluster}
+                disabled={isSubmitting || !formData.name}
               >
                 {isSubmitting ? (
                   <>
@@ -477,23 +413,28 @@ export default function OBSPage() {
                 Viewing organization unit information.
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="space-y-1.5">
-                <Label>Name</Label>
-                <Input value={selectedOrg?.name || ""} disabled />
+            <div className="space-y-4 py-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Name</p>
+                  <p className="text-sm font-medium">{selectedOrg?.name || "-"}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Cluster</p>
+                  <p className="text-sm font-medium">{selectedOrg?.cluster || "-"}</p>
+                </div>
               </div>
-              <div className="space-y-1.5">
-                <Label>Cluster</Label>
-                <Input value={selectedOrg?.cluster || ""} disabled />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Description</Label>
-                <Textarea value={selectedOrg?.description || "-"} disabled />
-              </div>
+              {selectedOrg?.description && (
+                <div className="space-y-1 border-t pt-3">
+                  <p className="text-xs text-muted-foreground">Description</p>
+                  <p className="text-sm text-muted-foreground">{selectedOrg.description}</p>
+                </div>
+              )}
             </div>
-            <DialogFooter className="flex-row justify-between sm:justify-between">
+            <DialogFooter className="flex-row gap-2 sm:justify-end">
               <Button
-                variant="destructive"
+                variant="ghost"
+                className="mr-auto text-destructive hover:text-destructive hover:bg-destructive/10"
                 onClick={() => {
                   setIsDetailDialogOpen(false);
                   if (selectedOrg) handleDeleteClick(selectedOrg);
@@ -502,23 +443,21 @@ export default function OBSPage() {
                 <Trash2 className="h-4 w-4" />
                 Delete
               </Button>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => setIsDetailDialogOpen(false)}
-                >
-                  Close
-                </Button>
-                <Button
-                  onClick={() => {
-                    setIsDetailDialogOpen(false);
-                    if (selectedOrg) handleEditClick(selectedOrg);
-                  }}
-                >
-                  <Pencil className="h-4 w-4" />
-                  Edit
-                </Button>
-              </div>
+              <Button
+                variant="outline"
+                onClick={() => setIsDetailDialogOpen(false)}
+              >
+                Close
+              </Button>
+              <Button
+                onClick={() => {
+                  setIsDetailDialogOpen(false);
+                  if (selectedOrg) handleEditClick(selectedOrg);
+                }}
+              >
+                <Pencil className="h-4 w-4" />
+                Edit
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

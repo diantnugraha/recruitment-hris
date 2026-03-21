@@ -228,7 +228,7 @@ export default function RolesAccessPage() {
       key: "roleId",
       label: "ID",
       className: "w-[80px]",
-      render: (_: unknown, row: Role) => (
+      render: (row: Role) => (
         <span className="text-sm font-medium text-muted-foreground">
           #{row.roleId}
         </span>
@@ -237,7 +237,7 @@ export default function RolesAccessPage() {
     {
       key: "roleName",
       label: "Role Name",
-      render: (_: unknown, row: Role) => (
+      render: (row: Role) => (
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent/10">
             <Shield className="h-4 w-4 text-accent" />
@@ -250,7 +250,7 @@ export default function RolesAccessPage() {
       key: "actions",
       label: "",
       className: "w-[50px]",
-      render: (_: unknown, row: Role) => (
+      render: (row: Role) => (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button

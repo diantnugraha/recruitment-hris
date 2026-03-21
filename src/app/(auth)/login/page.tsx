@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuthStore } from "@/stores/auth-store";
+import { authService } from "@/services/auth.service";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -19,9 +20,18 @@ export default function LoginPage() {
     password: "",
   });
 
+  // Immediately check localStorage token to avoid flash of login page on refresh
+  React.useEffect(() => {
+    const token = authService.getToken();
+    if (token) {
+      router.replace("/dashboard");
+    }
+  }, [router]);
+
+  // Also redirect when Zustand state updates (e.g. after successful login)
   React.useEffect(() => {
     if (isAuthenticated) {
-      router.push("/dashboard");
+      router.replace("/dashboard");
     }
   }, [isAuthenticated, router]);
 

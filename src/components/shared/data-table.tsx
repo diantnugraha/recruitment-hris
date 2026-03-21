@@ -34,7 +34,7 @@ interface Column<T> {
   label: string;
   sortable?: boolean;
   className?: string;
-  render?: (value: unknown, row: T, index: number) => React.ReactNode;
+  render?: (row: T, index: number) => React.ReactNode;
 }
 
 interface DataTableProps<T> {
@@ -53,6 +53,7 @@ interface DataTableProps<T> {
   emptyMessage?: string;
   actions?: React.ReactNode;
   filters?: React.ReactNode;
+  tableClassName?: string;
 }
 
 export function DataTable<T extends object>({
@@ -71,6 +72,7 @@ export function DataTable<T extends object>({
   emptyMessage = "No data found",
   actions,
   filters,
+  tableClassName,
 }: DataTableProps<T>) {
   const [searchValue, setSearchValue] = React.useState("");
   const [showFilters, setShowFilters] = React.useState(false);
@@ -149,7 +151,7 @@ export function DataTable<T extends object>({
       )}
 
       {/* Table */}
-      <div className="rounded-lg border bg-card">
+      <div className={cn("rounded-lg border bg-card overflow-x-auto", tableClassName)}>
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
@@ -184,7 +186,7 @@ export function DataTable<T extends object>({
                   {columns.map((column) => (
                     <TableCell key={column.key} className={column.className}>
                       {column.render
-                        ? column.render(getValue(row, column.key), row, index)
+                        ? column.render(row, index)
                         : String(getValue(row, column.key) ?? "-")}
                     </TableCell>
                   ))}
@@ -198,18 +200,18 @@ export function DataTable<T extends object>({
       {/* Pagination */}
       {pagination && totalItems > 0 && (
         <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
             <span>Rows per page</span>
             <Select
               value={String(pageSize)}
               onValueChange={(value) => onPageSizeChange?.(Number(value))}
             >
-              <SelectTrigger className="h-8 w-[70px]">
+              <SelectTrigger className="h-8 w-[80px] px-3">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="min-w-0">
                 {[5, 10, 20, 50, 100].map((size) => (
-                  <SelectItem key={size} value={String(size)}>
+                  <SelectItem key={size} value={String(size)} className="pr-6">
                     {size}
                   </SelectItem>
                 ))}

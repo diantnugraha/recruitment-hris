@@ -587,6 +587,7 @@ export default function OnboardingDetailPage() {
                       </Button>
                     </div>
                   ) : (
+                    <div className="overflow-x-auto">
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -648,6 +649,7 @@ export default function OnboardingDetailPage() {
                         ))}
                       </TableBody>
                     </Table>
+                    </div>
                   )}
                 </CardContent>
               </Card>
@@ -685,6 +687,7 @@ export default function OnboardingDetailPage() {
                       </Button>
                     </div>
                   ) : (
+                    <div className="overflow-x-auto">
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -743,6 +746,7 @@ export default function OnboardingDetailPage() {
                         ))}
                       </TableBody>
                     </Table>
+                    </div>
                   )}
                 </CardContent>
               </Card>
@@ -907,7 +911,7 @@ export default function OnboardingDetailPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Quantity</Label>
                 <Input
@@ -925,7 +929,7 @@ export default function OnboardingDetailPage() {
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Condition</Label>
                 <Select
@@ -987,7 +991,7 @@ export default function OnboardingDetailPage() {
                 onChange={(e) => setProgramForm({ ...programForm, program: e.target.value })}
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Date</Label>
                 <Input
@@ -1005,7 +1009,7 @@ export default function OnboardingDetailPage() {
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>PIC (Person In Charge)</Label>
                 <Input

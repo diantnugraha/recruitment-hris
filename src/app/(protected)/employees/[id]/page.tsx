@@ -205,7 +205,7 @@ export default function EmployeeDetailPage() {
       <PageContainer>
         <div className="space-y-6">
           {/* Top Bar: Back + Actions */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <button
               onClick={() => router.push("/employees")}
               className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
@@ -274,7 +274,7 @@ export default function EmployeeDetailPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
                   <IdCard className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
                   <DetailField label="NIK" value={employee.employeeNik || "No Data"} />
@@ -282,10 +282,6 @@ export default function EmployeeDetailPage() {
                 <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
                   <User className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
                   <DetailField label="Full Name" value={fullName} />
-                </div>
-                <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
-                  <User className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                  <DetailField label="Gender" value={employee.gender === "male" ? "Male" : "Female"} />
                 </div>
                 <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
                   <Calendar className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
@@ -317,7 +313,7 @@ export default function EmployeeDetailPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
                   <Briefcase className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
                   <DetailField label="Employee Type" value={matchedJobTitle?.type || employee.employeeType || ""} />
@@ -396,7 +392,7 @@ export default function EmployeeDetailPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
                   <User className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
                   <DetailField label="Mother's Name" value={employee.motherName || ""} />

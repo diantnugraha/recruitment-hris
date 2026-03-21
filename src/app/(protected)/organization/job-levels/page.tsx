@@ -2,13 +2,9 @@
 
 import * as React from "react";
 import {
-  Eye,
   Pencil,
   Trash2,
-  Award,
-  Layers,
   Loader2,
-  MoreHorizontal,
 } from "lucide-react";
 
 import { Header } from "@/components/layout/header";
@@ -17,13 +13,6 @@ import { DataTable } from "@/components/shared/data-table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   Dialog,
   DialogContent,
@@ -139,15 +128,6 @@ export default function JobLevelsPage() {
     );
   }, [searchQuery, jobLevels]);
 
-  // Count by category
-  const categoryStats = React.useMemo(() => {
-    const levelArray = Array.isArray(jobLevels) ? jobLevels : [];
-    return {
-      structural: levelArray.filter((l) => l.category === "Structural").length,
-      functional: levelArray.filter((l) => l.category === "Functional").length,
-    };
-  }, [jobLevels]);
-
   const handleDetailClick = (level: JobLevel) => {
     setSelectedJobLevel(level);
     setIsDetailDialogOpen(true);
@@ -254,56 +234,25 @@ export default function JobLevelsPage() {
     {
       key: "name",
       label: "Name",
-      render: (_: unknown, row: JobLevel) => (
-        <div>
-          <p className="font-medium">{row.name}</p>
-          <p className="text-xs text-muted-foreground line-clamp-1">{row.description}</p>
-        </div>
+      className: "w-1/2",
+      render: (row: JobLevel) => (
+        <button
+          type="button"
+          className="font-medium text-accent hover:underline text-left"
+          onClick={() => handleDetailClick(row)}
+        >
+          {row.name}
+        </button>
       ),
     },
     {
       key: "category",
       label: "Category",
-      render: (_: unknown, row: JobLevel) => (
+      className: "w-1/2",
+      render: (row: JobLevel) => (
         <Badge variant={row.category === "Structural" ? "default" : "secondary"}>
           {row.category}
         </Badge>
-      ),
-    },
-    {
-      key: "actions",
-      label: "",
-      className: "w-[50px]",
-      render: (_: unknown, row: JobLevel) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-muted-foreground"
-            >
-              <MoreHorizontal />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => handleDetailClick(row)}>
-              <Eye className="mr-2 h-4 w-4" />
-              Detail
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleEditClick(row)}>
-              <Pencil className="mr-2 h-4 w-4" />
-              Edit
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              className="text-destructive focus:text-destructive"
-              onClick={() => handleDeleteClick(row)}
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Delete
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
       ),
     },
   ];
@@ -385,50 +334,12 @@ export default function JobLevelsPage() {
 
   return (
     <>
-      <Header title="Job Levels" />
+      <Header title="Position" />
       <PageContainer>
         <div className="space-y-6">
-          {/* Stats */}
-          <div className="grid gap-4 sm:grid-cols-3">
-            <Card>
-              <CardContent className="flex items-center gap-4 p-5">
-                <div className="flex h-10 w-10 items-center justify-center rounded-md bg-secondary">
-                  <Award className="h-5 w-5 text-muted-foreground" />
-                </div>
-                <div>
-                  <p className="text-2xl font-semibold">
-                    {isLoading ? "-" : totalItems || jobLevels?.length || 0}
-                  </p>
-                  <p className="text-sm text-muted-foreground">Total Levels</p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="flex items-center gap-4 p-5">
-                <div className="flex h-10 w-10 items-center justify-center rounded-md bg-blue-100">
-                  <Layers className="h-5 w-5 text-blue-600" />
-                </div>
-                <div>
-                  <p className="text-2xl font-semibold">
-                    {isLoading ? "-" : categoryStats.structural}
-                  </p>
-                  <p className="text-sm text-muted-foreground">Structural</p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="flex items-center gap-4 p-5">
-                <div className="flex h-10 w-10 items-center justify-center rounded-md bg-green-100">
-                  <Layers className="h-5 w-5 text-green-600" />
-                </div>
-                <div>
-                  <p className="text-2xl font-semibold">
-                    {isLoading ? "-" : categoryStats.functional}
-                  </p>
-                  <p className="text-sm text-muted-foreground">Functional</p>
-                </div>
-              </CardContent>
-            </Card>
+          <div>
+            <h2 className="text-lg font-semibold">Job Levels</h2>
+            <p className="text-sm text-muted-foreground">Manage job levels and their categories.</p>
           </div>
 
           {/* Table */}
@@ -554,47 +465,64 @@ export default function JobLevelsPage() {
                 Viewing job level information.
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="space-y-1.5">
-                <Label>Name</Label>
-                <Input value={selectedJobLevel?.name || ""} disabled />
+            <div className="space-y-4 py-4">
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">Name</p>
+                <p className="text-sm font-medium">{selectedJobLevel?.name || "-"}</p>
               </div>
-              <div className="space-y-1.5">
-                <Label>Category</Label>
-                <Input value={selectedJobLevel?.category || ""} disabled />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Category</p>
+                  <p className="text-sm font-medium">{selectedJobLevel?.category || "-"}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Order</p>
+                  <p className="text-sm font-medium">{selectedJobLevel?.order != null ? String(selectedJobLevel.order) : "-"}</p>
+                </div>
               </div>
-              <div className="space-y-1.5">
-                <Label>Order</Label>
-                <Input
-                  value={selectedJobLevel?.order != null ? String(selectedJobLevel.order) : "-"}
-                  disabled
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Can Create Job Title</p>
+                  <p className="text-sm font-medium">{selectedJobLevel?.canCreateJobTitle ? "Yes" : "No"}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Can Create KPI</p>
+                  <p className="text-sm font-medium">{selectedJobLevel?.canCreateKpi ? "Yes" : "No"}</p>
+                </div>
               </div>
-              <div className="space-y-1.5">
-                <Label>Description</Label>
-                <Textarea value={selectedJobLevel?.description || "-"} disabled />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Can Create Job Title</Label>
-                <Input
-                  value={selectedJobLevel?.canCreateJobTitle ? "Yes" : "No"}
-                  disabled
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Can Create KPI</Label>
-                <Input
-                  value={selectedJobLevel?.canCreateKpi ? "Yes" : "No"}
-                  disabled
-                />
-              </div>
+              {selectedJobLevel?.description && (
+                <div className="space-y-1 border-t pt-3">
+                  <p className="text-xs text-muted-foreground">Description</p>
+                  <p className="text-sm text-muted-foreground">{selectedJobLevel.description}</p>
+                </div>
+              )}
             </div>
-            <DialogFooter>
+            <DialogFooter className="flex-row gap-2 sm:justify-end">
+              <Button
+                variant="ghost"
+                className="mr-auto text-destructive hover:text-destructive hover:bg-destructive/10"
+                onClick={() => {
+                  setIsDetailDialogOpen(false);
+                  if (selectedJobLevel) handleDeleteClick(selectedJobLevel);
+                }}
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete
+              </Button>
               <Button
                 variant="outline"
                 onClick={() => setIsDetailDialogOpen(false)}
               >
                 Close
+              </Button>
+              <Button
+                onClick={() => {
+                  setIsDetailDialogOpen(false);
+                  if (selectedJobLevel) handleEditClick(selectedJobLevel);
+                }}
+              >
+                <Pencil className="h-4 w-4" />
+                Edit
               </Button>
             </DialogFooter>
           </DialogContent>

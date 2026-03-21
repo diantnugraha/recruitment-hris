@@ -1,36 +1,31 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Loader2,
   AlertCircle,
   Users,
-  Search,
-  Building2,
-  Calendar,
   Briefcase,
   CheckCircle2,
-  Eye,
   Target,
-  Mail,
 } from "lucide-react";
 
 import { Header } from "@/components/layout/header";
 import { PageContainer } from "@/components/layout/page-container";
+import { DataTable } from "@/components/shared/data-table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Label } from "@/components/ui/label";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 import { employeeRequestService } from "@/services/employee-request.service";
 import {
@@ -41,9 +36,7 @@ import type { EmployeeRequestWithRelations } from "@/types/employee-request";
 import {
   EMPLOYEE_REQUEST_STATUS,
   EMPLOYEE_REQUEST_STATUS_CONFIG,
-  type EmployeeRequestStatus,
 } from "@/lib/constants/employeeRequest";
-import { formatShortDate } from "@/lib/utils";
 import {
   calculatePipelineStats,
   type PipelineStats,
@@ -55,8 +48,68 @@ interface RecruitmentRequestRow extends EmployeeRequestWithRelations {
   pipelineStats: PipelineStats;
 }
 
-// Status filter type
-type StatusFilter = "all" | "approved" | "in_recruitment" | "completed";
+// --- Table Columns (module level) ---
+const columns = [
+  {
+    key: "recruitmentCode",
+    label: "Code",
+    className: "w-1/5",
+    render: (row: RecruitmentRequestRow) => (
+      <Link
+        href={`/recruitment/request/${row.id}`}
+        className="font-medium text-accent hover:underline"
+      >
+        {row.recruitmentCode
+          ? row.recruitmentCode.replace("REC-", "RC.").replace(/-/g, "")
+          : row.code}
+      </Link>
+    ),
+  },
+  {
+    key: "jobTitle",
+    label: "Position",
+    className: "w-1/5",
+    render: (row: RecruitmentRequestRow) => (
+      <span className="text-sm font-medium">
+        {row.jobTitle?.name || "Unknown Position"}
+      </span>
+    ),
+  },
+  {
+    key: "department",
+    label: "Department",
+    className: "w-1/5",
+    render: (row: RecruitmentRequestRow) => (
+      <div className="space-y-0.5">
+        <p className="text-sm">{row.department?.name || "—"}</p>
+        {row.division?.name && (
+          <p className="text-xs text-muted-foreground">{row.division.name}</p>
+        )}
+      </div>
+    ),
+  },
+  {
+    key: "quantity",
+    label: "Qty",
+    className: "w-1/5 text-center",
+    render: (row: RecruitmentRequestRow) => (
+      <span className="font-medium">{row.quantity} HC</span>
+    ),
+  },
+  {
+    key: "status",
+    label: "Status",
+    className: "w-1/5",
+    render: (row: RecruitmentRequestRow) => {
+      const config = EMPLOYEE_REQUEST_STATUS_CONFIG[row.status];
+      return (
+        <Badge variant={config?.variant || "secondary"} className="text-xs">
+          {config?.label || row.status}
+        </Badge>
+      );
+    },
+  },
+];
 
 export default function RecruitmentPage() {
   const router = useRouter();
@@ -66,7 +119,9 @@ export default function RecruitmentPage() {
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [searchQuery, setSearchQuery] = React.useState("");
-  const [statusFilter, setStatusFilter] = React.useState<StatusFilter>("all");
+  const [statusFilter, setStatusFilter] = React.useState<string>("all");
+  const [currentPage, setCurrentPage] = React.useState(1);
+  const [pageSize, setPageSize] = React.useState(10);
 
   // Fetch data
   const fetchData = React.useCallback(async () => {
@@ -74,7 +129,6 @@ export default function RecruitmentPage() {
     setError(null);
 
     try {
-      // Fetch employee requests that are approved, in_recruitment, or completed
       const [approvedRes, inRecruitmentRes, completedRes] = await Promise.all([
         employeeRequestService.getAll(1, 100, {
           status: EMPLOYEE_REQUEST_STATUS.APPROVED,
@@ -99,32 +153,16 @@ export default function RecruitmentPage() {
         allRequests.push(...completedRes.data.data);
       }
 
-      // Debug: Log employee requests
-      console.log("Employee Requests fetched:", allRequests.map(r => ({
-        id: r.id,
-        numericId: Number(r.id),
-        code: r.code,
-        status: r.status
-      })));
-
       // Fetch candidates for each employee request and calculate stats
       const requestsWithData = await Promise.all(
         allRequests.map(async (request) => {
           const employeeRequestId = Number(request.id);
-          console.log(`Fetching candidates for employee_request_id: ${employeeRequestId}`);
 
           const candidatesRes = await candidateService.getByEmployeeRequest(
             employeeRequestId,
             1,
             100
           );
-
-          // Debug: Log result
-          console.log(`Candidates for ${request.code} (id=${request.id}):`, {
-            success: candidatesRes.success,
-            count: candidatesRes.data?.data?.length || 0,
-            message: candidatesRes.message || 'OK'
-          });
 
           const candidates =
             candidatesRes.success && candidatesRes.data
@@ -186,7 +224,6 @@ export default function RecruitmentPage() {
   const filteredRequests = React.useMemo(() => {
     let filtered = requests;
 
-    // Status filter
     if (statusFilter === "approved") {
       filtered = filtered.filter(
         (r) => r.status === EMPLOYEE_REQUEST_STATUS.APPROVED
@@ -201,7 +238,6 @@ export default function RecruitmentPage() {
       );
     }
 
-    // Search filter
     if (searchQuery.length >= 2) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(
@@ -216,37 +252,14 @@ export default function RecruitmentPage() {
     return filtered;
   }, [requests, statusFilter, searchQuery]);
 
-  // Get status badge
-  const getStatusBadge = (status: EmployeeRequestStatus) => {
-    const config = EMPLOYEE_REQUEST_STATUS_CONFIG[status];
-    return (
-      <Badge variant={config?.variant || "secondary"} className="text-xs">
-        {config?.label || status}
-      </Badge>
-    );
-  };
-
-  // Handle row click
-  const handleRowClick = (requestId: string) => {
-    router.push(`/recruitment/request/${requestId}`);
-  };
-
-  // Loading state
-  if (isLoading) {
-    return (
-      <>
-        <Header title="Recruitment" />
-        <PageContainer>
-          <div className="flex items-center justify-center h-64">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          </div>
-        </PageContainer>
-      </>
-    );
-  }
+  // Paginate
+  const paginatedData = React.useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredRequests.slice(start, start + pageSize);
+  }, [filteredRequests, currentPage, pageSize]);
 
   // Error state
-  if (error) {
+  if (error && !isLoading) {
     return (
       <>
         <Header title="Recruitment" />
@@ -266,264 +279,153 @@ export default function RecruitmentPage() {
       <Header title="Recruitment" />
       <PageContainer>
         <div className="space-y-6">
-          {/* Stats Summary */}
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {/* Total Positions */}
-            <Card className="border-accent/20 bg-gradient-to-br from-accent/5 to-transparent">
-              <CardContent className="p-5">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
-                      Open Positions
-                    </p>
-                    <p className="mt-1 font-semibold text-3xl text-accent">
-                      {stats.totalPositions}
-                    </p>
-                  </div>
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-accent/10">
-                    <Briefcase className="h-6 w-6 text-accent" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Active Requests */}
-            <Card>
-              <CardContent className="p-5">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
-                      Active Requests
-                    </p>
-                    <p className="mt-1 font-semibold text-3xl">
-                      {stats.totalRequests}
-                    </p>
-                    <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                      <span>Approved: {stats.approvedCount}</span>
-                      <span className="text-border">|</span>
-                      <span>Recruiting: {stats.inRecruitmentCount}</span>
-                      <span className="text-border">|</span>
-                      <span>Completed: {stats.completedCount}</span>
-                    </div>
-                  </div>
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-secondary">
-                    <Target className="h-6 w-6 text-muted-foreground" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Total Candidates */}
-            <Card>
-              <CardContent className="p-5">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
-                      Total Candidates
-                    </p>
-                    <p className="mt-1 font-semibold text-3xl">
-                      {stats.totalCandidates}
-                    </p>
-                  </div>
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-500/10">
-                    <Users className="h-6 w-6 text-blue-600" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Positions Filled */}
-            <Card>
-              <CardContent className="p-5">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
-                      Positions Filled
-                    </p>
-                    <p className="mt-1 font-semibold text-3xl text-emerald-600">
-                      {stats.positionsFilled}
-                    </p>
-                  </div>
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500/10">
-                    <CheckCircle2 className="h-6 w-6 text-emerald-600" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+          {/* Header */}
+          <div>
+            <h2 className="text-lg font-semibold text-foreground">Recruitment Overview</h2>
+            <p className="text-sm text-muted-foreground">Track recruitment progress and manage candidates across positions.</p>
           </div>
 
-          {/* Filters */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-              <div className="relative max-w-md">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search by code, position, department..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 w-full sm:w-[300px]"
-                />
-              </div>
-              <Tabs
-                value={statusFilter}
-                onValueChange={(v) => setStatusFilter(v as StatusFilter)}
-              >
-                <TabsList>
-                  <TabsTrigger value="all">All</TabsTrigger>
-                  <TabsTrigger value="approved">Approved</TabsTrigger>
-                  <TabsTrigger value="in_recruitment">Recruiting</TabsTrigger>
-                  <TabsTrigger value="completed">Completed</TabsTrigger>
-                </TabsList>
-              </Tabs>
-            </div>
+          {/* Stats */}
+          <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+            <Card className="overflow-hidden">
+              <CardContent className="p-0">
+                <div className="flex items-stretch">
+                  <div className="flex w-12 shrink-0 items-center justify-center bg-accent/10">
+                    <Briefcase className="h-4 w-4 text-accent" />
+                  </div>
+                  <div className="flex-1 px-3 py-2.5">
+                    <p className="text-[11px] font-medium text-muted-foreground">Open Positions</p>
+                    <p className="text-lg font-bold tabular-nums">
+                      {isLoading ? "-" : stats.totalPositions}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="overflow-hidden">
+              <CardContent className="p-0">
+                <div className="flex items-stretch">
+                  <div className="flex w-12 shrink-0 items-center justify-center bg-amber-500/10">
+                    <Target className="h-4 w-4 text-amber-600" />
+                  </div>
+                  <div className="flex-1 px-3 py-2.5">
+                    <p className="text-[11px] font-medium text-muted-foreground">Active Requests</p>
+                    <p className="text-lg font-bold tabular-nums">
+                      {isLoading ? "-" : stats.totalRequests}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="overflow-hidden">
+              <CardContent className="p-0">
+                <div className="flex items-stretch">
+                  <div className="flex w-12 shrink-0 items-center justify-center bg-blue-500/10">
+                    <Users className="h-4 w-4 text-blue-600" />
+                  </div>
+                  <div className="flex-1 px-3 py-2.5">
+                    <p className="text-[11px] font-medium text-muted-foreground">Total Candidates</p>
+                    <p className="text-lg font-bold tabular-nums">
+                      {isLoading ? "-" : stats.totalCandidates}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="overflow-hidden">
+              <CardContent className="p-0">
+                <div className="flex items-stretch">
+                  <div className="flex w-12 shrink-0 items-center justify-center bg-emerald-500/10">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                  </div>
+                  <div className="flex-1 px-3 py-2.5">
+                    <p className="text-[11px] font-medium text-muted-foreground">Positions Filled</p>
+                    <p className="text-lg font-bold tabular-nums text-emerald-600">
+                      {isLoading ? "-" : stats.positionsFilled}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
           {/* Table */}
-          <Card>
-            <Table>
-              <TableHeader>
-                <TableRow className="hover:bg-transparent">
-                  <TableHead className="w-[180px]">Recruitment Code</TableHead>
-                  <TableHead>Position</TableHead>
-                  <TableHead className="w-[100px]">Qty</TableHead>
-                  <TableHead className="w-[120px]">Candidates</TableHead>
-                  <TableHead className="w-[120px]">Status</TableHead>
-                  <TableHead className="w-[130px]">Expected Date</TableHead>
-                  <TableHead className="w-[80px]"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredRequests.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="h-32 text-center">
-                      <div className="flex flex-col items-center justify-center gap-2">
-                        <Briefcase className="h-10 w-10 text-muted-foreground/30" />
-                        <p className="text-muted-foreground">
-                          {statusFilter === "approved"
-                            ? "No approved requests"
-                            : statusFilter === "in_recruitment"
-                            ? "No requests in recruitment"
-                            : statusFilter === "completed"
-                            ? "No completed requests"
-                            : "No recruitment requests found"}
-                        </p>
-                        <Button
-                          variant="link"
-                         
-                          onClick={() => router.push("/employee-request")}
-                        >
-                          Go to Employee Requests
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredRequests.map((request) => (
-                    <TableRow
-                      key={request.id}
-                      className="cursor-pointer group"
-                      onClick={() => handleRowClick(request.id)}
-                    >
-                      {/* Recruitment Code */}
-                      <TableCell>
-                        <div className="text-sm font-medium text-accent">
-                          {request.recruitmentCode
-                            ? request.recruitmentCode
-                                .replace("REC-", "RC.")
-                                .replace(/-/g, "")
-                            : request.code}
-                        </div>
-                      </TableCell>
-
-                      {/* Position & Department */}
-                      <TableCell>
-                        <div className="space-y-1">
-                          <div className="font-medium">
-                            {request.jobTitle?.name || "Unknown Position"}
-                          </div>
-                          <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                            <Building2 className="h-3.5 w-3.5" />
-                            {request.department?.name || "—"}
-                          </div>
-                        </div>
-                      </TableCell>
-
-                      {/* Quantity */}
-                      <TableCell>
-                        <div className="flex items-center gap-1.5">
-                          <Users className="h-4 w-4 text-muted-foreground" />
-                          <span className="font-medium">{request.quantity}</span>
-                        </div>
-                      </TableCell>
-
-                      {/* Candidates Count */}
-                      <TableCell>
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-1.5">
-                            <span className="font-semibold text-foreground">
-                              {request.pipelineStats.passed}
-                            </span>
-                            <span className="text-muted-foreground">/</span>
-                            <span className="text-muted-foreground">
-                              {request.quantity}
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                              filled
-                            </span>
-                          </div>
-                          {request.pipelineStats.total > 0 && (
-                            <div className="text-xs text-muted-foreground">
-                              {request.pipelineStats.total} candidate
-                              {request.pipelineStats.total !== 1 ? "s" : ""}
-                            </div>
-                          )}
-                        </div>
-                      </TableCell>
-
-                      {/* Status */}
-                      <TableCell>{getStatusBadge(request.status)}</TableCell>
-
-                      {/* Expected Date */}
-                      <TableCell>
-                        {request.expectedOnboardDate ? (
-                          <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                            <Calendar className="h-3.5 w-3.5" />
-                            {formatShortDate(request.expectedOnboardDate)}
-                          </div>
-                        ) : (
-                          <span className="text-sm text-muted-foreground">—</span>
-                        )}
-                      </TableCell>
-
-                      {/* Actions */}
-                      <TableCell>
-                        <Button
-                          variant="ghost"
-                         
-                          className="opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            router.push(`/recruitment/request/${request.id}`);
-                          }}
-                        >
-                          <Eye />
-                          View
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </Card>
-
-          {/* Info */}
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Mail className="h-4 w-4" />
-            <span>
-              Click on a request to view details and send invitation to
-              candidates
-            </span>
+          <div>
+            {isLoading ? (
+              <Card>
+                <CardContent className="flex items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                </CardContent>
+              </Card>
+            ) : (
+              <DataTable
+                data={paginatedData}
+                columns={columns}
+                searchable
+                searchPlaceholder="Search by code, position, department..."
+                onSearch={(value) => {
+                  setSearchQuery(value);
+                  setCurrentPage(1);
+                }}
+                pagination
+                pageSize={pageSize}
+                totalItems={filteredRequests.length}
+                currentPage={currentPage}
+                onPageChange={setCurrentPage}
+                onPageSizeChange={(size) => {
+                  setPageSize(size);
+                  setCurrentPage(1);
+                }}
+                emptyMessage={
+                  statusFilter === "approved"
+                    ? "No approved requests"
+                    : statusFilter === "in_recruitment"
+                    ? "No requests in recruitment"
+                    : statusFilter === "completed"
+                    ? "No completed requests"
+                    : "No recruitment requests found"
+                }
+                filters={
+                  <div className="flex flex-wrap items-end gap-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Status</Label>
+                      <Select
+                        value={statusFilter}
+                        onValueChange={(value) => {
+                          setStatusFilter(value);
+                          setCurrentPage(1);
+                        }}
+                      >
+                        <SelectTrigger className="h-9 w-[180px]">
+                          <SelectValue placeholder="All Status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Status</SelectItem>
+                          <SelectItem value="approved">Approved</SelectItem>
+                          <SelectItem value="in_recruitment">Recruiting</SelectItem>
+                          <SelectItem value="completed">Completed</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {statusFilter !== "all" && (
+                      <Button
+                        variant="ghost"
+                        className="h-9"
+                        onClick={() => {
+                          setStatusFilter("all");
+                          setCurrentPage(1);
+                        }}
+                      >
+                        Clear Filters
+                      </Button>
+                    )}
+                  </div>
+                }
+              />
+            )}
           </div>
         </div>
       </PageContainer>

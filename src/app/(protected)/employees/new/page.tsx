@@ -26,15 +26,11 @@ import employeeService, {
 } from "@/services/employee.service";
 import jobTitleService from "@/services/job-title.service";
 import { useEmployeeStore } from "@/stores/employee-store";
-import type { JobTitle, EmployeeWithRelations, EmployeeGender, EmployeeStatus, MaritalStatus } from "@/types";
+import type { JobTitle, EmployeeWithRelations, EmployeeStatus, MaritalStatus } from "@/types";
 import { showToast } from "@/lib/utils/toast-messages";
 
 // --- Constants (matching hris-tuv exactly) ---
 
-const GENDERS = [
-  { value: "Male", label: "Male" },
-  { value: "Female", label: "Female" },
-] as const;
 
 const RELIGIONS = [
   { value: "Islam", label: "Islam" },
@@ -107,7 +103,6 @@ interface FormState {
   nik: string;
   // Biodata
   fullName: string;
-  gender: string;
   birthDate: string;
   religion: string;
   ethnic: string;
@@ -134,7 +129,6 @@ interface FormState {
 const initialForm: FormState = {
   nik: "",
   fullName: "",
-  gender: "Male",
   birthDate: "",
   religion: "Islam",
   ethnic: "Jawa",
@@ -283,7 +277,6 @@ export default function EmployeeNewPage() {
       email: form.email,
       phone: form.phone,
       dateOfBirth: form.birthDate,
-      gender: form.gender as EmployeeGender,
       address: "",
       hireDate: form.joinDate,
       status: form.status as EmployeeStatus,
@@ -378,7 +371,7 @@ export default function EmployeeNewPage() {
                   Biodata
                 </h2>
                 <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <Label>NIK</Label>
                       <Input
@@ -400,25 +393,7 @@ export default function EmployeeNewPage() {
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <Label>Gender</Label>
-                      <Select
-                        value={form.gender}
-                        onValueChange={(v) => handleChange("gender", v)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {GENDERS.map((g) => (
-                            <SelectItem key={g.value} value={g.value}>
-                              {g.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <Label htmlFor="birthDate">Birth Date *</Label>
                       <Input
@@ -430,7 +405,7 @@ export default function EmployeeNewPage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <Label>Religion</Label>
                       <Select
@@ -480,7 +455,7 @@ export default function EmployeeNewPage() {
                   Work Details
                 </h2>
                 <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <Label>Employee Type</Label>
                       <Input
@@ -501,7 +476,7 @@ export default function EmployeeNewPage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <Label>Department</Label>
                       <Input
@@ -532,7 +507,7 @@ export default function EmployeeNewPage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-[1fr_120px] gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-[1fr_120px] gap-4">
                     <div className="space-y-1.5">
                       <Label>Job Title *</Label>
                       <SearchableSelect
@@ -561,7 +536,7 @@ export default function EmployeeNewPage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <Label htmlFor="joinDate">Join Date *</Label>
                       <Input
@@ -582,7 +557,7 @@ export default function EmployeeNewPage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <Label htmlFor="email">Email Address *</Label>
                       <Input
@@ -613,7 +588,7 @@ export default function EmployeeNewPage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <Label>Status</Label>
                       <Select
@@ -702,22 +677,20 @@ export default function EmployeeNewPage() {
 
                   <div className="space-y-1.5">
                     <Label>Superior</Label>
-                    <Select
+                    <SearchableSelect
                       value={form.superior || "0"}
                       onValueChange={(v) => handleChange("superior", v)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select superior" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="0">— No Superior —</SelectItem>
-                        {employees.map((emp) => (
-                          <SelectItem key={emp.id} value={emp.id}>
-                            {`${emp.firstName} ${emp.lastName}`.trim()}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      placeholder="Select superior"
+                      searchPlaceholder="Search employee..."
+                      emptyText="No employee found."
+                      options={[
+                        { value: "0", label: "— No Superior —" },
+                        ...employees.map((emp) => ({
+                          value: emp.id,
+                          label: `${emp.firstName} ${emp.lastName}`.trim(),
+                        })),
+                      ]}
+                    />
                   </div>
                 </div>
               </div>
