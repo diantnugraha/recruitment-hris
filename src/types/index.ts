@@ -3,9 +3,10 @@ export interface User {
   id: string;
   email: string;
   name: string;
-  role: "admin" | "hr" | "manager" | "employee";
+  role: string;
   avatar?: string;
-  employeeId?: string;
+  employeeId?: number | null;
+  managedDepartments?: { id: number; name: string }[];
   createdAt: string;
   updatedAt: string;
 }
@@ -45,7 +46,7 @@ export type EmployeeStatus =
   | "outsource"
   | "exit";
 
-export type EmployeeGender = "male" | "female";
+export type EmployeeGender = "Any" | "Male" | "Female";
 
 export type MaritalStatus = "single" | "married" | "divorced" | "widowed";
 
@@ -115,7 +116,7 @@ export interface EmployeeWithRelations extends Employee {
 export interface Organization {
   id: string;
   name: string;
-  cluster: string;
+  cluster?: string;
   description?: string;
   createdAt: string;
   updatedAt: string;
@@ -423,4 +424,13 @@ export interface BudgetCalculation {
   totalCurrent: number;
   totalBudget: number;
   restBudget: number;
+}
+
+export interface RestBudgetData {
+  departmentId: number;
+  year: number;
+  budget: { technical: number; admin: number; total: number };
+  activeEmployees: { technical: number; admin: number; total: number };
+  pendingRequests: { technical: number; admin: number; total: number };
+  rest: { technical: number; admin: number; total: number };
 }

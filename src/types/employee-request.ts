@@ -43,6 +43,18 @@ export interface EmployeeRequest {
   status: EmployeeRequestStatus;
   recruitmentCode?: string; // Generated when approved
 
+  // Audit trail
+  hodReviewedBy?: number | null;
+  hodReviewedAt?: string | null;
+  hrReviewedBy?: number | null;
+  hrReviewedAt?: string | null;
+  approvedBy?: number | null;
+  approvedAt?: string | null;
+  revisedBy?: number | null;
+  revisedAt?: string | null;
+  rejectedBy?: number | null;
+  rejectedAt?: string | null;
+
   // Metadata
   requestedById: string;
   requestedByName?: string;
@@ -123,6 +135,7 @@ export interface EmployeeRequestStats {
   total: number;
   draft: number;
   created: number;
+  hod_reviewed: number;
   reviewed: number;
   approved: number;
   rejected: number;
