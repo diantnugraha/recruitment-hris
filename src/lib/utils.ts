@@ -15,9 +15,9 @@ export function formatCurrency(amount: number, currency: string = "IDR"): string
 }
 
 export function formatDate(date: Date | string | null | undefined): string {
-  if (!date) return "-";
+  if (!date) return "No Data";
   const d = typeof date === "string" ? new Date(date) : date;
-  if (isNaN(d.getTime())) return "-";
+  if (isNaN(d.getTime())) return "No Data";
   return new Intl.DateTimeFormat("id-ID", {
     day: "numeric",
     month: "long",
@@ -26,9 +26,9 @@ export function formatDate(date: Date | string | null | undefined): string {
 }
 
 export function formatShortDate(date: Date | string | null | undefined): string {
-  if (!date) return "-";
+  if (!date) return "No Data";
   const d = typeof date === "string" ? new Date(date) : date;
-  if (isNaN(d.getTime())) return "-";
+  if (isNaN(d.getTime())) return "No Data";
   return new Intl.DateTimeFormat("id-ID", {
     day: "2-digit",
     month: "short",

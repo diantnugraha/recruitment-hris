@@ -604,7 +604,7 @@ export default function OnboardingDetailPage() {
                         {onboarding.facilities.map((facility) => (
                           <TableRow key={facility.id}>
                             <TableCell className="text-sm">
-                              {facility.inventoryNo || "—"}
+                              {facility.inventoryNo || "No Data"}
                             </TableCell>
                             <TableCell className="font-medium">{facility.item}</TableCell>
                             <TableCell className="text-center">{facility.qty}</TableCell>
@@ -704,10 +704,10 @@ export default function OnboardingDetailPage() {
                           <TableRow key={program.id}>
                             <TableCell className="font-medium">{program.program}</TableCell>
                             <TableCell>
-                              {program.date ? formatShortDate(program.date) : "—"}
+                              {program.date ? formatShortDate(program.date) : "No Data"}
                             </TableCell>
-                            <TableCell>{program.location || "—"}</TableCell>
-                            <TableCell>{program.pic || "—"}</TableCell>
+                            <TableCell>{program.location || "No Data"}</TableCell>
+                            <TableCell>{program.pic || "No Data"}</TableCell>
                             <TableCell>
                               <Badge
                                 variant={
@@ -1097,7 +1097,7 @@ export default function OnboardingDetailPage() {
                 <span className="font-medium">Ready to convert</span>
               </div>
               <ul className="mt-2 text-sm text-emerald-600 dark:text-emerald-400 space-y-1">
-                <li>Job placement: {onboarding?.jobPlacement ? (WORK_LOCATION_LABELS[onboarding.jobPlacement as WorkLocation] || onboarding.jobPlacement) : "—"}</li>
+                <li>Job placement: {onboarding?.jobPlacement ? (WORK_LOCATION_LABELS[onboarding.jobPlacement as WorkLocation] || onboarding.jobPlacement) : "No Data"}</li>
                 <li>{onboarding?.facilities.length} facilities assigned</li>
                 <li>{onboarding?.programs.length} programs scheduled</li>
               </ul>

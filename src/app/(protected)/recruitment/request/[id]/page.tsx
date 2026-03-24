@@ -31,7 +31,6 @@ import { Header } from "@/components/layout/header";
 import { PageContainer } from "@/components/layout/page-container";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import {
@@ -406,7 +405,7 @@ export default function RecruitmentRequestDetailPage() {
     <>
       <Header title="Recruitment" />
       <PageContainer>
-        <div className="space-y-6">
+        <div className="space-y-5">
           {/* Top bar: Back + Title + Actions */}
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3 min-w-0">
@@ -466,27 +465,26 @@ export default function RecruitmentRequestDetailPage() {
 
           {/* Rejected Banner */}
           {request.status === "rejected" && (
-            <Card className="border-destructive/50 bg-destructive/5">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="h-9 w-9 rounded-full bg-destructive/10 flex items-center justify-center">
-                    <XCircle className="h-5 w-5 text-destructive" />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-destructive text-sm">Request Rejected</p>
-                    <p className="text-xs text-muted-foreground">This employee request has been rejected by management.</p>
-                  </div>
+            <div className="rounded-2xl border border-destructive/30 bg-gradient-to-r from-destructive/5 via-destructive/3 to-transparent overflow-hidden relative">
+              <div className="absolute top-0 left-0 w-1 h-full bg-destructive" />
+              <div className="flex items-center gap-4 p-5 pl-6">
+                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-destructive/10 ring-4 ring-destructive/5">
+                  <XCircle className="h-5 w-5 text-destructive" />
                 </div>
-              </CardContent>
-            </Card>
+                <div>
+                  <p className="font-semibold text-destructive text-sm">Request Rejected</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">This employee request has been rejected by management.</p>
+                </div>
+              </div>
+            </div>
           )}
 
           {/* Workflow Timeline */}
           {request.status !== "rejected" && (() => {
             const currentStep = getCurrentStepIndex(request.status);
             return (
-              <Card className="overflow-hidden border-accent/10 bg-gradient-to-br from-accent/5 to-transparent">
-                <CardContent className="p-4">
+              <div className="rounded-2xl border border-accent/10 bg-gradient-to-br from-accent/5 to-transparent overflow-hidden">
+                <div className="p-4">
                   <div className="flex items-center justify-between">
                     {WORKFLOW_STEPS.map((step, index) => {
                       const StepIcon = step.icon;
@@ -530,183 +528,163 @@ export default function RecruitmentRequestDetailPage() {
                       );
                     })}
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             );
           })()}
 
-          {/* Job Details Card */}
-          <Card>
-            <CardHeader className="pb-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-950">
-                    <Briefcase className="h-5 w-5 text-blue-600" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-base">Job Details</CardTitle>
-                    <CardDescription>Position requirements and placement information</CardDescription>
-                  </div>
+          {/* Job Details */}
+          <section className="rounded-2xl border bg-card">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
+              <div className="flex items-center gap-3">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
+                  <Briefcase className="h-4 w-4 text-muted-foreground" />
                 </div>
-                <button
-                  onClick={() => router.push(`/employee-request/${request.id}`)}
-                  className="text-xs text-accent hover:underline font-medium"
-                >
-                  {request.code}
-                </button>
+                <h2 className="text-base font-semibold text-foreground">Job Details</h2>
               </div>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
-                  <Briefcase className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-xs text-muted-foreground">Position</p>
-                    <p className="text-sm font-medium truncate">{request.jobTitle?.name || "—"}</p>
-                  </div>
+              <button
+                onClick={() => router.push(`/employee-request/${request.id}`)}
+                className="text-xs text-accent hover:underline font-medium"
+              >
+                {request.code}
+              </button>
+            </div>
+            <div className="px-6 py-5">
+              <div className="grid grid-cols-2 gap-x-8 gap-y-5 sm:grid-cols-3">
+                <div>
+                  <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Position</p>
+                  <p className={`mt-0.5 text-sm font-medium ${request.jobTitle?.name ? "text-foreground" : "text-muted-foreground"}`}>
+                    {request.jobTitle?.name || "No Data"}
+                  </p>
                 </div>
-                <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
-                  <Building2 className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-xs text-muted-foreground">Department</p>
-                    <p className="text-sm font-medium truncate">{request.department?.name || "—"}</p>
-                  </div>
+                <div>
+                  <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Department</p>
+                  <p className={`mt-0.5 text-sm font-medium ${request.department?.name ? "text-foreground" : "text-muted-foreground"}`}>
+                    {request.department?.name || "No Data"}
+                  </p>
                 </div>
-                <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
-                  <Users className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-xs text-muted-foreground">Employment Type</p>
-                    <p className="text-sm font-medium">{request.employmentType ? EMPLOYMENT_TYPE_LABELS[request.employmentType as EmploymentType] : "—"}</p>
-                  </div>
+                <div>
+                  <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Employment Type</p>
+                  <p className="mt-0.5 text-sm font-medium text-foreground">
+                    {request.employmentType ? EMPLOYMENT_TYPE_LABELS[request.employmentType as EmploymentType] : "No Data"}
+                  </p>
                 </div>
-                <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
-                  <MapPin className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-xs text-muted-foreground">Work Location</p>
-                    <p className="text-sm font-medium truncate">{request.jobPlacement ? (WORK_LOCATION_LABELS[request.jobPlacement as WorkLocation] || request.jobPlacement) : "—"}</p>
-                  </div>
+                <div>
+                  <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Work Location</p>
+                  <p className={`mt-0.5 text-sm font-medium ${request.jobPlacement ? "text-foreground" : "text-muted-foreground"}`}>
+                    {request.jobPlacement ? (WORK_LOCATION_LABELS[request.jobPlacement as WorkLocation] || request.jobPlacement) : "No Data"}
+                  </p>
                 </div>
-                <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
-                  <Hash className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-xs text-muted-foreground">Openings</p>
-                    <p className="text-sm font-medium">{request.quantity}</p>
-                  </div>
+                <div>
+                  <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Openings</p>
+                  <p className="mt-0.5 text-sm font-medium text-foreground">{request.quantity}</p>
                 </div>
-                <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
-                  <Calendar className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-xs text-muted-foreground">Target Onboard</p>
-                    <p className="text-sm font-medium">{request.expectedOnboardDate ? formatShortDate(request.expectedOnboardDate) : "—"}</p>
-                  </div>
+                <div>
+                  <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Target Onboard</p>
+                  <p className={`mt-0.5 text-sm font-medium ${request.expectedOnboardDate ? "text-foreground" : "text-muted-foreground"}`}>
+                    {request.expectedOnboardDate ? formatShortDate(request.expectedOnboardDate) : "No Data"}
+                  </p>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </section>
 
           {/* Candidates Section */}
-          <Card>
-            <CardHeader className="pb-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-purple-50 dark:bg-purple-950">
-                    <Users className="h-5 w-5 text-purple-600" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <CardTitle className="text-base">Candidates</CardTitle>
-                      {candidates.length > 0 && (
-                        <Badge variant="secondary" className="text-xs">
-                          {candidates.length}
-                        </Badge>
-                      )}
-                    </div>
-                    <CardDescription>Applicants for this position</CardDescription>
-                  </div>
+          <section className="rounded-2xl border bg-card">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
+              <div className="flex items-center gap-3">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
+                  <Users className="h-4 w-4 text-muted-foreground" />
                 </div>
                 <div className="flex items-center gap-2">
+                  <h2 className="text-base font-semibold text-foreground">Candidates</h2>
                   {candidates.length > 0 && (
-                    <div className="relative">
-                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                      <Input
-                        placeholder="Search..."
-                        value={candidateSearch}
-                        onChange={(e) => setCandidateSearch(e.target.value)}
-                        className="pl-8 h-8 text-sm w-[160px]"
-                      />
-                    </div>
-                  )}
-                  {canInviteCandidates && (
-                    <Button onClick={() => setShowInviteDialog(true)}>
-                      <Mail />
-                      Invite
-                    </Button>
+                    <Badge variant="secondary" className="text-xs">
+                      {candidates.length}
+                    </Badge>
                   )}
                 </div>
               </div>
-            </CardHeader>
-            <CardContent className="p-0">
-                {candidates.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-12 text-center px-6">
-                    <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-muted">
-                      <Users className="h-7 w-7 text-muted-foreground" />
-                    </div>
-                    <h4 className="mt-4 font-semibold">No candidates yet</h4>
-                    <p className="mt-1 text-sm text-muted-foreground max-w-xs">
-                      Invite candidates to apply for this position
-                    </p>
-                    {canInviteCandidates && (
-                      <Button variant="outline" className="mt-4" onClick={() => setShowInviteDialog(true)}>
-                        <UserPlus />
-                        Invite Candidate
-                      </Button>
-                    )}
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-secondary/30 hover:bg-secondary/30">
-                        <TableHead className="pl-6 w-1/4 font-semibold">Code</TableHead>
-                        <TableHead className="w-1/4 font-semibold">Name</TableHead>
-                        <TableHead className="w-1/4 font-semibold">Applied</TableHead>
-                        <TableHead className="w-1/4 font-semibold">Status</TableHead>
-                        <TableHead className="w-10 pr-6"></TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredCandidates.map((candidate) => (
-                        <TableRow
-                          key={candidate.id}
-                          className="group cursor-pointer"
-                          onClick={() => router.push(`/recruitment/${candidate.id}`)}
-                        >
-                          <TableCell className="pl-6 py-4">
-                            <span className="text-sm text-accent font-medium">
-                              {candidate.detail?.candidateCode || `CND-${candidate.id}`}
-                            </span>
-                          </TableCell>
-                          <TableCell className="py-4">
-                            <p className="text-sm font-medium">{candidate.fullname}</p>
-                            <p className="text-xs text-muted-foreground">{candidate.email}</p>
-                          </TableCell>
-                          <TableCell className="py-4 text-sm text-muted-foreground">
-                            {candidate.createdAt ? formatShortDate(candidate.createdAt) : "—"}
-                          </TableCell>
-                          <TableCell className="py-4">
-                            {getCandidateStatusBadge(deriveCandidateStatus(candidate))}
-                          </TableCell>
-                          <TableCell className="pr-6 py-4">
-                            <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+              <div className="flex items-center gap-2">
+                {candidates.length > 0 && (
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                    <Input
+                      placeholder="Search..."
+                      value={candidateSearch}
+                      onChange={(e) => setCandidateSearch(e.target.value)}
+                      className="pl-8 h-10 text-sm w-[160px]"
+                    />
                   </div>
                 )}
-              </CardContent>
-          </Card>
+                {canInviteCandidates && (
+                  <Button onClick={() => setShowInviteDialog(true)}>
+                    <Mail />
+                    Invite
+                  </Button>
+                )}
+              </div>
+            </div>
+            {candidates.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center px-6">
+                <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-muted">
+                  <Users className="h-7 w-7 text-muted-foreground" />
+                </div>
+                <h4 className="mt-4 font-semibold">No candidates yet</h4>
+                <p className="mt-1 text-sm text-muted-foreground max-w-xs">
+                  Invite candidates to apply for this position
+                </p>
+                {canInviteCandidates && (
+                  <Button variant="outline" className="mt-4" onClick={() => setShowInviteDialog(true)}>
+                    <UserPlus />
+                    Invite Candidate
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/50 hover:bg-muted/50">
+                      <TableHead className="pl-6 w-1/4 font-medium text-muted-foreground text-xs uppercase tracking-wider">Code</TableHead>
+                      <TableHead className="w-1/4 font-medium text-muted-foreground text-xs uppercase tracking-wider">Name</TableHead>
+                      <TableHead className="w-1/4 font-medium text-muted-foreground text-xs uppercase tracking-wider">Applied</TableHead>
+                      <TableHead className="w-1/4 font-medium text-muted-foreground text-xs uppercase tracking-wider">Status</TableHead>
+                      <TableHead className="w-10 pr-6"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredCandidates.map((candidate) => (
+                      <TableRow
+                        key={candidate.id}
+                        className="group cursor-pointer"
+                        onClick={() => router.push(`/recruitment/${candidate.id}`)}
+                      >
+                        <TableCell className="pl-6 py-4">
+                          <span className="text-sm text-accent font-medium">
+                            {candidate.detail?.candidateCode || `CND-${candidate.id}`}
+                          </span>
+                        </TableCell>
+                        <TableCell className="py-4">
+                          <p className="text-sm font-medium">{candidate.fullname}</p>
+                          <p className="text-xs text-muted-foreground">{candidate.email}</p>
+                        </TableCell>
+                        <TableCell className="py-4 text-sm text-muted-foreground">
+                          {candidate.createdAt ? formatShortDate(candidate.createdAt) : "No Data"}
+                        </TableCell>
+                        <TableCell className="py-4">
+                          {getCandidateStatusBadge(deriveCandidateStatus(candidate))}
+                        </TableCell>
+                        <TableCell className="pr-6 py-4">
+                          <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </section>
         </div>
       </PageContainer>
 

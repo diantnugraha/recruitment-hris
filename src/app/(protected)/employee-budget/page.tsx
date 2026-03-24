@@ -257,9 +257,9 @@ export default function EmployeeBudgetPage() {
 
       return {
         departmentId: deptId,
-        departmentName: dept?.name || "Unknown",
-        divisionName: division?.name || "-",
-        category: dept?.category || "-",
+        departmentName: dept?.name || "No Data",
+        divisionName: division?.name || "No Data",
+        category: dept?.category || "No Data",
         budgetYears: deptBudgets.length,
       };
     });

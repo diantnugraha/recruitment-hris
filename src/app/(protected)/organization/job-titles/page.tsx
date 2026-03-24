@@ -84,7 +84,7 @@ export default function JobTitlesPage() {
   }, [filteredData, currentPage, pageSize]);
 
   const getJobLevelName = (row: JobTitle) => {
-    return row.jobLevel?.name || jobLevels.find((level) => level.id === row.jobLevelId)?.name || "-";
+    return row.jobLevel?.name || jobLevels.find((level) => level.id === row.jobLevelId)?.name || "No Data";
   };
 
   const columns = [
@@ -113,7 +113,7 @@ export default function JobTitlesPage() {
       label: "Department",
       render: (row: JobTitle) => {
         const names = getDepartmentNames(row);
-        if (names.length === 0) return <span className="text-sm text-muted-foreground">-</span>;
+        if (names.length === 0) return <span className="text-sm text-muted-foreground">No Data</span>;
         return (
           <div className="flex flex-wrap gap-1">
             {names.map((name) => (
@@ -134,7 +134,7 @@ export default function JobTitlesPage() {
             {row.type}
           </Badge>
         ) : (
-          <span className="text-sm text-muted-foreground">-</span>
+          <span className="text-sm text-muted-foreground">No Data</span>
         )
       ),
     },

@@ -9,6 +9,7 @@ import { PageContainer } from "@/components/layout/page-container";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -28,6 +29,7 @@ import jobTitleService from "@/services/job-title.service";
 import { useEmployeeStore } from "@/stores/employee-store";
 import type { JobTitle, EmployeeWithRelations, EmployeeStatus, MaritalStatus } from "@/types";
 import { showToast } from "@/lib/utils/toast-messages";
+import { ASIAN_COUNTRIES } from "@/lib/constants/nationalities";
 
 // --- Constants (matching hris-tuv exactly) ---
 
@@ -106,6 +108,7 @@ interface FormState {
   birthDate: string;
   religion: string;
   ethnic: string;
+  nationality: string;
   // Work Details
   jobTitleId: string;
   fte: string;
@@ -119,6 +122,7 @@ interface FormState {
   probationPeriod: string;
   exitDate: string;
   superior: string;
+  address: string;
   // Family
   motherName: string;
   fatherName: string;
@@ -132,6 +136,7 @@ const initialForm: FormState = {
   birthDate: "",
   religion: "Islam",
   ethnic: "Jawa",
+  nationality: "",
   jobTitleId: "",
   fte: "1",
   joinDate: "",
@@ -144,6 +149,7 @@ const initialForm: FormState = {
   probationPeriod: "",
   exitDate: "",
   superior: "0",
+  address: "",
   motherName: "",
   fatherName: "",
   maritalStatus: "",
@@ -277,7 +283,7 @@ export default function EmployeeNewPage() {
       email: form.email,
       phone: form.phone,
       dateOfBirth: form.birthDate,
-      address: "",
+      address: form.address,
       hireDate: form.joinDate,
       status: form.status as EmployeeStatus,
       departmentId: "",
@@ -304,6 +310,7 @@ export default function EmployeeNewPage() {
       emergencyContactPhone: "",
       religion: form.religion,
       ethnicity: form.ethnic,
+      nationality: form.nationality,
       certificate: "",
     });
 
@@ -442,6 +449,34 @@ export default function EmployeeNewPage() {
                         </SelectContent>
                       </Select>
                     </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label>Nationality</Label>
+                      <SearchableSelect
+                        options={ASIAN_COUNTRIES.map((c) => ({
+                          value: c.value,
+                          label: c.label,
+                        }))}
+                        value={form.nationality}
+                        onValueChange={(v) => handleChange("nationality", v)}
+                        placeholder="Select nationality"
+                        searchPlaceholder="Search country..."
+                        emptyText="No country found."
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="address">Address</Label>
+                    <Textarea
+                      id="address"
+                      placeholder="Address"
+                      value={form.address}
+                      onChange={(e) => handleChange("address", e.target.value)}
+                      rows={3}
+                    />
                   </div>
 
                 </div>

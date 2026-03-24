@@ -9,6 +9,7 @@ import { PageContainer } from "@/components/layout/page-container";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -44,6 +45,7 @@ import type {
 } from "@/types";
 import { DIVISION_HEAD_CODES, DEPARTMENT_MANAGER_CODES } from "@/types";
 import { showToast } from "@/lib/utils/toast-messages";
+import { ASIAN_COUNTRIES } from "@/lib/constants/nationalities";
 
 // --- Constants (matching hris-tuv exactly) ---
 
@@ -133,6 +135,8 @@ interface FormState {
   probationPeriod: string;
   exitDate: string;
   superior: string;
+  address: string;
+  nationality: string;
   motherName: string;
   fatherName: string;
   maritalStatus: string;
@@ -195,6 +199,8 @@ function mapEmployeeToFormState(
     probationPeriod: "",
     exitDate: emp.exitDate || "",
     superior: emp.managerId || "0",
+    address: emp.address || "",
+    nationality: emp.nationality || "",
     motherName: emp.motherName || "",
     fatherName: emp.fatherName || "",
     maritalStatus: emp.maritalStatus ? capitalize(emp.maritalStatus) : "",
@@ -370,6 +376,7 @@ export default function EmployeeEditPage() {
       jobTitleId: selectedJobTitle?.name || "",
       departmentId: form.departmentId, // Include department for non-structural positions
       managerId: form.superior,
+      address: form.address,
       location: form.location,
       permanentDate: form.status === "Permanent" ? form.permanentDate : "",
       motherName: form.motherName,
@@ -378,6 +385,7 @@ export default function EmployeeEditPage() {
       maritalStatus: form.maritalStatus as MaritalStatus | "",
       religion: form.religion,
       ethnicity: form.ethnic,
+      nationality: form.nationality,
     });
 
     const response = await employeeService.update(employee.id, requestData);
@@ -574,6 +582,34 @@ export default function EmployeeEditPage() {
                         </SelectContent>
                       </Select>
                     </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label>Nationality</Label>
+                      <SearchableSelect
+                        options={ASIAN_COUNTRIES.map((c) => ({
+                          value: c.value,
+                          label: c.label,
+                        }))}
+                        value={form.nationality}
+                        onValueChange={(v) => handleChange("nationality", v)}
+                        placeholder="Select nationality"
+                        searchPlaceholder="Search country..."
+                        emptyText="No country found."
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="address">Address</Label>
+                    <Textarea
+                      id="address"
+                      placeholder="Address"
+                      value={form.address}
+                      onChange={(e) => handleChange("address", e.target.value)}
+                      rows={3}
+                    />
                   </div>
 
                 </div>
@@ -960,7 +996,7 @@ export default function EmployeeEditPage() {
                 <>
                   The <strong>Head of Division</strong> position for{" "}
                   <strong>{structuralCheck?.targetName}</strong> is currently held by{" "}
-                  <strong>{structuralCheck?.currentHolder?.employeeName || "Unknown"}</strong>.
+                  <strong>{structuralCheck?.currentHolder?.employeeName || "No Data"}</strong>.
                   <br /><br />
                   Assigning this position to <strong>{form?.fullName}</strong> will remove the
                   current holder from this position.
@@ -969,7 +1005,7 @@ export default function EmployeeEditPage() {
                 <>
                   The <strong>Manager</strong> position for{" "}
                   <strong>{structuralCheck?.targetName}</strong> is currently held by{" "}
-                  <strong>{structuralCheck?.currentHolder?.employeeName || "Unknown"}</strong>.
+                  <strong>{structuralCheck?.currentHolder?.employeeName || "No Data"}</strong>.
                   <br /><br />
                   Assigning this position to <strong>{form?.fullName}</strong> will remove the
                   current holder from this position.

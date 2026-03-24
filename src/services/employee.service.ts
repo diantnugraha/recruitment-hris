@@ -31,6 +31,7 @@ export interface CreateEmployeeRequest {
   address?: string;
   religion?: string;
   ethnic?: string;
+  nationality?: string;
   mother_name?: string;
   father_name?: string;
   spouse_name?: string;
@@ -60,6 +61,7 @@ export interface UpdateEmployeeRequest {
   address?: string;
   religion?: string;
   ethnic?: string;
+  nationality?: string;
   mother_name?: string;
   father_name?: string;
   spouse_name?: string;
@@ -110,6 +112,7 @@ export interface EmployeeFormData {
   // Additional
   religion: string;
   ethnicity: string;
+  nationality: string;
   certificate: string;
 }
 
@@ -174,6 +177,7 @@ interface ApiEmployee {
   employee_exitdate?: string;
   employee_religion?: string;
   employee_ethnic?: string;
+  employee_nationality?: string;
   certificate?: string;
   // Relations (might be nested objects or just IDs)
   department?: Department | { id: string; name: string; code?: string };
@@ -250,6 +254,7 @@ function mapEmployee(emp: ApiEmployee): EmployeeWithRelations {
     // Additional
     religion: emp.employee_religion,
     ethnicity: emp.employee_ethnic,
+    nationality: emp.employee_nationality,
     certificate: emp.certificate,
     createdAt: emp.created_at || emp.createdAt || "",
     updatedAt: emp.updated_at || emp.updatedAt || "",
@@ -286,6 +291,7 @@ export function mapFormToRequest(form: EmployeeFormData): CreateEmployeeRequest 
   if (form.address) req.address = form.address;
   if (form.religion) req.religion = form.religion;
   if (form.ethnicity) req.ethnic = form.ethnicity;
+  if (form.nationality) req.nationality = form.nationality;
   if (form.motherName) req.mother_name = form.motherName;
   if (form.fatherName) req.father_name = form.fatherName;
   if (form.spouseName) req.spouse_name = form.spouseName;
@@ -326,6 +332,7 @@ export function mapFormToUpdateRequest(form: Partial<EmployeeFormData>): UpdateE
   if (form.address !== undefined) req.address = form.address || undefined;
   if (form.religion !== undefined) req.religion = form.religion || undefined;
   if (form.ethnicity !== undefined) req.ethnic = form.ethnicity || undefined;
+  if (form.nationality !== undefined) req.nationality = form.nationality || undefined;
   if (form.motherName !== undefined) req.mother_name = form.motherName || undefined;
   if (form.fatherName !== undefined) req.father_name = form.fatherName || undefined;
   if (form.spouseName !== undefined) req.spouse_name = form.spouseName || undefined;

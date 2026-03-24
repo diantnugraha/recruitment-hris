@@ -227,7 +227,7 @@ export default function OBSPage() {
       label: "Cluster",
       className: "w-1/2",
       render: (row: Organization) => (
-        <Badge variant="secondary">{row.cluster || "-"}</Badge>
+        <Badge variant="secondary">{row.cluster || "No Data"}</Badge>
       ),
     },
   ];
@@ -417,11 +417,11 @@ export default function OBSPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground">Name</p>
-                  <p className="text-sm font-medium">{selectedOrg?.name || "-"}</p>
+                  <p className="text-sm font-medium">{selectedOrg?.name || "No Data"}</p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground">Cluster</p>
-                  <p className="text-sm font-medium">{selectedOrg?.cluster || "-"}</p>
+                  <p className="text-sm font-medium">{selectedOrg?.cluster || "No Data"}</p>
                 </div>
               </div>
               {selectedOrg?.description && (

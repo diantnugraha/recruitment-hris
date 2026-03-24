@@ -187,7 +187,7 @@ export function DataTable<T extends object>({
                     <TableCell key={column.key} className={column.className}>
                       {column.render
                         ? column.render(row, index)
-                        : String(getValue(row, column.key) ?? "-")}
+                        : String(getValue(row, column.key) ?? "No Data")}
                     </TableCell>
                   ))}
                 </TableRow>
