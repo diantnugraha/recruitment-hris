@@ -15,7 +15,13 @@ export function RouteGuard({ children }: RouteGuardProps) {
   const pathname = usePathname();
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
-  const userRoleId = user?.roleId ?? 0;
+
+  // Skip route guard if user is not authenticated (layout handles redirect to /login)
+  if (!user) {
+    return <>{children}</>;
+  }
+
+  const userRoleId = user.roleId ?? 0;
 
   if (!hasRouteAccess(pathname, userRoleId)) {
     return (
