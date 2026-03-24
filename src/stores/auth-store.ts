@@ -38,7 +38,8 @@ export const useAuthStore = create<AuthStore>()(
             set({
               user: {
                 ...userData,
-                role: (userData as unknown as { roleName?: string }).roleName ?? userData.role,
+                roleId: (userData as unknown as { roleId?: number }).roleId ?? 0,
+                roleName: (userData as unknown as { roleName?: string }).roleName ?? '',
               },
               token: response.data.token,
               isAuthenticated: true,
@@ -106,7 +107,8 @@ export const useAuthStore = create<AuthStore>()(
             set({
               user: {
                 ...userData,
-                role: (userData as unknown as { roleName?: string }).roleName ?? userData.role,
+                roleId: (userData as unknown as { roleId?: number }).roleId ?? 0,
+                roleName: (userData as unknown as { roleName?: string }).roleName ?? '',
               },
               token,
               isAuthenticated: true,
@@ -132,6 +134,17 @@ export const useAuthStore = create<AuthStore>()(
     }),
     {
       name: "auth-store",
+      version: 2,
+      migrate: (persistedState: unknown, version: number) => {
+        if (version < 2) {
+          return {
+            user: null,
+            token: null,
+            isAuthenticated: false,
+          };
+        }
+        return persistedState as AuthStore;
+      },
       partialize: (state) => ({
         user: state.user,
         token: state.token,

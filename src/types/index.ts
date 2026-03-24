@@ -3,7 +3,8 @@ export interface User {
   id: string;
   email: string;
   name: string;
-  role: string;
+  roleId: number;       // numeric for access control (matches database role_access.role_id)
+  roleName: string;     // human-readable role name for display
   avatar?: string;
   employeeId?: number | null;
   managedDepartments?: { id: number; name: string }[];
@@ -99,6 +100,7 @@ export interface Employee {
   // Additional
   religion?: string;
   ethnicity?: string;
+  nationality?: string;
   certificate?: string;
   createdAt: string;
   updatedAt: string;
