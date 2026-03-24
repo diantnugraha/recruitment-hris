@@ -41,7 +41,7 @@ import {
 import { UserDetailDialog, UserFormDialog } from "@/components/users";
 import userService from "@/services/user.service";
 import { UserManagement } from "@/types/user-management";
-import { USER_ROLE_CONFIG } from "@/lib/constants/user";
+import { ROLES, ROLE_CONFIG, RoleId } from "@/lib/constants/roles";
 import { getInitials, formatShortDate } from "@/lib/utils";
 import { showToast } from "@/lib/utils/toast-messages";
 
@@ -117,9 +117,9 @@ export default function UsersPage() {
   // Stats
   const stats = React.useMemo(() => {
     const totalCount = users.length;
-    const adminCount = users.filter((u) => u.roleId === 1).length;
-    const hrCount = users.filter((u) => u.roleId === 2).length;
-    const managerCount = users.filter((u) => u.roleId === 3).length;
+    const adminCount = users.filter((u) => u.roleId === ROLES.SUPER_ADMIN).length;
+    const hrCount = users.filter((u) => u.roleId === ROLES.HUMAN_RESOURCES).length;
+    const managerCount = users.filter((u) => u.roleId === ROLES.MANAGER).length;
 
     return [
       {
@@ -197,7 +197,7 @@ export default function UsersPage() {
 
   // Get role badge - use actual role name from database, config only for styling
   const getRoleBadge = (roleId: number, roleName?: string | null) => {
-    const config = USER_ROLE_CONFIG[roleId];
+    const config = ROLE_CONFIG[roleId as RoleId];
     const displayLabel = roleName || config?.label || `Role ${roleId}`;
     const variant = config?.variant || "outline";
     return <Badge variant={variant}>{displayLabel}</Badge>;
@@ -216,7 +216,7 @@ export default function UsersPage() {
             </AvatarFallback>
           </Avatar>
           <div>
-            <p className="font-medium">{row.displayName || row.name || "—"}</p>
+            <p className="font-medium">{row.displayName || row.name || "No Data"}</p>
             <p className="text-xs text-muted-foreground">{row.email}</p>
           </div>
         </div>
@@ -233,7 +233,7 @@ export default function UsersPage() {
       label: "Linked Employee",
       render: (row: UserManagement) => (
         <span className="text-sm text-muted-foreground">
-          {row.employee?.employeeName || "—"}
+          {row.employee?.employeeName || "No Data"}
         </span>
       ),
     },
@@ -255,7 +255,7 @@ export default function UsersPage() {
       label: "Created",
       render: (row: UserManagement) => (
         <span className="text-sm text-muted-foreground">
-          {row.created_at ? formatShortDate(row.created_at) : "—"}
+          {row.created_at ? formatShortDate(row.created_at) : "No Data"}
         </span>
       ),
     },

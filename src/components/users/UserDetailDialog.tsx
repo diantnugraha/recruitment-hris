@@ -26,7 +26,7 @@ import {
 
 import userService from "@/services/user.service";
 import { UserManagement } from "@/types/user-management";
-import { USER_ROLE_CONFIG } from "@/lib/constants/user";
+import { ROLE_CONFIG, RoleId } from "@/lib/constants/roles";
 import { formatShortDate, getInitials } from "@/lib/utils";
 import { showToast } from "@/lib/utils/toast-messages";
 
@@ -63,7 +63,7 @@ function DetailField({
           {label}
         </p>
         <p className={`text-sm font-medium ${!value ? "text-muted-foreground" : ""}`}>
-          {value || "No data"}
+          {value || "No Data"}
         </p>
       </div>
     </div>
@@ -131,7 +131,7 @@ export function UserDetailDialog({
 
   // Get role badge - use actual role name from database
   const getRoleBadge = (roleId: number, roleName?: string | null) => {
-    const config = USER_ROLE_CONFIG[roleId];
+    const config = ROLE_CONFIG[roleId as RoleId];
     const displayLabel = roleName || config?.label || `Role ${roleId}`;
     const variant = config?.variant || "outline";
     return <Badge variant={variant}>{displayLabel}</Badge>;
@@ -193,7 +193,7 @@ export function UserDetailDialog({
                   <DetailField label="Email" value={user.email} icon={Mail} />
                   <DetailField
                     label="Role"
-                    value={user.role?.roleName || USER_ROLE_CONFIG[user.roleId]?.label || `Role ${user.roleId}`}
+                    value={user.role?.roleName || ROLE_CONFIG[user.roleId as RoleId]?.label || `Role ${user.roleId}`}
                     icon={Shield}
                   />
                 </div>
