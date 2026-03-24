@@ -21,6 +21,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/stores/app-store";
+import { useAuthStore } from "@/stores/auth-store";
+import { hasRouteAccess } from "@/lib/constants/routeAccess";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -117,6 +119,17 @@ const navigation: NavSection[] = [
 export function Sidebar() {
   const pathname = usePathname();
   const { sidebarCollapsed, toggleSidebarCollapse } = useAppStore();
+  const user = useAuthStore((state) => state.user);
+  const userRoleId = user?.roleId ?? 0;
+
+  const filteredNavigation = React.useMemo(() => {
+    return navigation
+      .map((section) => ({
+        ...section,
+        items: section.items.filter((item) => hasRouteAccess(item.href, userRoleId)),
+      }))
+      .filter((section) => section.items.length > 0);
+  }, [userRoleId]);
 
   const isActive = (href: string) => {
     return pathname === href || pathname.startsWith(href + "/");
@@ -182,7 +195,7 @@ export function Sidebar() {
               sidebarCollapsed ? "px-2" : "px-4"
             )}
           >
-            {navigation.map((section) => (
+            {filteredNavigation.map((section) => (
               <div key={section.title} className="flex flex-col gap-1">
                 {/* Section Title */}
                 {!sidebarCollapsed && (
