@@ -44,8 +44,8 @@ import {
   EDUCATION_LEVEL_OPTIONS,
   GENDER_PREFERENCE_OPTIONS,
   WORK_LOCATION_OPTIONS,
-  ROLES,
 } from "@/lib/constants/employeeRequest";
+import { ROLES } from "@/lib/constants/roles";
 import { useAuthStore } from "@/stores/auth-store";
 import type { JobTitle, Department, RestBudgetData } from "@/types";
 
@@ -75,14 +75,14 @@ type EmployeeRequestFormData = z.infer<typeof employeeRequestSchema>;
 export default function NewEmployeeRequestPage() {
   const router = useRouter();
   const { user } = useAuthStore();
-  const userRole = user?.role ?? '';
+  const userRoleId = user?.roleId ?? 0;
 
   // Access guard — only admin and manager can create requests
   React.useEffect(() => {
-    if (userRole && userRole !== ROLES.ADMIN && userRole !== ROLES.MANAGER) {
+    if (userRoleId && userRoleId !== ROLES.SUPER_ADMIN && userRoleId !== ROLES.MANAGER) {
       router.push('/employee-request');
     }
-  }, [userRole, router]);
+  }, [userRoleId, router]);
 
   // State
   const [jobTitles, setJobTitles] = React.useState<JobTitle[]>([]);
@@ -145,7 +145,7 @@ export default function NewEmployeeRequestPage() {
     fetchData();
   }, []);
 
-  const isManager = userRole === ROLES.MANAGER;
+  const isManager = userRoleId === ROLES.MANAGER;
 
   // Auto-populate department for Manager from their managedDepartments
   React.useEffect(() => {
