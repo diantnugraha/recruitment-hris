@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { Sidebar } from "@/components/layout/sidebar";
+import { RouteGuard } from "@/components/shared/RouteGuard";
 import { useAuthStore } from "@/stores/auth-store";
 import { authService } from "@/services/auth.service";
 
@@ -89,7 +90,9 @@ export default function DashboardLayout({
   return (
     <div className="relative min-h-screen bg-background">
       <Sidebar />
-      {children}
+      <RouteGuard>
+        {children}
+      </RouteGuard>
     </div>
   );
 }
