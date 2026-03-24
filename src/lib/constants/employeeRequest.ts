@@ -1,13 +1,4 @@
-// Roles
-export const ROLES = {
-  ADMIN: 'admin',
-  HR: 'hr',
-  MANAGEMENT: 'management',
-  MANAGER: 'manager',
-  HOD: 'hod',
-} as const;
-
-export type Role = typeof ROLES[keyof typeof ROLES];
+import { ROLES } from './roles';
 
 // Employee Request Status - Workflow states
 export const EMPLOYEE_REQUEST_STATUS = {
@@ -226,15 +217,15 @@ export const WORK_LOCATION_OPTIONS = [
 // Workflow transitions - who can do what
 export const WORKFLOW_TRANSITIONS: Record<EmployeeRequestStatus, {
   nextStatuses: EmployeeRequestStatus[];
-  allowedRoles: string[];
+  allowedRoles: number[];
 }> = {
-  draft:          { nextStatuses: ['created'],                         allowedRoles: ['manager', 'admin'] },
-  created:        { nextStatuses: ['hod_reviewed', 'revise'],          allowedRoles: ['hod', 'admin'] },
-  hod_reviewed:   { nextStatuses: ['reviewed', 'revise'],              allowedRoles: ['hr', 'admin'] },
-  reviewed:       { nextStatuses: ['approved', 'rejected', 'revise'],  allowedRoles: ['management', 'admin'] },
-  approved:       { nextStatuses: ['in_recruitment'],                  allowedRoles: ['hr', 'admin'] },
+  draft:          { nextStatuses: ['created'],                         allowedRoles: [ROLES.MANAGER, ROLES.SUPER_ADMIN] },
+  created:        { nextStatuses: ['hod_reviewed', 'revise'],          allowedRoles: [ROLES.HOD, ROLES.SUPER_ADMIN] },
+  hod_reviewed:   { nextStatuses: ['reviewed', 'revise'],              allowedRoles: [ROLES.HUMAN_RESOURCES, ROLES.SUPER_ADMIN] },
+  reviewed:       { nextStatuses: ['approved', 'rejected', 'revise'],  allowedRoles: [ROLES.MANAGEMENT, ROLES.SUPER_ADMIN] },
+  approved:       { nextStatuses: ['in_recruitment'],                  allowedRoles: [ROLES.HUMAN_RESOURCES, ROLES.SUPER_ADMIN] },
   rejected:       { nextStatuses: [],                                  allowedRoles: [] },
-  revise:         { nextStatuses: ['created'],                         allowedRoles: ['manager', 'admin'] },
-  in_recruitment: { nextStatuses: ['completed'],                       allowedRoles: ['hr', 'admin'] },
+  revise:         { nextStatuses: ['created'],                         allowedRoles: [ROLES.MANAGER, ROLES.SUPER_ADMIN] },
+  in_recruitment: { nextStatuses: ['completed'],                       allowedRoles: [ROLES.HUMAN_RESOURCES, ROLES.SUPER_ADMIN] },
   completed:      { nextStatuses: [],                                  allowedRoles: [] },
 };
