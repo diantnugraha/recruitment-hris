@@ -37,7 +37,9 @@ import {
   EMPLOYMENT_TYPE_LABELS,
   type EmploymentType,
 } from "@/lib/constants/employeeRequest";
+import { ROLES } from "@/lib/constants/roles";
 import { employeeRequestService } from "@/services/employee-request.service";
+import { useAuthStore } from "@/stores/auth-store";
 import type { EmployeeRequestWithRelations } from "@/types/employee-request";
 
 const PAGE_LIMIT = 10;
@@ -61,7 +63,7 @@ const columns = [
     key: "jobTitle",
     label: "Position",
     render: (row: EmployeeRequestWithRelations) => (
-      <span className="text-sm font-medium">{row.jobTitle?.name || "-"}</span>
+      <span className="text-sm font-medium">{row.jobTitle?.name || "No Data"}</span>
     ),
   },
   {
@@ -69,7 +71,7 @@ const columns = [
     label: "Department",
     render: (row: EmployeeRequestWithRelations) => (
       <div className="space-y-0.5">
-        <p className="text-sm">{row.department?.name || "-"}</p>
+        <p className="text-sm">{row.department?.name || "No Data"}</p>
         {row.division?.name && (
           <p className="text-xs text-muted-foreground">{row.division.name}</p>
         )}
@@ -84,7 +86,7 @@ const columns = [
       <span className="text-sm text-muted-foreground">
         {row.employmentType
           ? EMPLOYMENT_TYPE_LABELS[row.employmentType as EmploymentType] || row.employmentType
-          : "-"}
+          : "No Data"}
       </span>
     ),
   },
@@ -93,7 +95,7 @@ const columns = [
     label: "Qty",
     className: "w-[100px] text-center",
     render: (row: EmployeeRequestWithRelations) => (
-      <span className="font-medium">{row.quantity} HC</span>
+      <span className="font-medium">{row.quantity} Position</span>
     ),
   },
   {
@@ -113,6 +115,9 @@ const columns = [
 
 export default function EmployeeRequestPage() {
   const router = useRouter();
+  const user = useAuthStore((s) => s.user);
+  const userRoleId = user?.roleId ?? 0;
+  const canCreate = userRoleId === ROLES.MANAGER || userRoleId === ROLES.SUPER_ADMIN;
 
   // State
   const [requests, setRequests] = React.useState<EmployeeRequestWithRelations[]>([]);
@@ -303,7 +308,6 @@ export default function EmployeeRequestPage() {
 
           {/* Table */}
           <div className="space-y-2">
-            <p className="text-xs text-muted-foreground">*HC = Headcount</p>
             <DataTable
               data={requests}
               columns={columns}
@@ -329,9 +333,11 @@ export default function EmployeeRequestPage() {
                   : "No employee requests found"
               }
               actions={
-                <Button onClick={() => router.push("/employee-request/new")}>
-                  New
-                </Button>
+                canCreate ? (
+                  <Button onClick={() => router.push("/employee-request/new")}>
+                    New
+                  </Button>
+                ) : undefined
               }
             />
           </div>

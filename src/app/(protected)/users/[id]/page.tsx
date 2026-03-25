@@ -25,7 +25,7 @@ import {
 
 import userService from "@/services/user.service";
 import { UserManagement } from "@/types/user-management";
-import { USER_ROLE_CONFIG } from "@/lib/constants/user";
+import { ROLE_CONFIG, RoleId } from "@/lib/constants/roles";
 import { formatShortDate, getInitials } from "@/lib/utils";
 import { showToast } from "@/lib/utils/toast-messages";
 
@@ -42,7 +42,7 @@ function DetailField({ label, value, icon: Icon }: { label: string; value: strin
           {label}
         </p>
         <p className={`text-sm font-medium ${!value ? "text-muted-foreground" : ""}`}>
-          {value || "No data"}
+          {value || "No Data"}
         </p>
       </div>
     </div>
@@ -95,7 +95,7 @@ export default function UserDetailPage() {
 
   // Get role badge - use actual role name from database, config only for styling
   const getRoleBadge = (roleId: number, roleName?: string | null) => {
-    const config = USER_ROLE_CONFIG[roleId];
+    const config = ROLE_CONFIG[roleId as RoleId];
     const displayLabel = roleName || config?.label || `Role ${roleId}`;
     const variant = config?.variant || "outline";
     return <Badge variant={variant}>{displayLabel}</Badge>;
@@ -225,7 +225,7 @@ export default function UserDetailPage() {
                 <Separator />
                 <DetailField
                   label="Role"
-                  value={user.role?.roleName || USER_ROLE_CONFIG[user.roleId]?.label || `Role ${user.roleId}`}
+                  value={user.role?.roleName || ROLE_CONFIG[user.roleId as RoleId]?.label || `Role ${user.roleId}`}
                   icon={Shield}
                 />
               </CardContent>
@@ -245,7 +245,7 @@ export default function UserDetailPage() {
                 <Separator />
                 <DetailField
                   label="Employee Email"
-                  value={user.employee?.employeeEmail || "—"}
+                  value={user.employee?.employeeEmail || "No Data"}
                   icon={Mail}
                 />
                 <Separator />

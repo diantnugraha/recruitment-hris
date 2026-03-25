@@ -153,8 +153,8 @@ export default function DepartmentsPage() {
   }, [searchQuery, departments]);
 
   const getDivisionName = (divId?: string) => {
-    if (!divId) return "-";
-    return divisions.find((div) => div.id === divId)?.name || "-";
+    if (!divId) return "No Data";
+    return divisions.find((div) => div.id === divId)?.name || "No Data";
   };
 
   const handleDetailClick = (dept: Department) => {
@@ -599,16 +599,16 @@ export default function DepartmentsPage() {
             <div className="space-y-4 py-4">
               <div className="space-y-1">
                 <p className="text-xs text-muted-foreground">Name</p>
-                <p className="text-sm font-medium">{selectedDepartment?.name || "-"}</p>
+                <p className="text-sm font-medium">{selectedDepartment?.name || "No Data"}</p>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground">Code</p>
-                  <p className="text-sm font-medium">{selectedDepartment?.code || "-"}</p>
+                  <p className="text-sm font-medium">{selectedDepartment?.code || "No Data"}</p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground">Category</p>
-                  <p className="text-sm font-medium">{selectedDepartment ? formatCategory(selectedDepartment.category) : "-"}</p>
+                  <p className="text-sm font-medium">{selectedDepartment ? formatCategory(selectedDepartment.category) : "No Data"}</p>
                 </div>
               </div>
               <div className="space-y-1">

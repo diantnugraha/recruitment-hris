@@ -468,16 +468,16 @@ export default function JobLevelsPage() {
             <div className="space-y-4 py-4">
               <div className="space-y-1">
                 <p className="text-xs text-muted-foreground">Name</p>
-                <p className="text-sm font-medium">{selectedJobLevel?.name || "-"}</p>
+                <p className="text-sm font-medium">{selectedJobLevel?.name || "No Data"}</p>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground">Category</p>
-                  <p className="text-sm font-medium">{selectedJobLevel?.category || "-"}</p>
+                  <p className="text-sm font-medium">{selectedJobLevel?.category || "No Data"}</p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground">Order</p>
-                  <p className="text-sm font-medium">{selectedJobLevel?.order != null ? String(selectedJobLevel.order) : "-"}</p>
+                  <p className="text-sm font-medium">{selectedJobLevel?.order != null ? String(selectedJobLevel.order) : "No Data"}</p>
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

@@ -439,11 +439,11 @@ export default function DivisionsPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground">Name</p>
-                  <p className="text-sm font-medium">{selectedDivision?.name || "-"}</p>
+                  <p className="text-sm font-medium">{selectedDivision?.name || "No Data"}</p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground">Code</p>
-                  <p className="text-sm font-medium">{selectedDivision?.code || "-"}</p>
+                  <p className="text-sm font-medium">{selectedDivision?.code || "No Data"}</p>
                 </div>
               </div>
               {selectedDivision?.description && (

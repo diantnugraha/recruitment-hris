@@ -847,7 +847,7 @@ export default function EmployeeBudgetDetailPage() {
                                   {row.pending > 0 ? (
                                     <span className="font-semibold tabular-nums text-amber-600">{row.pending}</span>
                                   ) : (
-                                    <span className="text-muted-foreground">-</span>
+                                    <span className="text-muted-foreground">No Data</span>
                                   )}
                                 </TableCell>
                                 <TableCell className="min-w-[140px]">
@@ -888,7 +888,7 @@ export default function EmployeeBudgetDetailPage() {
                               {totalPending > 0 ? (
                                 <span className="text-amber-600">{totalPending}</span>
                               ) : (
-                                <span className="text-muted-foreground">-</span>
+                                <span className="text-muted-foreground">No Data</span>
                               )}
                             </TableCell>
                             <TableCell className="min-w-[140px]">

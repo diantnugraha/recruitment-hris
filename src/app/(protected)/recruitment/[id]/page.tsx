@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import {
   ArrowLeft,
   Mail,
@@ -50,9 +51,8 @@ import { Header } from "@/components/layout/header";
 import { PageContainer } from "@/components/layout/page-container";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -255,6 +255,13 @@ export default function CandidateDetailPage() {
   const [interviewDate, setInterviewDate] = React.useState("");
   const [interviewTime, setInterviewTime] = React.useState("");
   const [interviewType, setInterviewType] = React.useState<"online" | "onsite" | "">("");
+
+  // Schedule MCU dialog state
+  const [isSchedulingMcu, setIsSchedulingMcu] = React.useState(false);
+  const [showScheduleMcuDialog, setShowScheduleMcuDialog] = React.useState(false);
+  const [mcuDate, setMcuDate] = React.useState("");
+  const [mcuTime, setMcuTime] = React.useState("");
+  const [mcuLocation, setMcuLocation] = React.useState("");
 
   // Onboarding State
   const [onboarding, setOnboarding] = React.useState<Onboarding | null>(null);
@@ -744,8 +751,9 @@ export default function CandidateDetailPage() {
         // Clear localStorage after successful submit
         clearHRFormStorage();
 
-        // Close assignment dialog and reset
+        // Close dialogs and reset
         setShowAssessorAssignment(false);
+        setShowHRPreview(false);
         setSelectedAssessors([]);
 
         // Refresh candidate data
@@ -870,6 +878,36 @@ export default function CandidateDetailPage() {
       showToast.error("Failed to start interview");
     } finally {
       setIsStartingInterview(false);
+    }
+  };
+
+  // Handle Schedule MCU
+  const handleScheduleMcu = async () => {
+    if (!mcuDate || !mcuTime || !mcuLocation.trim()) {
+      showToast.error("Please fill in MCU date, time, and location");
+      return;
+    }
+
+    setIsSchedulingMcu(true);
+    try {
+      const response = await candidateService.scheduleMcu(id, {
+        mcu_date: new Date(`${mcuDate}T${mcuTime}`).toISOString(),
+        mcu_location: mcuLocation.trim(),
+      });
+      if (response.success && response.data) {
+        setProgress(response.data);
+        setShowScheduleMcuDialog(false);
+        setMcuDate("");
+        setMcuTime("");
+        setMcuLocation("");
+        showToast.success("MCU scheduled! The candidate will be notified.");
+      } else {
+        showToast.error(response.message || "Failed to schedule MCU");
+      }
+    } catch (err) {
+      showToast.error("Failed to schedule MCU");
+    } finally {
+      setIsSchedulingMcu(false);
     }
   };
 
@@ -1177,10 +1215,47 @@ export default function CandidateDetailPage() {
   if (isLoading) {
     return (
       <>
-        <Header title="Candidate" />
+        <Header title="Candidate Details" />
         <PageContainer>
-          <div className="flex items-center justify-center h-64">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <div className="mb-5">
+            <Skeleton className="h-8 w-20 rounded-md" />
+          </div>
+          <div className="space-y-5">
+            {/* Profile header skeleton */}
+            <div className="rounded-2xl border bg-card p-6">
+              <div className="flex items-start gap-5">
+                <Skeleton className="h-20 w-20 rounded-2xl shrink-0" />
+                <div className="flex-1 space-y-3 pt-1">
+                  <Skeleton className="h-7 w-56" />
+                  <div className="flex gap-2">
+                    <Skeleton className="h-5 w-20 rounded-full" />
+                    <Skeleton className="h-5 w-20 rounded-full" />
+                  </div>
+                  <div className="pt-3 grid grid-cols-3 gap-4">
+                    {Array.from({ length: 3 }).map((_, i) => (
+                      <div key={i} className="space-y-1.5">
+                        <Skeleton className="h-3 w-16" />
+                        <Skeleton className="h-4 w-24" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+            {/* Content skeletons */}
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="rounded-2xl border bg-card p-6 space-y-4">
+                <Skeleton className="h-5 w-40" />
+                <div className="grid grid-cols-2 gap-4">
+                  {Array.from({ length: 4 }).map((_, j) => (
+                    <div key={j} className="space-y-1.5">
+                      <Skeleton className="h-3 w-20" />
+                      <Skeleton className="h-4 w-28" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         </PageContainer>
       </>
@@ -1191,14 +1266,12 @@ export default function CandidateDetailPage() {
   if (error || !candidate) {
     return (
       <>
-        <Header title="Candidate" />
+        <Header title="Candidate Details" />
         <PageContainer>
-          <div className="flex flex-col items-center justify-center h-64 gap-4">
-            <AlertCircle className="h-12 w-12 text-destructive" />
-            <p className="text-muted-foreground">{error || "Candidate not found"}</p>
+          <div className="flex h-64 flex-col items-center justify-center gap-3">
+            <p className="text-sm text-muted-foreground">{error || "Candidate not found"}</p>
             <Button variant="outline" onClick={() => router.back()}>
-              <ArrowLeft />
-              Go Back
+              Try Again
             </Button>
           </div>
         </PageContainer>
@@ -1208,27 +1281,57 @@ export default function CandidateDetailPage() {
 
   return (
     <>
-      <Header title="Assessment Form" />
+      <Header title="Candidate Details" />
       <PageContainer>
-        <div className="space-y-6">
-          {/* Back Button */}
-          <Button variant="ghost" onClick={() => router.back()}>
-            <ArrowLeft />
-            Back to Recruitment
-          </Button>
+        <div className="space-y-5">
+          {/* Top Bar */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <Button
+              variant="ghost"
+              className="gap-1.5 text-muted-foreground w-fit h-auto px-2 py-1.5 text-sm"
+              asChild
+            >
+              <Link href="/recruitment">
+                <ArrowLeft className="h-4 w-4" />
+                Recruitment
+              </Link>
+            </Button>
+          </div>
 
-          {/* Candidate Header Card */}
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-start gap-4">
-                <Avatar className="h-10 w-10 border">
-                  <AvatarFallback className="bg-accent/10 text-accent font-medium">
-                    {getInitials(candidate.fullname)}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-3">
-                    <h2 className="text-xl font-semibold tracking-tight">{candidate.fullname}</h2>
+          {/* ===== Profile Header Card ===== */}
+          <div className="rounded-2xl border bg-card">
+            <div className="p-6">
+              <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
+                {/* Icon */}
+                <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-accent/10">
+                  <User className="h-9 w-9 text-accent" />
+                </div>
+
+                <div className="flex-1 min-w-0 sm:pt-2">
+                  {/* Name */}
+                  <h1 className="text-2xl font-bold tracking-tight text-foreground">
+                    {candidate.fullname}
+                  </h1>
+
+                  {/* Badges */}
+                  <div className="flex items-center gap-2 mt-2 flex-wrap">
+                    {candidate.jobTitle && (
+                      <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100 dark:bg-blue-950 dark:text-blue-400">
+                        {candidate.jobTitle.name}
+                      </Badge>
+                    )}
+                    {candidate.verify && (
+                      <Badge
+                        variant="outline"
+                        className={
+                          candidate.verify === "VERIFIED"
+                            ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-400"
+                            : "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-400"
+                        }
+                      >
+                        {candidate.verify}
+                      </Badge>
+                    )}
                     {progress && (
                       <>
                         {progress.anyFailed ? (
@@ -1239,38 +1342,41 @@ export default function CandidateDetailPage() {
                       </>
                     )}
                   </div>
-                  {candidate.jobTitle && (
-                    <p className="mt-1.5 text-sm text-foreground/80">
-                      Applying for: {candidate.jobTitle.name}
-                    </p>
-                  )}
-                  <div className="mt-3 flex items-center gap-4 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-1.5">
-                      <Mail className="h-4 w-4" />
-                      {candidate.email}
+
+                  {/* Key facts row */}
+                  <div className="mt-5 pt-4 border-t border-border/60 grid grid-cols-2 gap-x-8 gap-y-3 sm:grid-cols-4">
+                    <div>
+                      <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Email</p>
+                      <p className="mt-0.5 text-sm font-medium text-foreground">{candidate.email}</p>
                     </div>
-                    {candidate.mobilePhone && (
-                      <div className="flex items-center gap-1.5">
-                        <Phone className="h-4 w-4" />
-                        {candidate.mobilePhone}
-                      </div>
-                    )}
-                    {candidate.employeeRequest && (
-                      <div className="flex items-center gap-1.5">
-                        <Briefcase className="h-4 w-4" />
-                        {candidate.employeeRequest.code}
-                      </div>
-                    )}
+                    <div>
+                      <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Phone</p>
+                      <p className={`mt-0.5 text-sm font-medium ${candidate.mobilePhone ? "text-foreground" : "text-muted-foreground"}`}>
+                        {candidate.mobilePhone || "No Data"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Request Code</p>
+                      <p className={`mt-0.5 text-sm font-medium ${candidate.employeeRequest?.code ? "text-foreground" : "text-muted-foreground"}`}>
+                        {candidate.employeeRequest?.code || "No Data"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Applied Date</p>
+                      <p className={`mt-0.5 text-sm font-medium ${candidate.createdAt ? "text-foreground" : "text-muted-foreground"}`}>
+                        {candidate.createdAt ? formatShortDate(candidate.createdAt) : "No Data"}
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
           {/* Workflow Progress */}
           {!progress?.anyFailed && (
-            <Card className="overflow-hidden border-accent/10 bg-gradient-to-br from-accent/5 to-transparent">
-              <CardContent className="p-4">
+            <div className="rounded-2xl border border-accent/10 bg-gradient-to-br from-accent/5 to-transparent overflow-hidden">
+              <div className="p-4">
                 <div className="flex items-center justify-between">
                   {RECRUITMENT_WORKFLOW_STEPS.map((step, index) => {
                     const StepIcon = step.icon;
@@ -1314,14 +1420,14 @@ export default function CandidateDetailPage() {
                     );
                   })}
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           )}
 
           {/* Start Interview Banner - Show when biodata is submitted but interview not started */}
           {hasBiodataSubmitted(candidate) && !interviewStarted && !progress?.anyFailed && (
-            <Card className="border-accent/30 bg-accent/5">
-              <CardContent className="p-6">
+            <div className="rounded-2xl border border-accent/30 bg-accent/5">
+              <div className="p-6">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
                     <div className="h-12 w-12 rounded-full bg-accent/10 flex items-center justify-center">
@@ -1339,14 +1445,14 @@ export default function CandidateDetailPage() {
                     Schedule Interview
                   </Button>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           )}
 
           {/* Failed Banner */}
           {progress?.anyFailed && (
-            <Card className="border-destructive/50 bg-destructive/5">
-              <CardContent className="p-6">
+            <div className="rounded-2xl border border-destructive/50 bg-destructive/5">
+              <div className="p-6">
                 <div className="flex items-center gap-4">
                   <div className="h-9 w-9 rounded-full bg-destructive/10 flex items-center justify-center">
                     <XCircle className="h-4 w-4 text-destructive" />
@@ -1358,8 +1464,8 @@ export default function CandidateDetailPage() {
                     </p>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           )}
 
           {/* Tabs */}
@@ -1412,238 +1518,180 @@ export default function CandidateDetailPage() {
             </TabsList>
 
             {/* Profile Tab */}
-            <TabsContent value="profile" className="mt-6 space-y-6">
+            <TabsContent value="profile" className="mt-6 space-y-5">
               {/* Application Details */}
-              <Card>
-                <CardHeader className="pb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-950">
-                      <Briefcase className="h-5 w-5 text-blue-600" />
+              <section className="rounded-2xl border bg-card">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
+                  <h2 className="text-base font-semibold text-foreground">Application Details</h2>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
+                    <Briefcase className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                </div>
+                <div className="px-6 py-5">
+                  <div className="grid grid-cols-2 gap-x-8 gap-y-5 sm:grid-cols-3">
+                    <div>
+                      <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Candidate Code</p>
+                      <p className={`mt-0.5 text-sm font-medium ${candidate.detail?.candidateCode ? "text-foreground" : "text-muted-foreground"}`}>
+                        {candidate.detail?.candidateCode || "No Data"}
+                      </p>
                     </div>
                     <div>
-                      <CardTitle className="text-base">Application Details</CardTitle>
-                      <CardDescription>Candidate application and verification details</CardDescription>
+                      <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Employee Request</p>
+                      <p className={`mt-0.5 text-sm font-medium ${candidate.employeeRequest?.code ? "text-foreground" : "text-muted-foreground"}`}>
+                        {candidate.employeeRequest?.code || "No Data"}
+                      </p>
                     </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-                    {candidate.detail && (
-                      <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
-                        <FileText className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                        <div>
-                          <p className="text-xs text-muted-foreground">Candidate Code</p>
-                          <p className="text-sm font-medium">{candidate.detail.candidateCode}</p>
-                        </div>
-                      </div>
-                    )}
-                    {candidate.employeeRequest && (
-                      <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
-                        <Briefcase className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                        <div>
-                          <p className="text-xs text-muted-foreground">Employee Request</p>
-                          <p className="text-sm font-medium">{candidate.employeeRequest.code}</p>
-                        </div>
-                      </div>
-                    )}
-                    {candidate.jobTitle && (
-                      <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
-                        <Briefcase className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                        <div>
-                          <p className="text-xs text-muted-foreground">Position Applied</p>
-                          <p className="text-sm font-medium">{candidate.jobTitle.name}</p>
-                        </div>
-                      </div>
-                    )}
-                    <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
-                      <CheckCircle2 className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                      <div>
-                        <p className="text-xs text-muted-foreground">Verification Status</p>
-                        <Badge variant={candidate.verify === "VERIFIED" ? "default" : "secondary"} className="mt-1">
+                    <div>
+                      <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Position Applied</p>
+                      <p className={`mt-0.5 text-sm font-medium ${candidate.jobTitle?.name ? "text-foreground" : "text-muted-foreground"}`}>
+                        {candidate.jobTitle?.name || "No Data"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Verification Status</p>
+                      <div className="mt-1">
+                        <Badge variant={candidate.verify === "VERIFIED" ? "default" : "secondary"}>
                           {candidate.verify}
                         </Badge>
                       </div>
                     </div>
-                    <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
-                      <Calendar className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                      <div>
-                        <p className="text-xs text-muted-foreground">Applied Date</p>
-                        <p className="text-sm font-medium">{candidate.createdAt ? formatShortDate(candidate.createdAt) : "—"}</p>
-                      </div>
+                    <div>
+                      <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Applied Date</p>
+                      <p className={`mt-0.5 text-sm font-medium ${candidate.createdAt ? "text-foreground" : "text-muted-foreground"}`}>
+                        {candidate.createdAt ? formatShortDate(candidate.createdAt) : "No Data"}
+                      </p>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </section>
 
               {/* Personal Information */}
-              <Card>
-                <CardHeader className="pb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-950">
-                      <User className="h-5 w-5 text-emerald-600" />
+              <section className="rounded-2xl border bg-card">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
+                  <h2 className="text-base font-semibold text-foreground">Personal Information</h2>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
+                    <User className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                </div>
+                <div className="px-6 py-5">
+                  <div className="grid grid-cols-2 gap-x-8 gap-y-5 sm:grid-cols-3">
+                    <div>
+                      <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Birth Date</p>
+                      <p className={`mt-0.5 text-sm font-medium ${candidate.birthDate ? "text-foreground" : "text-muted-foreground"}`}>
+                        {candidate.birthDate ? formatShortDate(candidate.birthDate) : "No Data"}
+                      </p>
                     </div>
                     <div>
-                      <CardTitle className="text-base">Personal Information</CardTitle>
-                      <CardDescription>Basic personal and demographic information</CardDescription>
+                      <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Birth Place</p>
+                      <p className={`mt-0.5 text-sm font-medium ${candidate.birthPlace ? "text-foreground" : "text-muted-foreground"}`}>
+                        {candidate.birthPlace || "No Data"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Religion</p>
+                      <p className={`mt-0.5 text-sm font-medium ${candidate.religion ? "text-foreground" : "text-muted-foreground"}`}>
+                        {candidate.religion || "No Data"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Marital Status</p>
+                      <p className={`mt-0.5 text-sm font-medium ${candidate.marritalStatus ? "text-foreground" : "text-muted-foreground"}`}>
+                        {candidate.marritalStatus || "No Data"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Citizenship</p>
+                      <p className={`mt-0.5 text-sm font-medium ${candidate.citizenship ? "text-foreground" : "text-muted-foreground"}`}>
+                        {candidate.citizenship || "No Data"}
+                      </p>
                     </div>
                   </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid gap-6 sm:grid-cols-2">
-                    <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
-                      <User className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                      <div>
-                        <p className="text-xs text-muted-foreground">Gender</p>
-                        <p className="text-sm font-medium">{candidate.gender === "M" ? "Male" : "Female"}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
-                      <Calendar className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                      <div>
-                        <p className="text-xs text-muted-foreground">Birth Date</p>
-                        <p className="text-sm font-medium">{candidate.birthDate ? formatShortDate(candidate.birthDate) : "—"}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
-                      <MapPin className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                      <div>
-                        <p className="text-xs text-muted-foreground">Birth Place</p>
-                        <p className="text-sm font-medium">{candidate.birthPlace || "—"}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
-                      <Heart className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                      <div>
-                        <p className="text-xs text-muted-foreground">Religion</p>
-                        <p className="text-sm font-medium">{candidate.religion || "—"}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
-                      <Users className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                      <div>
-                        <p className="text-xs text-muted-foreground">Marital Status</p>
-                        <p className="text-sm font-medium">{candidate.marritalStatus || "—"}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
-                      <Building2 className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                      <div>
-                        <p className="text-xs text-muted-foreground">Citizenship</p>
-                        <p className="text-sm font-medium">{candidate.citizenship || "—"}</p>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                </div>
+              </section>
 
               {/* Contact Information */}
-              <Card>
-                <CardHeader className="pb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-50 dark:bg-amber-950">
-                      <MapPin className="h-5 w-5 text-amber-600" />
+              <section className="rounded-2xl border bg-card">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
+                  <h2 className="text-base font-semibold text-foreground">Contact Information</h2>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
+                    <MapPin className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                </div>
+                <div className="px-6 py-5">
+                  <div className="grid grid-cols-2 gap-x-8 gap-y-5 sm:grid-cols-3">
+                    <div className="col-span-2 sm:col-span-3">
+                      <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Address</p>
+                      <p className={`mt-0.5 text-sm font-medium ${candidate.address ? "text-foreground" : "text-muted-foreground"}`}>
+                        {candidate.address || "No Data"}
+                      </p>
                     </div>
                     <div>
-                      <CardTitle className="text-base">Contact Information</CardTitle>
-                      <CardDescription>Address, phone, and email details</CardDescription>
+                      <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Resident Status</p>
+                      <p className={`mt-0.5 text-sm font-medium ${candidate.residentStatus ? "text-foreground" : "text-muted-foreground"}`}>
+                        {candidate.residentStatus || "No Data"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Mobile Phone</p>
+                      <p className={`mt-0.5 text-sm font-medium ${candidate.mobilePhone ? "text-foreground" : "text-muted-foreground"}`}>
+                        {candidate.mobilePhone || "No Data"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Email</p>
+                      <p className="mt-0.5 text-sm font-medium text-foreground">{candidate.email}</p>
                     </div>
                   </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
-                    <MapPin className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                    <div className="flex-1">
-                      <p className="text-xs text-muted-foreground">Address</p>
-                      <p className="text-sm font-medium">{candidate.address || "—"}</p>
-                    </div>
-                  </div>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
-                      <Building2 className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                      <div>
-                        <p className="text-xs text-muted-foreground">Resident Status</p>
-                        <p className="text-sm font-medium">{candidate.residentStatus || "—"}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
-                      <Phone className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                      <div>
-                        <p className="text-xs text-muted-foreground">Mobile Phone</p>
-                        <p className="text-sm font-medium">{candidate.mobilePhone || "—"}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3 sm:col-span-2">
-                      <Mail className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                      <div>
-                        <p className="text-xs text-muted-foreground">Email</p>
-                        <p className="text-sm font-medium">{candidate.email}</p>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                </div>
+              </section>
 
               {/* Identity Documents */}
-              <Card>
-                <CardHeader className="pb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-purple-50 dark:bg-purple-950">
-                      <IdCard className="h-5 w-5 text-purple-600" />
+              <section className="rounded-2xl border bg-card">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
+                  <h2 className="text-base font-semibold text-foreground">Identity Documents</h2>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
+                    <IdCard className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                </div>
+                <div className="px-6 py-5">
+                  <div className="grid grid-cols-2 gap-x-8 gap-y-5">
+                    <div>
+                      <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">ID Number (KTP)</p>
+                      <p className={`mt-0.5 text-sm font-medium ${candidate.idNo ? "text-foreground" : "text-muted-foreground"}`}>
+                        {candidate.idNo || "No Data"}
+                      </p>
                     </div>
                     <div>
-                      <CardTitle className="text-base">Identity Documents</CardTitle>
-                      <CardDescription>Government-issued identification numbers</CardDescription>
+                      <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Tax ID (NPWP)</p>
+                      <p className={`mt-0.5 text-sm font-medium ${candidate.taxId ? "text-foreground" : "text-muted-foreground"}`}>
+                        {candidate.taxId || "No Data"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">BPJS ID</p>
+                      <p className={`mt-0.5 text-sm font-medium ${candidate.bpjsId ? "text-foreground" : "text-muted-foreground"}`}>
+                        {candidate.bpjsId || "No Data"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Driving License</p>
+                      <p className={`mt-0.5 text-sm font-medium ${candidate.drivingLicense ? "text-foreground" : "text-muted-foreground"}`}>
+                        {candidate.drivingLicense || "No Data"}
+                      </p>
                     </div>
                   </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid gap-6 sm:grid-cols-2">
-                    <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
-                      <IdCard className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                      <div>
-                        <p className="text-xs text-muted-foreground">ID Number (KTP)</p>
-                        <p className="text-sm font-medium">{candidate.idNo || "—"}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
-                      <CreditCard className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                      <div>
-                        <p className="text-xs text-muted-foreground">Tax ID (NPWP)</p>
-                        <p className="text-sm font-medium">{candidate.taxId || "—"}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
-                      <CreditCard className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                      <div>
-                        <p className="text-xs text-muted-foreground">BPJS ID</p>
-                        <p className="text-sm font-medium">{candidate.bpjsId || "—"}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-3 rounded-lg border bg-secondary/30 p-3">
-                      <CreditCard className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                      <div>
-                        <p className="text-xs text-muted-foreground">Driving License</p>
-                        <p className="text-sm font-medium">{candidate.drivingLicense || "—"}</p>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                </div>
+              </section>
 
               {/* Educational Background */}
-              <Card>
-                <CardHeader className="pb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-950">
-                      <GraduationCap className="h-5 w-5 text-blue-600" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-base">Educational Background</CardTitle>
-                      <CardDescription>Academic qualifications and degrees</CardDescription>
-                    </div>
+              <section className="rounded-2xl border bg-card">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
+                  <h2 className="text-base font-semibold text-foreground">Educational Background</h2>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
+                    <GraduationCap className="h-4 w-4 text-muted-foreground" />
                   </div>
-                </CardHeader>
-                <CardContent>
+                </div>
+                <div className="px-6 py-5">
                   {biodata?.education && biodata.education.length > 0 ? (
                     <div className="overflow-x-auto rounded-lg border">
                       <table className="w-full text-sm">
@@ -1670,27 +1718,20 @@ export default function CandidateDetailPage() {
                       </table>
                     </div>
                   ) : (
-                    <div className="flex items-center justify-center py-8 text-muted-foreground">
-                      <p className="text-sm">No educational background data available</p>
-                    </div>
+                    <p className="text-sm text-muted-foreground italic">No educational background data available</p>
                   )}
-                </CardContent>
-              </Card>
+                </div>
+              </section>
 
               {/* Work Experience */}
-              <Card>
-                <CardHeader className="pb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-950">
-                      <Building2 className="h-5 w-5 text-emerald-600" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-base">Work Experience</CardTitle>
-                      <CardDescription>Previous employment history</CardDescription>
-                    </div>
+              <section className="rounded-2xl border bg-card">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
+                  <h2 className="text-base font-semibold text-foreground">Work Experience</h2>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
+                    <Building2 className="h-4 w-4 text-muted-foreground" />
                   </div>
-                </CardHeader>
-                <CardContent>
+                </div>
+                <div className="px-6 py-5">
                   {biodata?.workExperience && biodata.workExperience.length > 0 ? (
                     <div className="overflow-x-auto rounded-lg border">
                       <table className="w-full text-sm">
@@ -1717,27 +1758,20 @@ export default function CandidateDetailPage() {
                       </table>
                     </div>
                   ) : (
-                    <div className="flex items-center justify-center py-8 text-muted-foreground">
-                      <p className="text-sm">No work experience data available</p>
-                    </div>
+                    <p className="text-sm text-muted-foreground italic">No work experience data available</p>
                   )}
-                </CardContent>
-              </Card>
+                </div>
+              </section>
 
               {/* Family Members */}
-              <Card>
-                <CardHeader className="pb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-purple-50 dark:bg-purple-950">
-                      <Users className="h-5 w-5 text-purple-600" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-base">Family Members</CardTitle>
-                      <CardDescription>Family composition and details</CardDescription>
-                    </div>
+              <section className="rounded-2xl border bg-card">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
+                  <h2 className="text-base font-semibold text-foreground">Family Members</h2>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
+                    <Users className="h-4 w-4 text-muted-foreground" />
                   </div>
-                </CardHeader>
-                <CardContent>
+                </div>
+                <div className="px-6 py-5">
                   {biodata?.family && biodata.family.length > 0 ? (
                     <div className="overflow-x-auto rounded-lg border">
                       <table className="w-full text-sm">
@@ -1764,27 +1798,20 @@ export default function CandidateDetailPage() {
                       </table>
                     </div>
                   ) : (
-                    <div className="flex items-center justify-center py-8 text-muted-foreground">
-                      <p className="text-sm">No family member data available</p>
-                    </div>
+                    <p className="text-sm text-muted-foreground italic">No family member data available</p>
                   )}
-                </CardContent>
-              </Card>
+                </div>
+              </section>
 
               {/* Course / Training Experience */}
-              <Card>
-                <CardHeader className="pb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-50 dark:bg-amber-950">
-                      <Award className="h-5 w-5 text-amber-600" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-base">Course / Training Experience</CardTitle>
-                      <CardDescription>Professional development and certifications</CardDescription>
-                    </div>
+              <section className="rounded-2xl border bg-card">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
+                  <h2 className="text-base font-semibold text-foreground">Course / Training Experience</h2>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
+                    <Award className="h-4 w-4 text-muted-foreground" />
                   </div>
-                </CardHeader>
-                <CardContent>
+                </div>
+                <div className="px-6 py-5">
                   {biodata?.training && biodata.training.length > 0 ? (
                     <div className="overflow-x-auto rounded-lg border">
                       <table className="w-full text-sm">
@@ -1811,121 +1838,112 @@ export default function CandidateDetailPage() {
                       </table>
                     </div>
                   ) : (
-                    <div className="flex items-center justify-center py-8 text-muted-foreground">
-                      <p className="text-sm">No course/training data available</p>
-                    </div>
+                    <p className="text-sm text-muted-foreground italic">No course/training data available</p>
                   )}
-                </CardContent>
-              </Card>
+                </div>
+              </section>
 
               {/* Self Assessment */}
-              <Card>
-                <CardHeader className="pb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-950">
-                      <ClipboardList className="h-5 w-5 text-blue-600" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-base">Self Assessment</CardTitle>
-                      <CardDescription>Candidate self-evaluation responses</CardDescription>
-                    </div>
+              <section className="rounded-2xl border bg-card">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
+                  <h2 className="text-base font-semibold text-foreground">Self Assessment</h2>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
+                    <ClipboardList className="h-4 w-4 text-muted-foreground" />
                   </div>
-                </CardHeader>
-                <CardContent>
+                </div>
+                <div className="px-6 py-5">
                   {biodata?.selfAssessment ? (
                     <div className="grid gap-6 md:grid-cols-2">
                       <div className="space-y-2">
                         <p className="text-sm font-semibold text-foreground">What caused you to leave your last job?</p>
                         <div className="bg-secondary/50 rounded-lg p-4 min-h-[80px]">
-                          <p className="text-sm text-foreground/80 leading-relaxed">{biodata.selfAssessment.reasonLeavingLastJob || "—"}</p>
+                          <p className="text-sm text-foreground/80 leading-relaxed">{biodata.selfAssessment.reasonLeavingLastJob || "No Data"}</p>
                         </div>
                       </div>
                       <div className="space-y-2">
                         <p className="text-sm font-semibold text-foreground">Describe your last job description!</p>
                         <div className="bg-secondary/50 rounded-lg p-4 min-h-[80px]">
-                          <p className="text-sm text-foreground/80 leading-relaxed">{biodata.selfAssessment.lastJobDescription || "—"}</p>
+                          <p className="text-sm text-foreground/80 leading-relaxed">{biodata.selfAssessment.lastJobDescription || "No Data"}</p>
                         </div>
                       </div>
                       <div className="space-y-2">
                         <p className="text-sm font-semibold text-foreground">What is your reason/purpose for applying to this company?</p>
                         <div className="bg-secondary/50 rounded-lg p-4 min-h-[80px]">
-                          <p className="text-sm text-foreground/80 leading-relaxed">{biodata.selfAssessment.reasonApplying || "—"}</p>
+                          <p className="text-sm text-foreground/80 leading-relaxed">{biodata.selfAssessment.reasonApplying || "No Data"}</p>
                         </div>
                       </div>
                       <div className="space-y-2">
                         <p className="text-sm font-semibold text-foreground">What tasks/jobs are you good at, related to the position you are applying for?</p>
                         <div className="bg-secondary/50 rounded-lg p-4 min-h-[80px]">
-                          <p className="text-sm text-foreground/80 leading-relaxed">{biodata.selfAssessment.relevantSkills || "—"}</p>
+                          <p className="text-sm text-foreground/80 leading-relaxed">{biodata.selfAssessment.relevantSkills || "No Data"}</p>
                         </div>
                       </div>
                       <div className="space-y-2">
                         <p className="text-sm font-semibold text-foreground">Last salary received?</p>
                         <div className="bg-secondary/50 rounded-lg p-4">
-                          <p className="text-sm text-foreground/80">{biodata.selfAssessment.lastSalary || "—"}</p>
+                          <p className="text-sm text-foreground/80">{biodata.selfAssessment.lastSalary || "No Data"}</p>
                         </div>
                       </div>
                       <div className="space-y-2">
                         <p className="text-sm font-semibold text-foreground">What salary do you expect?</p>
                         <div className="bg-secondary/50 rounded-lg p-4">
-                          <p className="text-sm text-foreground/80">{biodata.selfAssessment.expectedSalary || "—"}</p>
+                          <p className="text-sm text-foreground/80">{biodata.selfAssessment.expectedSalary || "No Data"}</p>
                         </div>
                       </div>
                       <div className="space-y-2">
                         <p className="text-sm font-semibold text-foreground">Active language?</p>
                         <div className="bg-secondary/50 rounded-lg p-4">
-                          <p className="text-sm text-foreground/80">{biodata.selfAssessment.activeLanguage || "—"}</p>
+                          <p className="text-sm text-foreground/80">{biodata.selfAssessment.activeLanguage || "No Data"}</p>
                         </div>
                       </div>
                       <div className="space-y-2">
                         <p className="text-sm font-semibold text-foreground">Are you willing to transfer/rotate at work?</p>
                         <div className="bg-secondary/50 rounded-lg p-4">
-                          <p className="text-sm text-foreground/80">{biodata.selfAssessment.willingToTransfer || "—"}</p>
+                          <p className="text-sm text-foreground/80">{biodata.selfAssessment.willingToTransfer || "No Data"}</p>
                         </div>
                       </div>
                       <div className="space-y-2">
                         <p className="text-sm font-semibold text-foreground">Are you willing to do double work for the company due to limited personnel?</p>
                         <div className="bg-secondary/50 rounded-lg p-4">
-                          <p className="text-sm text-foreground/80">{biodata.selfAssessment.willingToDoubleWork || "—"}</p>
+                          <p className="text-sm text-foreground/80">{biodata.selfAssessment.willingToDoubleWork || "No Data"}</p>
                         </div>
                       </div>
                       <div className="space-y-2">
                         <p className="text-sm font-semibold text-foreground">Who are the employees you know at this company?</p>
                         <div className="bg-secondary/50 rounded-lg p-4">
-                          <p className="text-sm text-foreground/80">{biodata.selfAssessment.knownEmployees || "—"}</p>
+                          <p className="text-sm text-foreground/80">{biodata.selfAssessment.knownEmployees || "No Data"}</p>
                         </div>
                       </div>
                       <div className="space-y-2">
                         <p className="text-sm font-semibold text-foreground">When are you ready to work?</p>
                         <div className="bg-secondary/50 rounded-lg p-4">
-                          <p className="text-sm text-foreground/80">{biodata.selfAssessment.readyToWork || "—"}</p>
+                          <p className="text-sm text-foreground/80">{biodata.selfAssessment.readyToWork || "No Data"}</p>
                         </div>
                       </div>
                       <div className="space-y-2">
                         <p className="text-sm font-semibold text-foreground">What is your relationship with the employee?</p>
                         <div className="bg-secondary/50 rounded-lg p-4">
-                          <p className="text-sm text-foreground/80">{biodata.selfAssessment.employeeRelationship || "—"}</p>
+                          <p className="text-sm text-foreground/80">{biodata.selfAssessment.employeeRelationship || "No Data"}</p>
                         </div>
                       </div>
                       <div className="space-y-2">
                         <p className="text-sm font-semibold text-foreground">Your reference contact name</p>
                         <div className="bg-secondary/50 rounded-lg p-4">
-                          <p className="text-sm text-foreground/80">{biodata.selfAssessment.referenceContactName || "—"}</p>
+                          <p className="text-sm text-foreground/80">{biodata.selfAssessment.referenceContactName || "No Data"}</p>
                         </div>
                       </div>
                       <div className="space-y-2">
                         <p className="text-sm font-semibold text-foreground">Your reference contact phone no</p>
                         <div className="bg-secondary/50 rounded-lg p-4">
-                          <p className="text-sm text-foreground/80">{biodata.selfAssessment.referenceContactPhone || "—"}</p>
+                          <p className="text-sm text-foreground/80">{biodata.selfAssessment.referenceContactPhone || "No Data"}</p>
                         </div>
                       </div>
                     </div>
                   ) : (
-                    <div className="flex items-center justify-center py-8 text-muted-foreground">
-                      <p className="text-sm">No self assessment data available</p>
-                    </div>
+                    <p className="text-sm text-muted-foreground italic">No self assessment data available</p>
                   )}
-                </CardContent>
-              </Card>
+                </div>
+              </section>
             </TabsContent>
 
             {/* Assessment HR Tab */}
@@ -1962,15 +1980,15 @@ export default function CandidateDetailPage() {
                   <>
                     {/* Status Banner — Passed */}
                     {status === "passed" && (
-                      <Card className="border-emerald-500/40 bg-gradient-to-r from-emerald-500/5 to-transparent overflow-hidden relative">
+                      <div className="rounded-2xl border border-emerald-500/30 bg-gradient-to-r from-emerald-500/5 via-emerald-500/3 to-transparent overflow-hidden relative">
                         <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500" />
-                        <CardContent className="flex items-center justify-between p-5 pl-6">
+                        <div className="flex items-center justify-between p-5 pl-6">
                           <div className="flex items-center gap-4">
                             <div className="flex h-11 w-11 items-center justify-center rounded-full bg-emerald-500/10 ring-4 ring-emerald-500/5">
                               <CheckCircle2 className="h-5 w-5 text-emerald-600" />
                             </div>
                             <div>
-                              <h3 className="font-semibold text-emerald-700 text-sm">Assessment HR — Passed</h3>
+                              <h3 className="font-semibold text-emerald-700 dark:text-emerald-400 text-sm">Assessment HR — Passed</h3>
                               <p className="text-xs text-muted-foreground mt-0.5">
                                 Candidate cleared HR assessment. Proceed to the next stage.
                               </p>
@@ -1980,15 +1998,15 @@ export default function CandidateDetailPage() {
                             Assessment User
                             <ChevronRight className="ml-1 h-4 w-4" />
                           </Button>
-                        </CardContent>
-                      </Card>
+                        </div>
+                      </div>
                     )}
 
                     {/* Status Banner — Failed */}
                     {status === "failed" && (
-                      <Card className="border-destructive/40 bg-gradient-to-r from-destructive/5 to-transparent overflow-hidden relative">
+                      <div className="rounded-2xl border border-destructive/30 bg-gradient-to-r from-destructive/5 via-destructive/3 to-transparent overflow-hidden relative">
                         <div className="absolute top-0 left-0 w-1 h-full bg-destructive" />
-                        <CardContent className="flex items-center gap-4 p-5 pl-6">
+                        <div className="flex items-center gap-4 p-5 pl-6">
                           <div className="flex h-11 w-11 items-center justify-center rounded-full bg-destructive/10 ring-4 ring-destructive/5">
                             <XCircle className="h-5 w-5 text-destructive" />
                           </div>
@@ -1998,71 +2016,74 @@ export default function CandidateDetailPage() {
                               Candidate did not pass the HR assessment and cannot proceed further.
                             </p>
                           </div>
-                        </CardContent>
-                      </Card>
+                        </div>
+                      </div>
                     )}
 
                     {/* Score Overview Stats */}
-                    <div className="grid grid-cols-3 gap-3">
-                      <Card className="relative overflow-hidden">
-                        <CardContent className="p-4">
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="rounded-2xl border bg-card relative overflow-hidden">
+                        <div className="absolute inset-0 bg-gradient-to-br from-accent/5 to-transparent pointer-events-none" />
+                        <div className="relative p-5">
                           <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Progress</p>
-                          <div className="flex items-end gap-2 mt-1.5">
-                            <span className="text-2xl font-bold tabular-nums">{totalFilled}</span>
-                            <span className="text-sm text-muted-foreground mb-0.5">/ {totalCriteria}</span>
+                          <div className="flex items-end gap-2 mt-2">
+                            <span className="text-3xl font-bold tabular-nums">{totalFilled}</span>
+                            <span className="text-sm text-muted-foreground mb-1">/ {totalCriteria}</span>
                           </div>
-                          <div className="mt-2.5 h-1.5 w-full rounded-full bg-secondary overflow-hidden">
+                          <div className="mt-3 h-2 w-full rounded-full bg-secondary overflow-hidden">
                             <div
                               className="h-full rounded-full bg-accent transition-all duration-500 ease-out"
                               style={{ width: `${progressPercent}%` }}
                             />
                           </div>
-                        </CardContent>
-                      </Card>
-                      <Card className="relative overflow-hidden">
-                        <CardContent className="p-4">
+                        </div>
+                      </div>
+                      <div className="rounded-2xl border bg-card relative overflow-hidden">
+                        <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent pointer-events-none" />
+                        <div className="relative p-5">
                           <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Average</p>
-                          <div className="flex items-end gap-2 mt-1.5">
-                            <span className={cn("text-2xl font-bold tabular-nums", scoreColor(averageScore))}>
-                              {totalFilled > 0 ? averageScore.toFixed(1) : "—"}
+                          <div className="flex items-end gap-2 mt-2">
+                            <span className={cn("text-3xl font-bold tabular-nums", scoreColor(averageScore))}>
+                              {totalFilled > 0 ? averageScore.toFixed(1) : "No Data"}
                             </span>
-                            <span className="text-sm text-muted-foreground mb-0.5">/ 5.0</span>
+                            <span className="text-sm text-muted-foreground mb-1">/ 5.0</span>
                           </div>
-                          <p className="text-[11px] text-muted-foreground mt-1">
+                          <p className="text-xs text-muted-foreground mt-1.5">
                             {totalFilled === 0 ? "No scores yet" :
                              averageScore >= 4.5 ? "Excellent" :
                              averageScore >= 3.5 ? "Good" :
                              averageScore >= 2.5 ? "Fair" :
                              averageScore >= 1.5 ? "Poor" : "Very Poor"}
                           </p>
-                        </CardContent>
-                      </Card>
-                      <Card className="relative overflow-hidden">
-                        <CardContent className="p-4">
+                        </div>
+                      </div>
+                      <div className="rounded-2xl border bg-card relative overflow-hidden">
+                        <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent pointer-events-none" />
+                        <div className="relative p-5">
                           <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Total Score</p>
-                          <div className="flex items-end gap-2 mt-1.5">
-                            <span className="text-2xl font-bold tabular-nums">{totalScore}</span>
-                            <span className="text-sm text-muted-foreground mb-0.5">/ {maxTotal}</span>
+                          <div className="flex items-end gap-2 mt-2">
+                            <span className="text-3xl font-bold tabular-nums">{totalScore}</span>
+                            <span className="text-sm text-muted-foreground mb-1">/ {maxTotal}</span>
                           </div>
-                          <p className="text-[11px] text-muted-foreground mt-1">
+                          <p className="text-xs text-muted-foreground mt-1.5">
                             {totalFilled > 0 ? `${Math.round((totalScore / maxTotal) * 100)}% of maximum` : "Start scoring below"}
                           </p>
-                        </CardContent>
-                      </Card>
+                        </div>
+                      </div>
                     </div>
 
                     {/* Section 1 — Scoring */}
-                    <Card>
-                      <CardHeader className="pb-2">
+                    <div className="rounded-2xl border bg-card">
+                      <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
                         <div className="flex items-center gap-3">
                           <div className="flex h-7 w-7 items-center justify-center rounded-full bg-accent/10 text-accent text-xs font-bold">1</div>
                           <div>
-                            <CardTitle className="text-base">Interview Scoring</CardTitle>
-                            <CardDescription className="text-xs">Rate each criterion from 1 (Very Poor) to 5 (Excellent)</CardDescription>
+                            <h2 className="text-base font-semibold text-foreground">Interview Scoring</h2>
+                            <p className="text-xs text-muted-foreground">Rate each criterion from 1 (Very Poor) to 5 (Excellent)</p>
                           </div>
                         </div>
-                      </CardHeader>
-                      <CardContent className="pt-2">
+                      </div>
+                      <div className="px-6 py-5">
                         {/* Score legend */}
                         <div className="flex items-center justify-end gap-4 mb-3 pb-3 border-b">
                           {SCORE_OPTIONS.map((opt) => (
@@ -2131,21 +2152,21 @@ export default function CandidateDetailPage() {
                             );
                           })}
                         </div>
-                      </CardContent>
-                    </Card>
+                      </div>
+                    </div>
 
                     {/* Section 2 — Additional Information */}
-                    <Card>
-                      <CardHeader className="pb-2">
+                    <div className="rounded-2xl border bg-card">
+                      <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
                         <div className="flex items-center gap-3">
                           <div className="flex h-7 w-7 items-center justify-center rounded-full bg-accent/10 text-accent text-xs font-bold">2</div>
                           <div>
-                            <CardTitle className="text-base">Additional Information</CardTitle>
-                            <CardDescription className="text-xs">Provide qualitative notes and competency observations</CardDescription>
+                            <h2 className="text-base font-semibold text-foreground">Additional Information</h2>
+                            <p className="text-xs text-muted-foreground">Provide qualitative notes and competency observations</p>
                           </div>
                         </div>
-                      </CardHeader>
-                      <CardContent className="space-y-5 pt-2">
+                      </div>
+                      <div className="px-6 py-5 space-y-5">
                         <div className="space-y-2">
                           <Label className="text-sm">
                             Key Competencies Required by the Department / Company
@@ -2185,21 +2206,21 @@ export default function CandidateDetailPage() {
                             />
                           )}
                         </div>
-                      </CardContent>
-                    </Card>
+                      </div>
+                    </div>
 
                     {/* Section 3 — Conclusion */}
-                    <Card>
-                      <CardHeader className="pb-2">
+                    <div className="rounded-2xl border bg-card">
+                      <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
                         <div className="flex items-center gap-3">
                           <div className="flex h-7 w-7 items-center justify-center rounded-full bg-accent/10 text-accent text-xs font-bold">3</div>
                           <div>
-                            <CardTitle className="text-base">Interview Result Conclusion</CardTitle>
-                            <CardDescription className="text-xs">Select the final recommendation for this candidate</CardDescription>
+                            <h2 className="text-base font-semibold text-foreground">Interview Result Conclusion</h2>
+                            <p className="text-xs text-muted-foreground">Select the final recommendation for this candidate</p>
                           </div>
                         </div>
-                      </CardHeader>
-                      <CardContent className="pt-2">
+                      </div>
+                      <div className="px-6 py-5">
                         <div className="grid grid-cols-3 gap-3">
                           {[
                             {
@@ -2269,8 +2290,8 @@ export default function CandidateDetailPage() {
                             );
                           })}
                         </div>
-                      </CardContent>
-                    </Card>
+                      </div>
+                    </div>
 
                     {/* Action Buttons */}
                     {!isCompleted && (
@@ -2330,28 +2351,28 @@ export default function CandidateDetailPage() {
                   <>
                     {/* Locked State */}
                     {locked && (
-                      <Card className="opacity-60">
-                        <CardContent className="flex flex-col items-center justify-center py-16">
+                      <div className="rounded-2xl opacity-60">
+                        <div className="flex flex-col items-center justify-center py-16">
                           <Lock className="h-16 w-16 text-muted-foreground/30" />
                           <h3 className="mt-4 text-lg font-medium">Assessment User Locked</h3>
                           <p className="text-muted-foreground text-center max-w-md mt-2">
                             Complete Interview HR (Assessment HR) first to unlock this stage.
                           </p>
-                        </CardContent>
-                      </Card>
+                        </div>
+                      </div>
                     )}
 
                     {/* Status Banner — Passed */}
                     {!locked && status === "passed" && (
-                      <Card className="border-emerald-500/40 bg-gradient-to-r from-emerald-500/5 to-transparent overflow-hidden relative">
+                      <div className="rounded-2xl border border-emerald-500/30 bg-gradient-to-r from-emerald-500/5 via-emerald-500/3 to-transparent overflow-hidden relative">
                         <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500" />
-                        <CardContent className="flex items-center justify-between p-5 pl-6">
+                        <div className="flex items-center justify-between p-5 pl-6">
                           <div className="flex items-center gap-4">
                             <div className="flex h-11 w-11 items-center justify-center rounded-full bg-emerald-500/10 ring-4 ring-emerald-500/5">
                               <CheckCircle2 className="h-5 w-5 text-emerald-600" />
                             </div>
                             <div>
-                              <h3 className="font-semibold text-emerald-700 text-sm">Assessment User — Passed</h3>
+                              <h3 className="font-semibold text-emerald-700 dark:text-emerald-400 text-sm">Assessment User — Passed</h3>
                               <p className="text-xs text-muted-foreground mt-0.5">
                                 Candidate cleared User assessment. Proceed to MCU for the next stage.
                               </p>
@@ -2361,15 +2382,15 @@ export default function CandidateDetailPage() {
                             Proceed to MCU
                             <ChevronRight className="ml-1 h-4 w-4" />
                           </Button>
-                        </CardContent>
-                      </Card>
+                        </div>
+                      </div>
                     )}
 
                     {/* Status Banner — Failed */}
                     {!locked && status === "failed" && (
-                      <Card className="border-destructive/40 bg-gradient-to-r from-destructive/5 to-transparent overflow-hidden relative">
+                      <div className="rounded-2xl border border-destructive/30 bg-gradient-to-r from-destructive/5 via-destructive/3 to-transparent overflow-hidden relative">
                         <div className="absolute top-0 left-0 w-1 h-full bg-destructive" />
-                        <CardContent className="flex items-center gap-4 p-5 pl-6">
+                        <div className="flex items-center gap-4 p-5 pl-6">
                           <div className="flex h-11 w-11 items-center justify-center rounded-full bg-destructive/10 ring-4 ring-destructive/5">
                             <XCircle className="h-5 w-5 text-destructive" />
                           </div>
@@ -2379,8 +2400,8 @@ export default function CandidateDetailPage() {
                               Candidate did not pass the User assessment and cannot proceed further.
                             </p>
                           </div>
-                        </CardContent>
-                      </Card>
+                        </div>
+                      </div>
                     )}
 
                     {/* Form Content - Only show if not locked */}
@@ -2388,9 +2409,9 @@ export default function CandidateDetailPage() {
                       <>
                         {/* Assigned Assessors Card */}
                         {assignedAssessors.length > 0 && (
-                          <Card className="border-blue-500/30 bg-gradient-to-r from-blue-500/5 via-blue-500/3 to-transparent overflow-hidden relative">
+                          <div className="rounded-2xl border border-blue-500/30 bg-gradient-to-r from-blue-500/5 via-blue-500/3 to-transparent overflow-hidden relative">
                             <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-blue-500 to-blue-400" />
-                            <CardContent className="p-5 pl-6">
+                            <div className="p-5 pl-6">
                               <div className="flex items-start gap-4">
                                 <div className="flex h-11 w-11 items-center justify-center rounded-full bg-blue-500/10 ring-4 ring-blue-500/5 shrink-0">
                                   <Users className="h-5 w-5 text-blue-600" />
@@ -2408,7 +2429,7 @@ export default function CandidateDetailPage() {
                                         </div>
                                         <div className="min-w-0">
                                           <p className="text-sm font-medium text-gray-900 truncate">
-                                            {assessor.employeeName || "Unknown"}
+                                            {assessor.employeeName || "No Data"}
                                           </p>
                                           {assessor.employeeEmail && (
                                             <p className="text-xs text-gray-500 truncate">
@@ -2421,71 +2442,74 @@ export default function CandidateDetailPage() {
                                   </div>
                                 </div>
                               </div>
-                            </CardContent>
-                          </Card>
+                            </div>
+                          </div>
                         )}
 
                         {/* Score Overview Stats */}
-                        <div className="grid grid-cols-3 gap-3">
-                          <Card className="relative overflow-hidden">
-                            <CardContent className="p-4">
+                        <div className="grid grid-cols-3 gap-4">
+                          <div className="rounded-2xl border bg-card relative overflow-hidden">
+                            <div className="absolute inset-0 bg-gradient-to-br from-accent/5 to-transparent pointer-events-none" />
+                            <div className="relative p-5">
                               <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Progress</p>
-                              <div className="flex items-end gap-2 mt-1.5">
-                                <span className="text-2xl font-bold tabular-nums">{totalFilled}</span>
-                                <span className="text-sm text-muted-foreground mb-0.5">/ {totalCriteria}</span>
+                              <div className="flex items-end gap-2 mt-2">
+                                <span className="text-3xl font-bold tabular-nums">{totalFilled}</span>
+                                <span className="text-sm text-muted-foreground mb-1">/ {totalCriteria}</span>
                               </div>
-                              <div className="mt-2.5 h-1.5 w-full rounded-full bg-secondary overflow-hidden">
+                              <div className="mt-3 h-2 w-full rounded-full bg-secondary overflow-hidden">
                                 <div
                                   className="h-full rounded-full bg-accent transition-all duration-500 ease-out"
                                   style={{ width: `${progressPercent}%` }}
                                 />
                               </div>
-                            </CardContent>
-                          </Card>
-                          <Card className="relative overflow-hidden">
-                            <CardContent className="p-4">
+                            </div>
+                          </div>
+                          <div className="rounded-2xl border bg-card relative overflow-hidden">
+                            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent pointer-events-none" />
+                            <div className="relative p-5">
                               <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Average</p>
-                              <div className="flex items-end gap-2 mt-1.5">
-                                <span className={cn("text-2xl font-bold tabular-nums", scoreColor(averageScore))}>
-                                  {totalFilled > 0 ? averageScore.toFixed(1) : "—"}
+                              <div className="flex items-end gap-2 mt-2">
+                                <span className={cn("text-3xl font-bold tabular-nums", scoreColor(averageScore))}>
+                                  {totalFilled > 0 ? averageScore.toFixed(1) : "No Data"}
                                 </span>
-                                <span className="text-sm text-muted-foreground mb-0.5">/ 5.0</span>
+                                <span className="text-sm text-muted-foreground mb-1">/ 5.0</span>
                               </div>
-                              <p className="text-[11px] text-muted-foreground mt-1">
+                              <p className="text-xs text-muted-foreground mt-1.5">
                                 {totalFilled === 0 ? "No scores yet" :
                                  averageScore >= 4.5 ? "Excellent" :
                                  averageScore >= 3.5 ? "Good" :
                                  averageScore >= 2.5 ? "Fair" :
                                  averageScore >= 1.5 ? "Poor" : "Very Poor"}
                               </p>
-                            </CardContent>
-                          </Card>
-                          <Card className="relative overflow-hidden">
-                            <CardContent className="p-4">
+                            </div>
+                          </div>
+                          <div className="rounded-2xl border bg-card relative overflow-hidden">
+                            <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent pointer-events-none" />
+                            <div className="relative p-5">
                               <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Total Score</p>
-                              <div className="flex items-end gap-2 mt-1.5">
-                                <span className="text-2xl font-bold tabular-nums">{totalScore}</span>
-                                <span className="text-sm text-muted-foreground mb-0.5">/ {maxTotal}</span>
+                              <div className="flex items-end gap-2 mt-2">
+                                <span className="text-3xl font-bold tabular-nums">{totalScore}</span>
+                                <span className="text-sm text-muted-foreground mb-1">/ {maxTotal}</span>
                               </div>
-                              <p className="text-[11px] text-muted-foreground mt-1">
+                              <p className="text-xs text-muted-foreground mt-1.5">
                                 {totalFilled > 0 ? `${Math.round((totalScore / maxTotal) * 100)}% of maximum` : "Start scoring below"}
                               </p>
-                            </CardContent>
-                          </Card>
+                            </div>
+                          </div>
                         </div>
 
                         {/* Section 1 — Scoring */}
-                        <Card>
-                          <CardHeader className="pb-2">
+                        <div className="rounded-2xl border bg-card">
+                          <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
                             <div className="flex items-center gap-3">
                               <div className="flex h-7 w-7 items-center justify-center rounded-full bg-accent/10 text-accent text-xs font-bold">1</div>
                               <div>
-                                <CardTitle className="text-base">Interview Scoring</CardTitle>
-                                <CardDescription className="text-xs">Rate each criterion from 1 (Very Poor) to 5 (Excellent)</CardDescription>
+                                <h2 className="text-base font-semibold text-foreground">Interview Scoring</h2>
+                                <p className="text-xs text-muted-foreground">Rate each criterion from 1 (Very Poor) to 5 (Excellent)</p>
                               </div>
                             </div>
-                          </CardHeader>
-                          <CardContent className="pt-2">
+                          </div>
+                          <div className="px-6 py-5">
                             {/* Score legend */}
                             <div className="flex items-center justify-end gap-4 mb-3 pb-3 border-b">
                               {SCORE_OPTIONS.map((opt) => (
@@ -2554,21 +2578,21 @@ export default function CandidateDetailPage() {
                                 );
                               })}
                             </div>
-                          </CardContent>
-                        </Card>
+                          </div>
+                        </div>
 
                         {/* Section 2 — Additional Information */}
-                        <Card>
-                          <CardHeader className="pb-2">
+                        <div className="rounded-2xl border bg-card">
+                          <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
                             <div className="flex items-center gap-3">
                               <div className="flex h-7 w-7 items-center justify-center rounded-full bg-accent/10 text-accent text-xs font-bold">2</div>
                               <div>
-                                <CardTitle className="text-base">Additional Information</CardTitle>
-                                <CardDescription className="text-xs">Provide qualitative notes and competency observations</CardDescription>
+                                <h2 className="text-base font-semibold text-foreground">Additional Information</h2>
+                                <p className="text-xs text-muted-foreground">Provide qualitative notes and competency observations</p>
                               </div>
                             </div>
-                          </CardHeader>
-                          <CardContent className="space-y-5 pt-2">
+                          </div>
+                          <div className="px-6 py-5 space-y-5">
                             <div className="space-y-2">
                               <Label className="text-sm">
                                 Key Competencies Required by the Department / Company
@@ -2608,21 +2632,21 @@ export default function CandidateDetailPage() {
                                 />
                               )}
                             </div>
-                          </CardContent>
-                        </Card>
+                          </div>
+                        </div>
 
                         {/* Section 3 — Conclusion */}
-                        <Card>
-                          <CardHeader className="pb-2">
+                        <div className="rounded-2xl border bg-card">
+                          <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
                             <div className="flex items-center gap-3">
                               <div className="flex h-7 w-7 items-center justify-center rounded-full bg-accent/10 text-accent text-xs font-bold">3</div>
                               <div>
-                                <CardTitle className="text-base">Interview Result Conclusion</CardTitle>
-                                <CardDescription className="text-xs">Select the final recommendation for this candidate</CardDescription>
+                                <h2 className="text-base font-semibold text-foreground">Interview Result Conclusion</h2>
+                                <p className="text-xs text-muted-foreground">Select the final recommendation for this candidate</p>
                               </div>
                             </div>
-                          </CardHeader>
-                          <CardContent className="pt-2">
+                          </div>
+                          <div className="px-6 py-5">
                             <div className="grid grid-cols-3 gap-3">
                               {[
                                 {
@@ -2692,8 +2716,8 @@ export default function CandidateDetailPage() {
                                 );
                               })}
                             </div>
-                          </CardContent>
-                        </Card>
+                          </div>
+                        </div>
 
                         {/* Action Buttons */}
                         {!isCompleted && (
@@ -2756,33 +2780,107 @@ export default function CandidateDetailPage() {
 
                     {/* Locked State */}
                     {mcuLocked && (
-                      <Card>
-                        <CardContent className="flex flex-col items-center justify-center py-16">
+                      <div className="rounded-2xl border bg-card">
+                        <div className="flex flex-col items-center justify-center py-16">
                           <Lock className="h-16 w-16 text-muted-foreground/30" />
                           <h3 className="mt-4 text-lg font-medium">MCU Locked</h3>
                           <p className="text-muted-foreground text-center max-w-md mt-2">
                             Complete Interview User (Assessment User) first to unlock Medical Check-Up.
                           </p>
-                        </CardContent>
-                      </Card>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* MCU Schedule Section - show when not locked */}
+                    {!mcuLocked && (
+                      <>
+                        {/* Schedule Info Card */}
+                        {progress?.mcuDate ? (
+                          <div className="rounded-2xl border bg-card">
+                            <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
+                              <div className="flex items-center gap-3">
+                                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-500/10 text-sm font-bold text-blue-600">
+                                  <Calendar className="h-4 w-4" />
+                                </div>
+                                <div>
+                                  <h2 className="text-base font-semibold text-foreground">MCU Schedule</h2>
+                                  <p className="text-xs text-muted-foreground">Medical Check-Up has been scheduled</p>
+                                </div>
+                              </div>
+                              {mcuIsPending && (
+                                <Button
+                                  variant="outline"
+                                  onClick={() => setShowScheduleMcuDialog(true)}
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                  Reschedule
+                                </Button>
+                              )}
+                            </div>
+                            <div className="px-6 py-5">
+                              <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                  <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                                    <Calendar className="h-3 w-3" />
+                                    Date & Time
+                                  </p>
+                                  <p className="text-sm font-medium">
+                                    {new Date(progress.mcuDate).toLocaleDateString("id-ID", {
+                                      weekday: "long",
+                                      year: "numeric",
+                                      month: "long",
+                                      day: "numeric",
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                      timeZone: "Asia/Jakarta",
+                                    })} WIB
+                                  </p>
+                                </div>
+                                <div className="space-y-1">
+                                  <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                                    <MapPin className="h-3 w-3" />
+                                    Location
+                                  </p>
+                                  <p className="text-sm font-medium">{progress.mcuLocation}</p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ) : mcuIsPending ? (
+                          <div className="rounded-2xl border border-dashed border-blue-500/30 bg-blue-500/5">
+                            <div className="flex flex-col items-center justify-center py-10">
+                              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-500/10 mb-3">
+                                <Stethoscope className="h-6 w-6 text-blue-500" />
+                              </div>
+                              <h3 className="text-base font-semibold">Schedule Medical Check-Up</h3>
+                              <p className="text-sm text-muted-foreground text-center max-w-md mt-1 mb-4">
+                                Set the MCU date and location for this candidate. The candidate will be notified via email.
+                              </p>
+                              <Button onClick={() => setShowScheduleMcuDialog(true)}>
+                                <Calendar className="h-4 w-4" />
+                                Schedule MCU
+                              </Button>
+                            </div>
+                          </div>
+                        ) : null}
+                      </>
                     )}
 
                     {/* Main MCU Content - show when not locked */}
                     {!mcuLocked && (
                       <>
                         {/* Section 1: Document Upload */}
-                        <Card>
-                          <CardHeader className="pb-4">
+                        <div className="rounded-2xl border bg-card">
+                          <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
                             <div className="flex items-center gap-3">
                               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-500/10 text-sm font-bold text-blue-600">1</div>
                               <div>
-                                <CardTitle className="text-base">MCU Document</CardTitle>
-                                <CardDescription>Upload the medical check-up result document (PDF, JPEG, or PNG, max 10MB)</CardDescription>
+                                <h2 className="text-base font-semibold text-foreground">MCU Document</h2>
+                                <p className="text-xs text-muted-foreground">Upload the medical check-up result document (PDF, JPEG, or PNG, max 10MB)</p>
                               </div>
                             </div>
-                          </CardHeader>
-                          <CardContent className="pt-0">
-                            <Separator className="mb-4" />
+                          </div>
+                          <div className="px-6 py-5">
 
                             {/* Hidden file input */}
                             <input
@@ -2868,22 +2966,21 @@ export default function CandidateDetailPage() {
                                 )}
                               </button>
                             )}
-                          </CardContent>
-                        </Card>
+                          </div>
+                        </div>
 
                         {/* Section 2: Notes */}
-                        <Card>
-                          <CardHeader className="pb-4">
+                        <div className="rounded-2xl border bg-card">
+                          <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
                             <div className="flex items-center gap-3">
                               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-500/10 text-sm font-bold text-blue-600">2</div>
                               <div>
-                                <CardTitle className="text-base">Notes / Description</CardTitle>
-                                <CardDescription>Add any additional notes about the medical check-up results</CardDescription>
+                                <h2 className="text-base font-semibold text-foreground">Notes / Description</h2>
+                                <p className="text-xs text-muted-foreground">Add any additional notes about the medical check-up results</p>
                               </div>
                             </div>
-                          </CardHeader>
-                          <CardContent className="pt-0">
-                            <Separator className="mb-4" />
+                          </div>
+                          <div className="px-6 py-5">
                             <Textarea
                               id="mcu-notes"
                               placeholder="Add notes for Medical Check-Up..."
@@ -2895,14 +2992,14 @@ export default function CandidateDetailPage() {
                               disabled={mcuStatus !== "pending"}
                               className="min-h-32"
                             />
-                          </CardContent>
-                        </Card>
+                          </div>
+                        </div>
 
                         {/* Action Bar - Only show if pending */}
                         {mcuIsPending && (
                           <div className="sticky bottom-4 z-10">
-                            <Card className="border-blue-500/20 shadow-lg">
-                              <CardContent className="flex items-center justify-between p-4">
+                            <div className="rounded-2xl border-blue-500/20 shadow-lg">
+                              <div className="flex items-center justify-between p-4">
                                 <p className="text-sm text-muted-foreground">
                                   Upload the MCU document and set the result to continue.
                                 </p>
@@ -2941,8 +3038,8 @@ export default function CandidateDetailPage() {
                                     Fail
                                   </Button>
                                 </div>
-                              </CardContent>
-                            </Card>
+                              </div>
+                            </div>
                           </div>
                         )}
                       </>
@@ -2950,8 +3047,8 @@ export default function CandidateDetailPage() {
 
                     {/* Assessment Failed Notice */}
                     {progress?.anyFailed && (
-                      <Card className="border-destructive bg-destructive/5">
-                        <CardContent className="flex items-center gap-4 p-6">
+                      <div className="rounded-2xl border-destructive bg-destructive/5">
+                        <div className="flex items-center gap-4 p-6">
                           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
                             <XCircle className="h-6 w-6 text-destructive" />
                           </div>
@@ -2961,14 +3058,14 @@ export default function CandidateDetailPage() {
                               This candidate has failed one of the assessment stages and cannot proceed further.
                             </p>
                           </div>
-                        </CardContent>
-                      </Card>
+                        </div>
+                      </div>
                     )}
 
                     {/* All Passed Notice */}
                     {progress?.allPassed && (
-                      <Card className="border-emerald-500 bg-emerald-500/5">
-                        <CardContent className="flex items-center justify-between p-6">
+                      <div className="rounded-2xl border-emerald-500 bg-emerald-500/5">
+                        <div className="flex items-center justify-between p-6">
                           <div className="flex items-center gap-4">
                             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/10">
                               <PartyPopper className="h-6 w-6 text-emerald-600" />
@@ -2984,8 +3081,8 @@ export default function CandidateDetailPage() {
                             Start Onboarding
                             <PartyPopper className="ml-2 h-4 w-4" />
                           </Button>
-                        </CardContent>
-                      </Card>
+                        </div>
+                      </div>
                     )}
                   </>
                 );
@@ -2997,27 +3094,22 @@ export default function CandidateDetailPage() {
               {canStartOnboarding ? (
                 <div className="space-y-6">
                     {/* Facilities Section */}
-                    <Card>
-                      <CardHeader className="pb-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-950">
-                              <Package className="h-5 w-5 text-blue-600" />
-                            </div>
-                            <div>
-                              <CardTitle className="text-base">Facilities / Equipment</CardTitle>
-                              <CardDescription>Equipment and items assigned to the new employee</CardDescription>
-                            </div>
+                    <div className="rounded-2xl border bg-card">
+                      <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
+                            <Package className="h-4 w-4 text-muted-foreground" />
                           </div>
-                          {!isOnboardingAccepted && (
-                            <Button onClick={() => handleOpenFacilityDialog("add")}>
-                              <Plus />
-                              Add Facility
-                            </Button>
-                          )}
+                          <h2 className="text-base font-semibold text-foreground">Facilities / Equipment</h2>
                         </div>
-                      </CardHeader>
-                      <CardContent>
+                        {!isOnboardingAccepted && (
+                          <Button onClick={() => handleOpenFacilityDialog("add")}>
+                            <Plus />
+                            Add Facility
+                          </Button>
+                        )}
+                      </div>
+                      <div className="px-6 py-5">
                         {(!onboarding || onboarding.facilities.length === 0) ? (
                           <div className="flex flex-col items-center justify-center py-12 text-center">
                             <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-muted">
@@ -3058,7 +3150,7 @@ export default function CandidateDetailPage() {
                                 {onboarding.facilities.map((facility) => (
                                   <TableRow key={facility.id}>
                                     <TableCell className="text-sm">
-                                      {facility.inventoryNo || "—"}
+                                      {facility.inventoryNo || "No Data"}
                                     </TableCell>
                                     <TableCell className="font-medium">{facility.item}</TableCell>
                                     <TableCell className="text-center">{facility.qty} {facility.unit}</TableCell>
@@ -3108,31 +3200,26 @@ export default function CandidateDetailPage() {
                             </Table>
                           </div>
                         )}
-                      </CardContent>
-                    </Card>
+                      </div>
+                    </div>
 
                     {/* Onboarding Programs Section */}
-                    <Card>
-                      <CardHeader className="pb-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-purple-50 dark:bg-purple-950">
-                              <GraduationCap className="h-5 w-5 text-purple-600" />
-                            </div>
-                            <div>
-                              <CardTitle className="text-base">Onboarding Programs</CardTitle>
-                              <CardDescription>Training and orientation schedule for the new employee</CardDescription>
-                            </div>
+                    <div className="rounded-2xl border bg-card">
+                      <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
+                            <GraduationCap className="h-4 w-4 text-muted-foreground" />
                           </div>
-                          {!isOnboardingAccepted && (
-                            <Button onClick={() => handleOpenProgramDialog("add")}>
-                              <Plus />
-                              Add Program
-                            </Button>
-                          )}
+                          <h2 className="text-base font-semibold text-foreground">Onboarding Programs</h2>
                         </div>
-                      </CardHeader>
-                      <CardContent>
+                        {!isOnboardingAccepted && (
+                          <Button onClick={() => handleOpenProgramDialog("add")}>
+                            <Plus />
+                            Add Program
+                          </Button>
+                        )}
+                      </div>
+                      <div className="px-6 py-5">
                         {(!onboarding || onboarding.programs.length === 0) ? (
                           <div className="flex flex-col items-center justify-center py-12 text-center">
                             <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-muted">
@@ -3174,10 +3261,10 @@ export default function CandidateDetailPage() {
                                   <TableRow key={program.id}>
                                     <TableCell className="font-medium">{program.program}</TableCell>
                                     <TableCell>
-                                      {program.date ? formatShortDate(program.date) : "—"}
+                                      {program.date ? formatShortDate(program.date) : "No Data"}
                                     </TableCell>
-                                    <TableCell>{program.location || "—"}</TableCell>
-                                    <TableCell>{program.pic || "—"}</TableCell>
+                                    <TableCell>{program.location || "No Data"}</TableCell>
+                                    <TableCell>{program.pic || "No Data"}</TableCell>
                                     <TableCell>
                                       <Badge
                                         variant={
@@ -3222,20 +3309,20 @@ export default function CandidateDetailPage() {
                             </Table>
                           </div>
                         )}
-                      </CardContent>
-                    </Card>
+                      </div>
+                    </div>
 
                     {/* Job Placement */}
-                    <Card>
-                      <CardHeader className="pb-4">
+                    <div className="rounded-2xl border bg-card">
+                      <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
                         <div className="flex items-center gap-3">
-                          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-950">
-                            <MapPin className="h-5 w-5 text-emerald-600" />
+                          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
+                            <MapPin className="h-4 w-4 text-muted-foreground" />
                           </div>
-                          <CardTitle className="text-base">Job Placement</CardTitle>
+                          <h2 className="text-base font-semibold text-foreground">Job Placement</h2>
                         </div>
-                      </CardHeader>
-                      <CardContent className="space-y-4">
+                      </div>
+                      <div className="px-6 py-5 space-y-4">
                         <div className="space-y-2">
                           <Label htmlFor="jobPlacement">Work Location / Placement</Label>
                           <Input
@@ -3256,23 +3343,23 @@ export default function CandidateDetailPage() {
                             className={isOnboardingAccepted ? "bg-muted" : ""}
                           />
                         </div>
-                      </CardContent>
-                    </Card>
+                      </div>
+                    </div>
 
                     {/* Onboarding Checklist */}
-                    <Card className="border-blue-200 dark:border-blue-900">
-                      <CardHeader className="pb-4">
+                    <div className="rounded-2xl border border-blue-200 bg-card dark:border-blue-900">
+                      <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
                         <div className="flex items-center gap-3">
-                          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-950">
-                            <Send className="h-5 w-5 text-blue-600" />
+                          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
+                            <Send className="h-4 w-4 text-muted-foreground" />
                           </div>
                           <div>
-                            <CardTitle className="text-base">Onboarding Checklist</CardTitle>
-                            <CardDescription>Requirements before sending onboarding to candidate</CardDescription>
+                            <h2 className="text-base font-semibold text-foreground">Onboarding Checklist</h2>
+                            <p className="text-xs text-muted-foreground">Requirements before sending onboarding to candidate</p>
                           </div>
                         </div>
-                      </CardHeader>
-                      <CardContent className="space-y-3">
+                      </div>
+                      <div className="px-6 py-5 space-y-3">
                         <div className="flex items-center gap-3">
                           {joinDate ? (
                             <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
@@ -3349,12 +3436,12 @@ export default function CandidateDetailPage() {
                             </Button>
                           </div>
                         )}
-                      </CardContent>
-                    </Card>
+                      </div>
+                    </div>
                 </div>
               ) : (
-                <Card>
-                  <CardContent className="flex flex-col items-center justify-center py-16">
+                <div className="rounded-2xl border bg-card">
+                  <div className="flex flex-col items-center justify-center py-16">
                     <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted">
                       <Lock className="h-8 w-8 text-muted-foreground" />
                     </div>
@@ -3366,8 +3453,8 @@ export default function CandidateDetailPage() {
                       <AlertTriangle className="h-4 w-4" />
                       <span>Complete Interview HR, Interview User & MCU first</span>
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               )}
             </TabsContent>
           </Tabs>
@@ -3551,19 +3638,44 @@ export default function CandidateDetailPage() {
           <div className="border-t bg-secondary/30 px-6 py-4">
             <div className="flex items-center justify-between">
               <p className="text-xs text-muted-foreground">
-                Next: Assign assessors for Interview User
+                {hrConclusion === "rejected"
+                  ? "This will reject the candidate and end the recruitment process"
+                  : "Next: Assign assessors for Interview User"}
               </p>
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => setShowHRPreview(false)} className="px-4">
                   Cancel
                 </Button>
-                <Button
-                  onClick={handleOpenAssessorAssignment}
-                  className="px-5 gap-2"
-                >
-                  <Users className="h-4 w-4" />
-                  Continue
-                </Button>
+                {hrConclusion === "rejected" ? (
+                  <Button
+                    onClick={() => {
+                      setShowHRPreview(false);
+                      handleHRAssessmentSubmit();
+                    }}
+                    disabled={isSubmittingHR}
+                    className="px-5 gap-2 bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+                  >
+                    {isSubmittingHR ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Submitting...
+                      </>
+                    ) : (
+                      <>
+                        <XCircle className="h-4 w-4" />
+                        Reject Candidate
+                      </>
+                    )}
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={handleOpenAssessorAssignment}
+                    className="px-5 gap-2"
+                  >
+                    <Users className="h-4 w-4" />
+                    Continue
+                  </Button>
+                )}
               </div>
             </div>
           </div>
@@ -4275,8 +4387,8 @@ export default function CandidateDetailPage() {
                 <span className="font-medium">Onboarding Summary</span>
               </div>
               <ul className="mt-2 text-sm text-blue-600 dark:text-blue-400 space-y-1">
-                <li>Work Location: {formatJobPlacement(jobPlacement) || "—"}</li>
-                <li>Join Date: {joinDate || "—"}</li>
+                <li>Work Location: {formatJobPlacement(jobPlacement) || "No Data"}</li>
+                <li>Join Date: {joinDate || "No Data"}</li>
                 <li>{onboarding?.facilities.length || 0} facilities assigned</li>
                 <li>{onboarding?.programs.length || 0} programs scheduled</li>
               </ul>
@@ -4403,6 +4515,98 @@ export default function CandidateDetailPage() {
                 <ClipboardCheck />
               )}
               {isStartingInterview ? "Scheduling..." : "Start Interview"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Schedule MCU Dialog */}
+      <Dialog open={showScheduleMcuDialog} onOpenChange={(open) => {
+        setShowScheduleMcuDialog(open);
+        if (!open) {
+          setMcuDate("");
+          setMcuTime("");
+          setMcuLocation("");
+        }
+      }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                <Stethoscope className="h-4 w-4 text-blue-600" />
+              </div>
+              Schedule Medical Check-Up
+            </DialogTitle>
+            <DialogDescription>
+              Set the MCU date, time, and location for this candidate. The candidate will be notified via email.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">MCU Date & Time</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="mcu-date" className="text-xs text-muted-foreground font-normal flex items-center gap-1.5">
+                    <Calendar className="h-3 w-3" />
+                    Date
+                  </Label>
+                  <Input
+                    id="mcu-date"
+                    type="date"
+                    value={mcuDate}
+                    onChange={(e) => setMcuDate(e.target.value)}
+                    min={new Date().toISOString().slice(0, 10)}
+                    className="h-11 text-sm font-medium tabular-nums"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="mcu-time" className="text-xs text-muted-foreground font-normal flex items-center gap-1.5">
+                    <Clock className="h-3 w-3" />
+                    Time
+                  </Label>
+                  <Input
+                    id="mcu-time"
+                    type="time"
+                    value={mcuTime}
+                    onChange={(e) => setMcuTime(e.target.value)}
+                    className="h-11 text-sm font-medium tabular-nums"
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="mcu-location" className="text-sm font-medium flex items-center gap-1.5">
+                <MapPin className="h-3.5 w-3.5" />
+                Location
+              </Label>
+              <Input
+                id="mcu-location"
+                type="text"
+                placeholder="e.g. RS Pondok Indah, Jakarta Selatan"
+                value={mcuLocation}
+                onChange={(e) => setMcuLocation(e.target.value)}
+                className="h-11 text-sm"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowScheduleMcuDialog(false)}
+              disabled={isSchedulingMcu}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleScheduleMcu}
+              disabled={isSchedulingMcu || !mcuDate || !mcuTime || !mcuLocation.trim()}
+            >
+              {isSchedulingMcu ? (
+                <Loader2 className="animate-spin" />
+              ) : (
+                <Stethoscope />
+              )}
+              {isSchedulingMcu ? "Scheduling..." : "Schedule MCU"}
             </Button>
           </DialogFooter>
         </DialogContent>

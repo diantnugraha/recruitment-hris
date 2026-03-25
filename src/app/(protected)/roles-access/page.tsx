@@ -242,7 +242,7 @@ export default function RolesAccessPage() {
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent/10">
             <Shield className="h-4 w-4 text-accent" />
           </div>
-          <span className="font-medium">{row.roleName || "—"}</span>
+          <span className="font-medium">{row.roleName || "No Data"}</span>
         </div>
       ),
     },

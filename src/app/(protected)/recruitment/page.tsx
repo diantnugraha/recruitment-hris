@@ -71,7 +71,7 @@ const columns = [
     className: "w-1/5",
     render: (row: RecruitmentRequestRow) => (
       <span className="text-sm font-medium">
-        {row.jobTitle?.name || "Unknown Position"}
+        {row.jobTitle?.name || "No Data"}
       </span>
     ),
   },
@@ -81,7 +81,7 @@ const columns = [
     className: "w-1/5",
     render: (row: RecruitmentRequestRow) => (
       <div className="space-y-0.5">
-        <p className="text-sm">{row.department?.name || "—"}</p>
+        <p className="text-sm">{row.department?.name || "No Data"}</p>
         {row.division?.name && (
           <p className="text-xs text-muted-foreground">{row.division.name}</p>
         )}
@@ -93,7 +93,7 @@ const columns = [
     label: "Qty",
     className: "w-1/5 text-center",
     render: (row: RecruitmentRequestRow) => (
-      <span className="font-medium">{row.quantity} HC</span>
+      <span className="font-medium">{row.quantity} Position</span>
     ),
   },
   {

@@ -3,9 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  Loader2,
-} from "lucide-react";
+import { AlertCircle } from "lucide-react";
 
 import { Header } from "@/components/layout/header";
 import { PageContainer } from "@/components/layout/page-container";
@@ -14,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
   SelectContent,
@@ -21,52 +20,151 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 import { useEmployeeStore } from "@/stores/employee-store";
 import employeeService from "@/services/employee.service";
-import { EmployeeWithRelations, EmployeeStatus } from "@/types";
+import { EmployeeWithRelations } from "@/types";
 import { showToast } from "@/lib/utils/toast-messages";
+import {
+  EMPLOYEE_STATUSES,
+  ACTIVE_STATUSES,
+  getEmployeeStatusConfig,
+} from "@/lib/constants/employeeStatus";
 
-// --- Constants ---
+// --- Table columns (module-level to avoid re-creation) ---
 
-const EMPLOYEE_STATUSES: { value: EmployeeStatus; label: string }[] = [
-  { value: "active", label: "Active" },
-  { value: "permanent", label: "Permanent" },
-  { value: "contract", label: "Contract" },
-  { value: "probation", label: "Probation" },
-  { value: "outsource", label: "Outsource" },
-  { value: "on_leave", label: "On Leave" },
-  { value: "inactive", label: "Inactive" },
-  { value: "terminated", label: "Terminated" },
-  { value: "exit", label: "Exit" },
-];
+function EmployeeCell({
+  row,
+  onClick,
+}: {
+  row: EmployeeWithRelations;
+  onClick: () => void;
+}) {
+  const fullName = `${row.firstName || ""} ${row.lastName || ""}`.trim();
+  const initials = fullName
+    .split(" ")
+    .map((n) => n[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
 
-const statusConfig: Record<
-  string,
-  { label: string; variant: "default" | "secondary" | "outline" | "success" }
-> = {
-  active: { label: "Active", variant: "success" },
-  permanent: { label: "Permanent", variant: "success" },
-  contract: { label: "Contract", variant: "default" },
-  probation: { label: "Probation", variant: "secondary" },
-  outsource: { label: "Outsource", variant: "secondary" },
-  on_leave: { label: "On Leave", variant: "secondary" },
-  inactive: { label: "Inactive", variant: "outline" },
-  terminated: { label: "Terminated", variant: "outline" },
-  exit: { label: "Exit", variant: "outline" },
-};
-
-function getStatusConfig(status: string) {
   return (
-    statusConfig[status] ?? {
-      label: status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
-      variant: "secondary" as const,
-    }
+    <button
+      type="button"
+      className="flex items-center gap-3 text-left"
+      onClick={onClick}
+    >
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent/10 text-sm font-semibold text-accent">
+        {initials || "?"}
+      </div>
+      <div className="min-w-0">
+        <p className="font-medium text-accent hover:underline truncate">
+          {fullName || "No Data"}
+        </p>
+        <p className="text-xs text-muted-foreground truncate">
+          {row.email || "No Data"}
+        </p>
+      </div>
+    </button>
   );
 }
 
-// Active statuses for counting
-const ACTIVE_STATUSES = new Set<string>(["active", "permanent", "contract", "probation", "outsource"]);
+const COLUMNS = [
+  {
+    key: "employee",
+    label: "Employee",
+  },
+  {
+    key: "nik",
+    label: "NIK",
+    render: (row: EmployeeWithRelations) => (
+      <span className="text-sm text-muted-foreground">
+        {row.employeeNik || "No Data"}
+      </span>
+    ),
+  },
+  {
+    key: "department",
+    label: "Department",
+    render: (row: EmployeeWithRelations) => (
+      <span className="text-sm">{row.department?.name || "No Data"}</span>
+    ),
+  },
+  {
+    key: "position",
+    label: "Position",
+    render: (row: EmployeeWithRelations) => (
+      <span className="text-sm">{row.jobTitle?.name || "No Data"}</span>
+    ),
+  },
+  {
+    key: "status",
+    label: "Status",
+    render: (row: EmployeeWithRelations) => {
+      const config = getEmployeeStatusConfig(row.status);
+      return <Badge variant={config.variant}>{config.label}</Badge>;
+    },
+  },
+];
+
+// --- Table skeleton ---
+
+function TableSkeleton() {
+  return (
+    <Card>
+      <CardContent className="p-0">
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead className="font-medium">Employee</TableHead>
+              <TableHead className="font-medium">NIK</TableHead>
+              <TableHead className="font-medium">Department</TableHead>
+              <TableHead className="font-medium">Position</TableHead>
+              <TableHead className="font-medium">Status</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {Array.from({ length: 5 }).map((_, i) => (
+              <TableRow key={i}>
+                <TableCell>
+                  <div className="flex items-center gap-3">
+                    <Skeleton className="h-9 w-9 rounded-full" />
+                    <div className="space-y-1.5">
+                      <Skeleton className="h-4 w-32" />
+                      <Skeleton className="h-3 w-40" />
+                    </div>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <Skeleton className="h-4 w-20" />
+                </TableCell>
+                <TableCell>
+                  <Skeleton className="h-4 w-24" />
+                </TableCell>
+                <TableCell>
+                  <Skeleton className="h-4 w-24" />
+                </TableCell>
+                <TableCell>
+                  <Skeleton className="h-5 w-16 rounded-full" />
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  );
+}
+
+// --- Page component ---
 
 export default function EmployeesPage() {
   const router = useRouter();
@@ -138,6 +236,25 @@ export default function EmployeesPage() {
     fetchEmployees();
   }, [fetchEmployees]);
 
+  // Columns with router-dependent render (memoized)
+  const columns = React.useMemo(
+    () =>
+      COLUMNS.map((col) =>
+        col.key === "employee"
+          ? {
+              ...col,
+              render: (row: EmployeeWithRelations) => (
+                <EmployeeCell
+                  row={row}
+                  onClick={() => router.push(`/employees/${row.id}`)}
+                />
+              ),
+            }
+          : col
+      ),
+    [router]
+  );
+
   // Filter and pagination
   const filteredData = React.useMemo(() => {
     const empArray = Array.isArray(employees) ? employees : [];
@@ -191,74 +308,6 @@ export default function EmployeesPage() {
     ];
   }, [employees]);
 
-  // Table columns
-  const columns = [
-    {
-      key: "employee",
-      label: "Employee",
-      render: (row: EmployeeWithRelations) => {
-        const fullName = `${row.firstName || ""} ${row.lastName || ""}`.trim();
-        const initials = fullName
-          .split(" ")
-          .map((n) => n[0])
-          .slice(0, 2)
-          .join("")
-          .toUpperCase();
-
-        return (
-          <button
-            type="button"
-            className="flex items-center gap-3 text-left"
-            onClick={() => router.push(`/employees/${row.id}`)}
-          >
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent/10 text-sm font-semibold text-accent">
-              {initials || "?"}
-            </div>
-            <div className="min-w-0">
-              <p className="font-medium text-accent hover:underline truncate">
-                {fullName || "—"}
-              </p>
-              <p className="text-xs text-muted-foreground truncate">
-                {row.email || "—"}
-              </p>
-            </div>
-          </button>
-        );
-      },
-    },
-    {
-      key: "nik",
-      label: "NIK",
-      render: (row: EmployeeWithRelations) => (
-        <span className="text-sm text-muted-foreground">
-          {row.employeeNik || "No Data"}
-        </span>
-      ),
-    },
-    {
-      key: "department",
-      label: "Department",
-      render: (row: EmployeeWithRelations) => (
-        <span className="text-sm">{row.department?.name || "—"}</span>
-      ),
-    },
-    {
-      key: "position",
-      label: "Position",
-      render: (row: EmployeeWithRelations) => (
-        <span className="text-sm">{row.jobTitle?.name || "—"}</span>
-      ),
-    },
-{
-      key: "status",
-      label: "Status",
-      render: (row: EmployeeWithRelations) => {
-        const config = getStatusConfig(row.status);
-        return <Badge variant={config.variant}>{config.label}</Badge>;
-      },
-    },
-  ];
-
   return (
     <>
       <Header title="Employees" />
@@ -276,7 +325,7 @@ export default function EmployeesPage() {
                 <span>
                   {stat.label}:{" "}
                   <span className={`font-semibold tabular-nums ${stat.accent ? "text-accent" : "text-foreground"}`}>
-                    {isLoading ? "-" : stat.value}
+                    {isLoading ? "\u2014" : stat.value}
                   </span>
                 </span>
               </React.Fragment>
@@ -284,11 +333,17 @@ export default function EmployeesPage() {
           </div>
 
           {/* Table */}
-          <div className="animate-fade-in stagger-3">
+          <div>
             {isLoading ? (
+              <TableSkeleton />
+            ) : error ? (
               <Card>
-                <CardContent className="flex items-center justify-center py-12">
-                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                <CardContent className="flex flex-col items-center justify-center gap-3 py-12">
+                  <AlertCircle className="h-8 w-8 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">{error}</p>
+                  <Button variant="outline" onClick={fetchEmployees}>
+                    Try Again
+                  </Button>
                 </CardContent>
               </Card>
             ) : (
@@ -339,7 +394,6 @@ export default function EmployeesPage() {
                     {statusFilter !== "all" && (
                       <Button
                         variant="ghost"
-                       
                         className="h-9"
                         onClick={() => {
                           setStatusFilter("all");

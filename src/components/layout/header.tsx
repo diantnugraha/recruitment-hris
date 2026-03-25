@@ -56,7 +56,7 @@ export function Header({ title, subtitle }: HeaderProps) {
   return (
     <header
       className={cn(
-        "sticky top-0 z-30 flex h-16 items-center justify-between bg-white border-b border-gray-200 px-6 transition-all duration-300",
+        "sticky top-0 z-30 flex h-16 items-center justify-between bg-background border-b border-border px-6 transition-all duration-300",
         sidebarCollapsed ? "ml-16" : "ml-64"
       )}
     >
@@ -71,10 +71,10 @@ export function Header({ title, subtitle }: HeaderProps) {
         </Button>
         <div>
           {title && (
-            <h1 className="text-lg font-semibold text-gray-900">{title}</h1>
+            <h1 className="text-lg font-semibold text-foreground">{title}</h1>
           )}
           {subtitle && (
-            <p className="text-sm text-gray-500">{subtitle}</p>
+            <p className="text-sm text-muted-foreground">{subtitle}</p>
           )}
         </div>
       </div>
@@ -85,7 +85,7 @@ export function Header({ title, subtitle }: HeaderProps) {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="h-auto gap-2 px-2 py-1.5">
               <Avatar className="h-8 w-8">
-                <AvatarFallback className="bg-accent text-xs text-white">
+                <AvatarFallback className="bg-accent text-xs text-accent-foreground">
                   {getUserInitials()}
                 </AvatarFallback>
               </Avatar>
@@ -93,7 +93,7 @@ export function Header({ title, subtitle }: HeaderProps) {
                 <span className="text-sm font-medium">
                   {user?.name || "User"}
                 </span>
-                <span className="text-xs text-gray-500">
+                <span className="text-xs text-muted-foreground">
                   {user?.email || ""}
                 </span>
               </div>
@@ -103,7 +103,7 @@ export function Header({ title, subtitle }: HeaderProps) {
             <DropdownMenuLabel>
               <div className="flex flex-col">
                 <span className="font-medium">{user?.name || "User"}</span>
-                <span className="text-xs text-gray-500">{user?.email || ""}</span>
+                <span className="text-xs text-muted-foreground">{user?.email || ""}</span>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
@@ -112,7 +112,7 @@ export function Header({ title, subtitle }: HeaderProps) {
             <DropdownMenuSeparator />
             <DropdownMenuItem
               onClick={() => setShowLogoutDialog(true)}
-              className="text-red-600"
+              className="text-destructive"
             >
               <LogOut className="mr-2 h-4 w-4" />
               Sign out
@@ -124,7 +124,7 @@ export function Header({ title, subtitle }: HeaderProps) {
         <Button
           variant="ghost"
           size="icon"
-          className="text-gray-500 hover:text-red-600"
+          className="text-muted-foreground hover:text-destructive"
           onClick={() => setShowLogoutDialog(true)}
         >
           <LogOut />
