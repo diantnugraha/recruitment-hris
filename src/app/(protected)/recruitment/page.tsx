@@ -93,7 +93,7 @@ const columns = [
     label: "Qty",
     className: "w-1/5 text-center",
     render: (row: RecruitmentRequestRow) => (
-      <span className="font-medium">{row.quantity} HC</span>
+      <span className="font-medium">{row.quantity} Position</span>
     ),
   },
   {

@@ -42,6 +42,8 @@ export interface AssessmentProgress {
   anyFailed: boolean;
   currentStage: "waiting" | "interview1" | "interview2" | "mcu" | "completed" | "failed";
   interviewStarted?: boolean;
+  mcuDate?: string | null;
+  mcuLocation?: string | null;
 }
 
 export interface AssessmentAssignee {
@@ -796,6 +798,28 @@ export const candidateService = {
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } } };
       return { success: false, message: err.response?.data?.message || "Failed to fetch assessment assignees" };
+    }
+  },
+
+  async scheduleMcu(
+    candidateId: string | number,
+    data: { mcu_date: string; mcu_location: string }
+  ): Promise<ApiResponse<AssessmentProgress>> {
+    try {
+      const response = await post<unknown, { mcu_date: string; mcu_location: string }>(
+        `/v1/candidate/${candidateId}/assessment/mcu/schedule`,
+        data
+      );
+      const res = response as { success?: boolean; data?: AssessmentProgress; message?: string };
+
+      if (res.success && res.data) {
+        return { success: true, data: res.data };
+      }
+
+      return { success: false, message: res.message || "Unexpected response format" };
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      return { success: false, message: err.response?.data?.message || "Failed to schedule MCU" };
     }
   },
 

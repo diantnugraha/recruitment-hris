@@ -256,6 +256,13 @@ export default function CandidateDetailPage() {
   const [interviewTime, setInterviewTime] = React.useState("");
   const [interviewType, setInterviewType] = React.useState<"online" | "onsite" | "">("");
 
+  // Schedule MCU dialog state
+  const [isSchedulingMcu, setIsSchedulingMcu] = React.useState(false);
+  const [showScheduleMcuDialog, setShowScheduleMcuDialog] = React.useState(false);
+  const [mcuDate, setMcuDate] = React.useState("");
+  const [mcuTime, setMcuTime] = React.useState("");
+  const [mcuLocation, setMcuLocation] = React.useState("");
+
   // Onboarding State
   const [onboarding, setOnboarding] = React.useState<Onboarding | null>(null);
   const [isConverting, setIsConverting] = React.useState(false);
@@ -871,6 +878,36 @@ export default function CandidateDetailPage() {
       showToast.error("Failed to start interview");
     } finally {
       setIsStartingInterview(false);
+    }
+  };
+
+  // Handle Schedule MCU
+  const handleScheduleMcu = async () => {
+    if (!mcuDate || !mcuTime || !mcuLocation.trim()) {
+      showToast.error("Please fill in MCU date, time, and location");
+      return;
+    }
+
+    setIsSchedulingMcu(true);
+    try {
+      const response = await candidateService.scheduleMcu(id, {
+        mcu_date: new Date(`${mcuDate}T${mcuTime}`).toISOString(),
+        mcu_location: mcuLocation.trim(),
+      });
+      if (response.success && response.data) {
+        setProgress(response.data);
+        setShowScheduleMcuDialog(false);
+        setMcuDate("");
+        setMcuTime("");
+        setMcuLocation("");
+        showToast.success("MCU scheduled! The candidate will be notified.");
+      } else {
+        showToast.error(response.message || "Failed to schedule MCU");
+      }
+    } catch (err) {
+      showToast.error("Failed to schedule MCU");
+    } finally {
+      setIsSchedulingMcu(false);
     }
   };
 
@@ -2754,6 +2791,81 @@ export default function CandidateDetailPage() {
                       </div>
                     )}
 
+                    {/* MCU Schedule Section - show when not locked */}
+                    {!mcuLocked && (
+                      <>
+                        {/* Schedule Info Card */}
+                        {progress?.mcuDate ? (
+                          <div className="rounded-2xl border bg-card">
+                            <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
+                              <div className="flex items-center gap-3">
+                                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-500/10 text-sm font-bold text-blue-600">
+                                  <Calendar className="h-4 w-4" />
+                                </div>
+                                <div>
+                                  <h2 className="text-base font-semibold text-foreground">MCU Schedule</h2>
+                                  <p className="text-xs text-muted-foreground">Medical Check-Up has been scheduled</p>
+                                </div>
+                              </div>
+                              {mcuIsPending && (
+                                <Button
+                                  variant="outline"
+                                  onClick={() => setShowScheduleMcuDialog(true)}
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                  Reschedule
+                                </Button>
+                              )}
+                            </div>
+                            <div className="px-6 py-5">
+                              <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                  <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                                    <Calendar className="h-3 w-3" />
+                                    Date & Time
+                                  </p>
+                                  <p className="text-sm font-medium">
+                                    {new Date(progress.mcuDate).toLocaleDateString("id-ID", {
+                                      weekday: "long",
+                                      year: "numeric",
+                                      month: "long",
+                                      day: "numeric",
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                      timeZone: "Asia/Jakarta",
+                                    })} WIB
+                                  </p>
+                                </div>
+                                <div className="space-y-1">
+                                  <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                                    <MapPin className="h-3 w-3" />
+                                    Location
+                                  </p>
+                                  <p className="text-sm font-medium">{progress.mcuLocation}</p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ) : mcuIsPending ? (
+                          <div className="rounded-2xl border border-dashed border-blue-500/30 bg-blue-500/5">
+                            <div className="flex flex-col items-center justify-center py-10">
+                              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-500/10 mb-3">
+                                <Stethoscope className="h-6 w-6 text-blue-500" />
+                              </div>
+                              <h3 className="text-base font-semibold">Schedule Medical Check-Up</h3>
+                              <p className="text-sm text-muted-foreground text-center max-w-md mt-1 mb-4">
+                                Set the MCU date and location for this candidate. The candidate will be notified via email.
+                              </p>
+                              <Button onClick={() => setShowScheduleMcuDialog(true)}>
+                                <Calendar className="h-4 w-4" />
+                                Schedule MCU
+                              </Button>
+                            </div>
+                          </div>
+                        ) : null}
+                      </>
+                    )}
+
                     {/* Main MCU Content - show when not locked */}
                     {!mcuLocked && (
                       <>
@@ -4403,6 +4515,98 @@ export default function CandidateDetailPage() {
                 <ClipboardCheck />
               )}
               {isStartingInterview ? "Scheduling..." : "Start Interview"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Schedule MCU Dialog */}
+      <Dialog open={showScheduleMcuDialog} onOpenChange={(open) => {
+        setShowScheduleMcuDialog(open);
+        if (!open) {
+          setMcuDate("");
+          setMcuTime("");
+          setMcuLocation("");
+        }
+      }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                <Stethoscope className="h-4 w-4 text-blue-600" />
+              </div>
+              Schedule Medical Check-Up
+            </DialogTitle>
+            <DialogDescription>
+              Set the MCU date, time, and location for this candidate. The candidate will be notified via email.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">MCU Date & Time</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="mcu-date" className="text-xs text-muted-foreground font-normal flex items-center gap-1.5">
+                    <Calendar className="h-3 w-3" />
+                    Date
+                  </Label>
+                  <Input
+                    id="mcu-date"
+                    type="date"
+                    value={mcuDate}
+                    onChange={(e) => setMcuDate(e.target.value)}
+                    min={new Date().toISOString().slice(0, 10)}
+                    className="h-11 text-sm font-medium tabular-nums"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="mcu-time" className="text-xs text-muted-foreground font-normal flex items-center gap-1.5">
+                    <Clock className="h-3 w-3" />
+                    Time
+                  </Label>
+                  <Input
+                    id="mcu-time"
+                    type="time"
+                    value={mcuTime}
+                    onChange={(e) => setMcuTime(e.target.value)}
+                    className="h-11 text-sm font-medium tabular-nums"
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="mcu-location" className="text-sm font-medium flex items-center gap-1.5">
+                <MapPin className="h-3.5 w-3.5" />
+                Location
+              </Label>
+              <Input
+                id="mcu-location"
+                type="text"
+                placeholder="e.g. RS Pondok Indah, Jakarta Selatan"
+                value={mcuLocation}
+                onChange={(e) => setMcuLocation(e.target.value)}
+                className="h-11 text-sm"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowScheduleMcuDialog(false)}
+              disabled={isSchedulingMcu}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleScheduleMcu}
+              disabled={isSchedulingMcu || !mcuDate || !mcuTime || !mcuLocation.trim()}
+            >
+              {isSchedulingMcu ? (
+                <Loader2 className="animate-spin" />
+              ) : (
+                <Stethoscope />
+              )}
+              {isSchedulingMcu ? "Scheduling..." : "Schedule MCU"}
             </Button>
           </DialogFooter>
         </DialogContent>

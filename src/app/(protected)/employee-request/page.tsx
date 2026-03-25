@@ -95,7 +95,7 @@ const columns = [
     label: "Qty",
     className: "w-[100px] text-center",
     render: (row: EmployeeRequestWithRelations) => (
-      <span className="font-medium">{row.quantity} HC</span>
+      <span className="font-medium">{row.quantity} Position</span>
     ),
   },
   {
@@ -308,7 +308,6 @@ export default function EmployeeRequestPage() {
 
           {/* Table */}
           <div className="space-y-2">
-            <p className="text-xs text-muted-foreground">*HC = Headcount</p>
             <DataTable
               data={requests}
               columns={columns}
