@@ -801,6 +801,43 @@ export const candidateService = {
     }
   },
 
+  async assignAssessors(
+    candidateId: string | number,
+    employeeIds: number[]
+  ): Promise<ApiResponse<AssessmentAssignee[]>> {
+    try {
+      const response = await post<unknown, { employee_ids: number[] }>(
+        `/v1/candidate/${candidateId}/assessment/assignees`,
+        { employee_ids: employeeIds }
+      );
+      const res = response as { success?: boolean; data?: AssessmentAssignee[]; message?: string };
+
+      if (res.success && res.data) {
+        return { success: true, data: res.data };
+      }
+
+      return { success: false, message: res.message || "Unexpected response format" };
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      return { success: false, message: err.response?.data?.message || "Failed to assign assessors" };
+    }
+  },
+
+  async removeAssessor(
+    candidateId: string | number,
+    employeeId: number
+  ): Promise<ApiResponse<void>> {
+    try {
+      await del<unknown>(
+        `/v1/candidate/${candidateId}/assessment/assignees/${employeeId}`
+      );
+      return { success: true };
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      return { success: false, message: err.response?.data?.message || "Failed to remove assessor" };
+    }
+  },
+
   async scheduleMcu(
     candidateId: string | number,
     data: { mcu_date: string; mcu_location: string }
