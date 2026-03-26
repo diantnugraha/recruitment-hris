@@ -32,25 +32,38 @@ import {
 import { candidateService, type CandidateWithRelations } from "@/services/candidate.service";
 import { formatShortDate, getInitials } from "@/lib/utils";
 import {
-  CANDIDATE_STATUS_CONFIG,
-  type CandidateStatus,
-} from "@/lib/constants/candidateStatus";
-import {
   ONBOARDING_STATUS,
-  ONBOARDING_STATUS_CONFIG,
   DEFAULT_CHECKLIST_ITEMS,
   type OnboardingStatus,
 } from "@/lib/constants/onboarding";
 
-// Mock progress calculation based on candidate status
-const getOnboardingProgress = (status: CandidateStatus): { progress: number; status: OnboardingStatus } => {
+type DerivedStatus = "offer" | "hired";
+
+function deriveCandidateOnboardingStatus(candidate: CandidateWithRelations): DerivedStatus | null {
+  const assessment = candidate.assessment;
+  if (!assessment) return null;
+
+  // MCU must be passed to be in onboarding flow
+  if (assessment.mcuStatus !== "PASSED") return null;
+
+  // If onboarding accepted, they're hired
+  if (candidate.onboardingAcceptedAt) return "hired";
+
+  // MCU passed but not yet accepted = offer stage
+  return "offer";
+}
+
+const STATUS_LABELS: Record<DerivedStatus, { label: string; variant: "default" | "secondary" | "destructive" | "outline" | "success" }> = {
+  offer: { label: "Offer", variant: "secondary" },
+  hired: { label: "Hired", variant: "success" },
+};
+
+const getOnboardingProgress = (status: DerivedStatus): { progress: number; status: OnboardingStatus } => {
   switch (status) {
     case "offer":
       return { progress: 25, status: ONBOARDING_STATUS.IN_PROGRESS };
     case "hired":
       return { progress: 100, status: ONBOARDING_STATUS.COMPLETED };
-    default:
-      return { progress: 0, status: ONBOARDING_STATUS.NOT_STARTED };
   }
 };
 
@@ -58,7 +71,8 @@ export default function OnboardingPage() {
   const router = useRouter();
 
   // State
-  const [candidates, setCandidates] = React.useState<CandidateWithRelations[]>([]);
+  type CandidateWithDerivedStatus = CandidateWithRelations & { derivedStatus: DerivedStatus };
+  const [candidates, setCandidates] = React.useState<CandidateWithDerivedStatus[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [statusFilter, setStatusFilter] = React.useState<string>("all");
@@ -69,14 +83,13 @@ export default function OnboardingPage() {
     setError(null);
 
     try {
-      // Fetch all candidates and filter for offer/hired status
       const response = await candidateService.getAll(1, 100);
 
       if (response.success && response.data) {
-        // Filter for candidates in onboarding-relevant statuses
-        const onboardingCandidates = response.data.data.filter(
-          (c) => c.status === "offer" || c.status === "hired"
-        );
+        // Derive status from assessment data and filter for onboarding-relevant candidates
+        const onboardingCandidates = response.data.data
+          .map((c) => ({ ...c, derivedStatus: deriveCandidateOnboardingStatus(c) }))
+          .filter((c): c is CandidateWithDerivedStatus => c.derivedStatus !== null);
         setCandidates(onboardingCandidates);
       } else {
         setError(response.message || "Failed to load onboarding data");
@@ -96,11 +109,11 @@ export default function OnboardingPage() {
   // Computed values
   const filteredCandidates = React.useMemo(() => {
     if (statusFilter === "all") return candidates;
-    return candidates.filter((c) => c.status === statusFilter);
+    return candidates.filter((c) => c.derivedStatus === statusFilter);
   }, [candidates, statusFilter]);
 
-  const offerCount = candidates.filter((c) => c.status === "offer").length;
-  const hiredCount = candidates.filter((c) => c.status === "hired").length;
+  const offerCount = candidates.filter((c) => c.derivedStatus === "offer").length;
+  const hiredCount = candidates.filter((c) => c.derivedStatus === "hired").length;
   const totalChecklist = DEFAULT_CHECKLIST_ITEMS.length;
 
   // Loading state
@@ -231,9 +244,8 @@ export default function OnboardingPage() {
             ) : (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {filteredCandidates.map((candidate) => {
-                  const { progress, status } = getOnboardingProgress(candidate.status);
-                  const statusConfig = ONBOARDING_STATUS_CONFIG[status];
-                  const candidateStatusConfig = CANDIDATE_STATUS_CONFIG[candidate.status];
+                  const { progress } = getOnboardingProgress(candidate.derivedStatus);
+                  const statusLabel = STATUS_LABELS[candidate.derivedStatus];
 
                   return (
                     <Card
@@ -246,12 +258,12 @@ export default function OnboardingPage() {
                           <div className="flex items-center gap-3">
                             <Avatar className="h-12 w-12 border border-border">
                               <AvatarFallback className="bg-accent/10 font-semibold text-accent">
-                                {getInitials(`${candidate.firstName} ${candidate.lastName}`)}
+                                {getInitials(candidate.fullname)}
                               </AvatarFallback>
                             </Avatar>
                             <div>
                               <p className="font-medium">
-                                {candidate.firstName} {candidate.lastName}
+                                {candidate.fullname}
                               </p>
                               <p className="text-sm text-muted-foreground">
                                 {candidate.email}
@@ -270,10 +282,10 @@ export default function OnboardingPage() {
                                 <span>{candidate.jobTitle.name}</span>
                               </div>
                             )}
-                            {candidate.department && (
+                            {candidate.employeeRequest?.jobPlacement && (
                               <div className="flex items-center gap-1 text-muted-foreground">
                                 <Building2 className="h-3.5 w-3.5" />
-                                <span>{candidate.department.name}</span>
+                                <span>{candidate.employeeRequest.jobPlacement}</span>
                               </div>
                             )}
                           </div>
@@ -289,13 +301,15 @@ export default function OnboardingPage() {
 
                           {/* Status and Date */}
                           <div className="flex items-center justify-between pt-2">
-                            <Badge variant={candidateStatusConfig?.variant || "secondary"}>
-                              {candidateStatusConfig?.label || candidate.status}
+                            <Badge variant={statusLabel.variant}>
+                              {statusLabel.label}
                             </Badge>
-                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                              <Calendar className="h-3 w-3" />
-                              <span>{formatShortDate(candidate.appliedDate)}</span>
-                            </div>
+                            {candidate.createdAt && (
+                              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                <Calendar className="h-3 w-3" />
+                                <span>{formatShortDate(candidate.createdAt)}</span>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </CardContent>
