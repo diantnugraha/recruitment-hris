@@ -27,6 +27,8 @@ import { PageContainer } from "@/components/layout/page-container";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import notificationService from "@/services/notification.service";
+import { useToast } from "@/hooks/use-toast";
 
 const stats = [
   { title: "Total Employees", value: "1,284", change: "+12.5%", trend: "up", icon: Users },
@@ -68,6 +70,39 @@ const upcomingInterviews = [
 ];
 
 export default function DashboardPage() {
+  const { toast } = useToast();
+
+  React.useEffect(() => {
+    let isCancelled = false;
+
+    async function checkSlaNotifications() {
+      try {
+        const res = await notificationService.getNotifications({
+          page: 1,
+          limit: 5,
+          type: 'sla_approaching,sla_overdue',
+        });
+
+        if (isCancelled) return;
+
+        const unread = res.data.filter((n) => !n.isRead);
+        if (unread.length > 0) {
+          toast({
+            title: 'Recruitment SLA Warning',
+            description: `You have ${unread.length} recruitment${unread.length > 1 ? 's' : ''} approaching or past SLA deadline.`,
+            variant: 'destructive',
+          });
+        }
+      } catch {
+        // silently fail
+      }
+    }
+
+    checkSlaNotifications();
+
+    return () => { isCancelled = true; };
+  }, [toast]);
+
   return (
     <>
       <Header title="Dashboard" />
