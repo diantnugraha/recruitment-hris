@@ -110,7 +110,6 @@ export function NotificationBell() {
           {unreadCount > 0 && (
             <Button
               variant="ghost"
-              size="sm"
               className="h-auto p-0 text-xs text-muted-foreground hover:text-foreground"
               onClick={handleMarkAllAsRead}
             >
