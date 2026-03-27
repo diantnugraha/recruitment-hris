@@ -1,5 +1,6 @@
 import { get, post, put, del } from "@/lib/axios";
 import type { ApiResponse } from "@/types";
+import type { SlaInfo } from "@/lib/constants/sla";
 import type {
   EmployeeRequest,
   EmployeeRequestWithRelations,
@@ -54,6 +55,8 @@ interface ApiEmployeeRequest {
   revised_at?: string | null;
   rejected_by?: number | null;
   rejected_at?: string | null;
+  recruitment_started_at?: string | null;
+  sla?: SlaInfo | null;
   created_at: string;
   updated_at: string;
   job_title?: { id: number; name: string } | null;
@@ -144,6 +147,8 @@ function mapEmployeeRequest(api: ApiEmployeeRequest): EmployeeRequestWithRelatio
     revisedAt: api.revised_at ?? null,
     rejectedBy: api.rejected_by ?? null,
     rejectedAt: api.rejected_at ?? null,
+    recruitmentStartedAt: api.recruitment_started_at || null,
+    sla: api.sla || null,
     requestedById: api.requested_by_id || "",
     requestedByName: api.requested_by_name,
     createdAt: api.created_at,

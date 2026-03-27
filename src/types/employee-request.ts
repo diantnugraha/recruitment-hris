@@ -5,6 +5,7 @@ import type {
   EducationLevel,
   GenderPreference,
 } from "@/lib/constants/employeeRequest";
+import type { SlaInfo } from '@/lib/constants/sla';
 
 // Employee Request - Main entity
 export interface EmployeeRequest {
@@ -54,6 +55,8 @@ export interface EmployeeRequest {
   revisedAt?: string | null;
   rejectedBy?: number | null;
   rejectedAt?: string | null;
+  recruitmentStartedAt?: string | null;
+  sla?: SlaInfo | null;
 
   // Metadata
   requestedById: string;

@@ -1,5 +1,6 @@
 import { api, get, post, put, del } from "@/lib/axios";
 import type { ApiResponse } from "@/types";
+import type { SlaInfo } from "@/lib/constants/sla";
 
 // --- Types ---
 
@@ -112,7 +113,7 @@ export interface CandidateWithRelations extends Candidate {
   detail?: CandidateDetail | null;
   assessment?: CandidateAssessment | null;
   jobTitle?: { id: number; name: string } | null;
-  employeeRequest?: { id: number; code: string; jobPlacement?: string } | null;
+  employeeRequest?: { id: number; code: string; jobPlacement?: string; sla?: SlaInfo | null } | null;
   onboardingAcceptedAt?: string | null;
 }
 
@@ -306,7 +307,7 @@ interface ApiCandidate {
     when_ready_work: string;
   } | null;
   job_title?: { id: number; name: string } | null;
-  employee_request?: { id: number; code: string; job_placement?: string | null } | null;
+  employee_request?: { id: number; code: string; job_placement?: string | null; sla?: SlaInfo | null } | null;
   onboarding_accepted_at?: string | null;
 }
 
@@ -358,6 +359,7 @@ function mapCandidate(api: ApiCandidate): CandidateWithRelations {
       id: api.employee_request.id,
       code: api.employee_request.code,
       jobPlacement: api.employee_request.job_placement || undefined,
+      sla: api.employee_request.sla || null,
     } : null,
     onboardingAcceptedAt: api.onboarding_accepted_at || null,
   };
