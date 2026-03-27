@@ -24,6 +24,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAppStore } from "@/stores/app-store";
 import { useAuthStore } from "@/stores/auth-store";
 import { cn } from "@/lib/utils";
+import { NotificationBell } from "@/components/layout/NotificationBell";
 
 interface HeaderProps {
   title?: string;
@@ -80,6 +81,9 @@ export function Header({ title, subtitle }: HeaderProps) {
       </div>
 
       <div className="flex items-center gap-2">
+        {/* Notification Bell */}
+        <NotificationBell />
+
         {/* User */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
