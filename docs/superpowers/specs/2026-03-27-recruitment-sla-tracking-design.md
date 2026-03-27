@@ -10,10 +10,11 @@ Add a 45 working-day SLA (Service Level Agreement) to the recruitment process. T
 
 | Requirement | Detail |
 |---|---|
-| SLA duration | 45 working days (Mon-Fri, no public holidays) |
+| SLA duration | 45 working days (Mon-Fri only, public holidays not considered) |
 | SLA start trigger | HR clicks "Start Recruitment" (`approved` -> `in_recruitment`) |
-| SLA completion | When a candidate is Hired |
+| SLA completion | When Employee Request status transitions to `completed` |
 | SLA scope | Per Employee Request (1 request = 1 position = 1 hire) |
+| Day 1 definition | The first working day after `recruitmentStartedAt` (start date itself is day 0) |
 | Warning levels | On Track (>10 days), Approaching (<=10 days), Overdue (past due) |
 | Notifications | Email + In-app notification |
 | Blocking? | No — recruitment continues past SLA |
@@ -40,22 +41,27 @@ ADD COLUMN recruitment_started_at DATETIME NULL AFTER rejected_at;
 
 ```sql
 CREATE TABLE notification (
-  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   user_id INT NOT NULL,
   type VARCHAR(30) NOT NULL COMMENT 'sla_approaching, sla_overdue, general',
   title VARCHAR(255) NOT NULL,
   message TEXT NOT NULL,
   reference_type VARCHAR(50) NULL COMMENT 'employee_request',
-  reference_id BIGINT NULL COMMENT 'ID of the referenced entity',
+  reference_id BIGINT UNSIGNED NULL COMMENT 'ID of the referenced entity',
   is_read TINYINT(1) NOT NULL DEFAULT 0,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  updated_at DATETIME NULL,
   INDEX idx_notification_user_id (user_id),
   INDEX idx_notification_user_read (user_id, is_read),
-  INDEX idx_notification_reference (reference_type, reference_id),
+  INDEX idx_notification_ref_type (reference_type, reference_id, type),
   CONSTRAINT fk_notification_user FOREIGN KEY (user_id) REFERENCES users(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 ```
+
+**Notes:**
+- `BIGINT UNSIGNED` matches `employee_request.id` type
+- `updated_at` managed by Prisma `@updatedAt` (no DB trigger), consistent with other models
+- Composite index `(reference_type, reference_id, type)` supports cron idempotency check
 
 ### Prisma Schema Addition
 
@@ -76,7 +82,7 @@ model Notification {
 
   @@index([userId])
   @@index([userId, isRead])
-  @@index([referenceType, referenceId])
+  @@index([referenceType, referenceId, type])
   @@map("notification")
 }
 ```
@@ -97,23 +103,26 @@ export const SLA_WARNING_DAYS = 10;
 
 | Function | Input | Output | Description |
 |---|---|---|---|
-| `calculateDueDate` | `startDate: Date` | `Date` | Add 45 working days (Mon-Fri) to start date |
-| `getRemainingWorkingDays` | `startDate: Date` | `number` | Working days remaining (negative if overdue) |
-| `getSlaStatus` | `startDate: Date` | `'on_track' \| 'approaching' \| 'overdue'` | Determine SLA status based on remaining days |
-| `getSlaInfo` | `startDate: Date` | `SlaInfo` | Full SLA payload for API response |
+| `calculateDueDate` | `startDate: Date` | `Date` | Add 45 working days (Mon-Fri) to start date. Day 1 = next working day after startDate. Result is set to end-of-day (23:59:59) of the due date. |
+| `countWorkingDaysBetween` | `fromDate: Date, toDate: Date` | `number` | Count working days between two dates (Mon-Fri) |
+| `getRemainingWorkingDays` | `startDate: Date` | `number` | Working days remaining until due date (negative if overdue) |
+| `getSlaStatus` | `remainingDays: number` | `'on_track' \| 'approaching' \| 'overdue'` | Determine SLA status based on remaining days |
+| `getSlaInfo` | `startDate: Date` | `SlaInfo \| null` | Full SLA payload for API response. Returns null if startDate is null. |
 
 **`SlaInfo` type:**
 ```typescript
 interface SlaInfo {
-  startedAt: string;       // ISO date
-  dueDate: string;         // ISO date (computed)
-  remainingDays: number;   // working days remaining (negative if overdue)
+  startedAt: string;       // ISO 8601 date string
+  dueDate: string;         // ISO 8601 date string (computed)
+  remainingDays: number;   // working days remaining (negative if overdue, use Math.abs for display)
   totalDays: number;       // always 45
   status: 'on_track' | 'approaching' | 'overdue';
 }
 ```
 
-**Working day calculation:** Iterate from start date, skip Saturday (6) and Sunday (0), count until reaching `SLA_DAYS`. No public holiday consideration.
+**Working day calculation:** Iterate from the day after start date, skip Saturday (6) and Sunday (0), count until reaching `SLA_DAYS`. No public holiday consideration.
+
+**Completed requests:** For Employee Requests with status `completed` (7), SLA info is still returned but reflects the state as-of-now (the SLA clock keeps ticking for display purposes). The cron job does NOT process completed requests.
 
 ---
 
@@ -143,20 +152,22 @@ Add `sla` field to response when `statusEmployeeRequest` is `in_recruitment` (6)
 
 **`POST /employee-requests/:id/start-recruitment`**
 
-Set `recruitmentStartedAt = new Date()` during the status transition.
+Set `recruitmentStartedAt = new Date()` during the status transition. Specifically, this must be injected inside `updateEmployeeRequestStatus()` under the `IN_RECRUITMENT` case in the audit-trail block, not in `startRecruitment()` directly — since `startRecruitment()` delegates to `updateEmployeeRequestStatus()`. The `employeeRequestRepository` must also be updated to accept and persist `recruitmentStartedAt`.
 
 **`GET /candidates/:id`**
 
-Include parent Employee Request's `sla` in response (for displaying SLA banner on candidate detail page).
+Include parent Employee Request's `sla` in the candidate response as `candidate.employeeRequest.sla` (nested under the existing `employeeRequest` sub-object). This avoids adding a top-level `sla` field to the candidate entity.
 
 ### New Endpoints: Notifications
 
 | Method | Path | Description |
 |---|---|---|
-| `GET` | `/notifications` | List notifications for authenticated user (paginated, sorted by created_at DESC) |
-| `GET` | `/notifications/unread-count` | Return `{ count: number }` of unread notifications |
-| `PUT` | `/notifications/:id/read` | Mark single notification as read |
-| `PUT` | `/notifications/read-all` | Mark all notifications as read for authenticated user |
+| `GET` | `/notifications` | List notifications for authenticated user (paginated, sorted by created_at DESC). Supports optional `type` query param for filtering (e.g. `?type=sla_approaching,sla_overdue`). Returns 200 with `ApiResponse<Notification[]>`. |
+| `GET` | `/notifications/unread-count` | Return 200 with `{ count: number }` of unread notifications |
+| `PUT` | `/notifications/:id/read` | Mark single notification as read. Returns 200 with `ApiResponse<void>`. |
+| `PUT` | `/notifications/read-all` | Mark all notifications as read for authenticated user. Returns 200 with `ApiResponse<void>`. |
+
+**Route registration order:** `/notifications/unread-count` and `/notifications/read-all` (static) must be registered BEFORE `/notifications/:id` (parametric) in Fastify to avoid route conflicts.
 
 ---
 
@@ -168,6 +179,10 @@ Include parent Employee Request's `sla` in response (for displaying SLA banner o
 
 **Library:** `node-cron` (new dependency)
 
+**Deployment note:** This cron runs inside the Fastify process. This assumes single-instance deployment. If multiple instances run (e.g. PM2 cluster mode), duplicate notifications may fire. For now this is acceptable; a database-level unique constraint on `(reference_type, reference_id, type)` provides a safety net against duplicates.
+
+**Server timezone assumption:** Cron expression assumes server runs in UTC. If server is in WIB timezone, adjust to `0 8 * * 1-5`.
+
 **Logic:**
 1. Query all Employee Requests where `statusEmployeeRequest = 6` (in_recruitment) and `recruitmentStartedAt IS NOT NULL`
 2. For each request, calculate SLA status
@@ -177,7 +192,9 @@ Include parent Employee Request's `sla` in response (for displaying SLA banner o
 4. **If overdue:**
    - Check if `sla_overdue` notification already exists for this request
    - If not: create notification + send email to all HR users
-5. Each notification type is sent **once per Employee Request** (idempotent via `reference_type` + `reference_id` + `type` check)
+5. Each notification type is sent **once per Employee Request** (idempotent via `reference_type` + `reference_id` + `type` check). After the initial approaching/overdue notification, no repeated daily emails are sent — this is intentional since the warning is informational.
+6. The cron must JOIN `employee_request` with `job_title` to get `jobTitle` and `requestCode` for email templates.
+7. For overdue email, use `Math.abs(remainingDays)` to get positive `overdueDays` value.
 
 ### Email Templates
 
@@ -206,7 +223,7 @@ export type SlaStatus = typeof SLA_STATUS[keyof typeof SLA_STATUS];
 
 export const SLA_STATUS_CONFIG: Record<SlaStatus, { label: string; variant: string; className: string }> = {
   on_track: { label: 'On Track', variant: 'default', className: 'bg-green-100 text-green-800 border-green-200' },
-  approaching: { label: 'Approaching', variant: 'warning', className: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
+  approaching: { label: 'Approaching', variant: 'outline', className: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
   overdue: { label: 'Overdue', variant: 'destructive', className: 'bg-red-100 text-red-800 border-red-200' },
 };
 ```
@@ -223,7 +240,9 @@ export interface SlaInfo {
 }
 ```
 
-Added to `EmployeeRequest` type and candidate response type.
+Added to `EmployeeRequest` type as optional field. For candidate, accessed via `candidate.employeeRequest.sla`.
+
+**Important:** The frontend `employee-request.service.ts` has an internal `mapEmployeeRequest` function that maps raw API responses to `EmployeeRequestWithRelations`. This function must also map `recruitment_started_at` -> `recruitmentStartedAt` and forward the `sla` object. Both the raw API type and the mapped type need updating.
 
 ### Type: `Notification`
 
@@ -273,14 +292,16 @@ Compact badge for use in table columns. Shows remaining days with color coding.
 
 - Bell icon in the app header/navbar
 - Unread count badge (red dot with number)
+- Polls unread count every 60 seconds via `setInterval` + AbortController cleanup on unmount
 - Click opens a Popover/dropdown with notification list
 - Each notification item: icon + title + message + time ago + click navigates to referenced page
+- Navigation based on `referenceType`: if `employee_request` -> `/recruitment/request/{referenceId}`, extensible for future types
 - "Mark all as read" button at the top
-- Clicking a notification marks it as read and navigates to `/recruitment/request/{referenceId}`
+- Clicking a notification marks it as read and navigates
 
 ### 4. SLA Column in Recruitment List Table
 
-Add "SLA" column to the Employee Request list table (only visible for `in_recruitment` status). Uses `SlaBadge`.
+Add "SLA" column to the Employee Request list table. Uses `SlaBadge`. For rows where `sla` is null (e.g. `approved` or `draft` status), show a dash "-". Badge only renders when `sla` data is present.
 
 ---
 
@@ -316,7 +337,7 @@ Add "SLA" column to the Employee Request list table (only visible for `in_recrui
 ### `notificationService.ts`
 
 ```typescript
-getNotifications(params: { page: number; limit: number }): Promise<ApiResponse<Notification[]>>
+getNotifications(params: { page: number; limit: number; type?: string }): Promise<ApiResponse<Notification[]>>
 getUnreadCount(): Promise<ApiResponse<{ count: number }>>
 markAsRead(id: number): Promise<ApiResponse<void>>
 markAllAsRead(): Promise<ApiResponse<void>>
@@ -357,6 +378,7 @@ markAllAsRead(): Promise<ApiResponse<void>>
 | Create | `src/services/notificationService.ts` | Notification API service |
 | Create | `src/types/notification.ts` | Notification types |
 | Modify | `src/types/employee-request.ts` | Add `recruitmentStartedAt` + `sla` fields |
+| Modify | `src/services/employee-request.service.ts` | Update `mapEmployeeRequest` to forward `recruitmentStartedAt` + `sla` |
 | Modify | `src/components/layout/AppLayout.tsx` (or Header) | Add NotificationBell |
 | Modify | Recruitment list page | Add SLA column |
 | Modify | Employee Request detail page | Add SlaBanner |
@@ -367,8 +389,12 @@ markAllAsRead(): Promise<ApiResponse<void>>
 
 ## Edge Cases
 
-1. **Recruitment completed before SLA** — SLA info still shown (as completed/on-track) but no more cron checks
-2. **Recruitment started before this feature** — `recruitmentStartedAt` is NULL, no SLA shown (graceful fallback)
+1. **Recruitment completed before SLA** — SLA info still returned in API (reflects state at time of query) but cron excludes completed requests (only queries `statusEmployeeRequest = 6`)
+2. **Recruitment started before this feature** — `recruitmentStartedAt` is NULL, `sla` field is null in response, frontend gracefully hides SLA UI
 3. **Multiple HR users** — All users with HR role receive email notifications
-4. **Cron idempotency** — Check for existing notification before creating duplicate (query by `reference_type`, `reference_id`, `type`)
-5. **Weekend start** — If startRecruitment is called on weekend, `recruitmentStartedAt` is still recorded as-is; SLA calculation skips weekends naturally
+4. **Cron idempotency** — Check for existing notification via composite index `(reference_type, reference_id, type)` before creating. Additionally, a unique constraint on these 3 columns protects against race conditions in multi-instance deployments.
+5. **Weekend start** — If startRecruitment is called on weekend, `recruitmentStartedAt` is still recorded as-is; SLA calculation starts counting from next working day
+6. **No repeated notifications** — After the initial approaching/overdue email+notification is sent, no further daily reminders are sent. This is intentional.
+7. **Employee Request with quantity > 1** — SLA applies to the Employee Request as a whole (not per candidate). SLA is considered complete when HR transitions the request to `completed` status, regardless of how many candidates are hired.
+8. **BigInt serialization** — Notification IDs and reference IDs are BigInt in DB but serialized to `number` in JSON via existing `BigInt.toJSON` override. Safe for IDs below `Number.MAX_SAFE_INTEGER`.
+9. **Date format contract** — All date fields (`startedAt`, `dueDate`) use ISO 8601 format (`.toISOString()`), consistent with all other date fields in the API.
