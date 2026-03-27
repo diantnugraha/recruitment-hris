@@ -41,6 +41,7 @@ import {
   calculatePipelineStats,
   type PipelineStats,
 } from "@/lib/utils/recruitmentHelpers";
+import { SlaBadge } from "@/components/shared/SlaBadge";
 
 // Extended type with candidates and pipeline stats
 interface RecruitmentRequestRow extends EmployeeRequestWithRelations {
@@ -108,6 +109,11 @@ const columns = [
         </Badge>
       );
     },
+  },
+  {
+    key: "sla",
+    label: "SLA",
+    render: (row: RecruitmentRequestRow) => <SlaBadge sla={row.sla} />,
   },
 ];
 

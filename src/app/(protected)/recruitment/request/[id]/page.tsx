@@ -70,6 +70,7 @@ import {
   type CandidateStatus,
 } from "@/lib/constants/candidateStatus";
 import type { EmployeeRequestWithRelations } from "@/types/employee-request";
+import { SlaBanner } from "@/components/shared/SlaBanner";
 
 // Workflow steps for the timeline
 const WORKFLOW_STEPS = [
@@ -477,6 +478,11 @@ export default function RecruitmentRequestDetailPage() {
                 </div>
               </div>
             </div>
+          )}
+
+          {/* SLA Banner */}
+          {request.sla && (
+            <SlaBanner sla={request.sla} />
           )}
 
           {/* Workflow Timeline */}

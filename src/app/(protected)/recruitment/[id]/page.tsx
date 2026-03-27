@@ -54,6 +54,7 @@ import { InterviewUserTab } from "@/components/recruitment/tabs/InterviewUserTab
 import { McuTab } from "@/components/recruitment/tabs/McuTab";
 import { OnboardingTab } from "@/components/recruitment/tabs/OnboardingTab";
 import { useAssessmentPermission, isHROrAdmin, type TabMode } from "@/hooks/useAssessmentPermission";
+import { SlaBanner } from "@/components/shared/SlaBanner";
 import { useAuthStore } from "@/stores/auth-store";
 
 // Workflow progress steps for visual stepper
@@ -401,6 +402,11 @@ export default function CandidateDetailPage() {
               </div>
             </div>
           </div>
+
+          {/* SLA Banner */}
+          {candidate.employeeRequest?.sla && (
+            <SlaBanner sla={candidate.employeeRequest.sla} showOnTrack={false} />
+          )}
 
           {/* Workflow Progress Stepper */}
           {!progress?.anyFailed && (
