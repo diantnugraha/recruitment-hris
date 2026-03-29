@@ -23,8 +23,16 @@ No email notifications — in-app only. Email notifications already exist separa
 
 ## Recipient Resolution
 
-- **HR who invited:** Resolved via new `invited_by` column on `candidate_recruitment_detail` table. This stores the `userId` of the HR who called `sendCandidateInvitation()`.
-- **Assigned assessor (User):** Resolved from `candidate_assessment_assignee.employee_id` → `user.employeeId` to get `userId`.
+- **HR who invited:** Resolved via new `invited_by` column on `candidate_recruitment_detail` table. This stores the `userId` of the HR who called `sendCandidateInvitation()`. If `invited_by` is null (candidate was created before this feature), the notification is silently skipped.
+- **Assigned assessor (User):** Resolved from `candidate_assessment_assignee.employee_id` → query `user` where `user.employeeId = employee_id` to get `userId`. If the assessor employee has no user account, the notification for that assessor is silently skipped.
+
+## Edge Cases
+
+- **`invited_by` is null:** Candidates created/invited before this feature won't have `invited_by` set. Notifications requiring `invited_by` are silently skipped (no error).
+- **Inviting HR user is deleted/trashed:** `upsertByReference` will still create the notification row (no FK constraint on `userId` to `user`). The notification simply won't be fetched since the user won't log in. No special handling needed.
+- **Re-invitation:** If HR resends the invitation, `invited_by` is overwritten with the new sender's `userId`. This is intentional (last-sender-wins).
+- **Candidate deleted:** Orphaned notification rows with `referenceType = 'candidate'` will remain (no FK on `referenceId`). Clicking them in the bell will navigate to a 404 page. This is acceptable and consistent with existing behavior for deleted employee requests.
+- **`referenceId` type:** `upsertByReference` expects `bigint`. The helper must cast `BigInt(candidateId)` since service functions use `number`.
 
 ## Backend Changes
 
@@ -51,20 +59,20 @@ export const RECRUITMENT_NOTIFICATION_TYPE = {
 export type RecruitmentNotificationType =
   typeof RECRUITMENT_NOTIFICATION_TYPE[keyof typeof RECRUITMENT_NOTIFICATION_TYPE]
 
-export const RECRUITMENT_NOTIFICATION_CONFIG: Record<RecruitmentNotificationType, { label: string }> = {
-  [RECRUITMENT_NOTIFICATION_TYPE.BIODATA_SUBMITTED]: { label: 'Biodata Submitted' },
-  [RECRUITMENT_NOTIFICATION_TYPE.ASSESSOR_ASSIGNED]: { label: 'Assessor Assigned' },
-  [RECRUITMENT_NOTIFICATION_TYPE.INTERVIEW_USER_COMPLETED]: { label: 'Interview User Completed' },
-  [RECRUITMENT_NOTIFICATION_TYPE.ONBOARDING_ACCEPTED]: { label: 'Onboarding Accepted' },
+export const RECRUITMENT_NOTIFICATION_CONFIG: Record<RecruitmentNotificationType, { label: string; color: string }> = {
+  [RECRUITMENT_NOTIFICATION_TYPE.BIODATA_SUBMITTED]: { label: 'Biodata Submitted', color: '#0032A0' },
+  [RECRUITMENT_NOTIFICATION_TYPE.ASSESSOR_ASSIGNED]: { label: 'Assessor Assigned', color: '#0032A0' },
+  [RECRUITMENT_NOTIFICATION_TYPE.INTERVIEW_USER_COMPLETED]: { label: 'Interview User Completed', color: '#0032A0' },
+  [RECRUITMENT_NOTIFICATION_TYPE.ONBOARDING_ACCEPTED]: { label: 'Onboarding Accepted', color: '#16a34a' },
 }
 ```
 
 ### 3. Helper — `src/services/recruitmentNotificationHelper.ts` (new file)
 
-Single function:
+Single exported function:
 
 ```typescript
-async function sendRecruitmentNotification(params: {
+export async function sendRecruitmentNotification(params: {
   type: RecruitmentNotificationType
   candidateId: number
   candidateName: string
@@ -74,40 +82,47 @@ async function sendRecruitmentNotification(params: {
 ```
 
 - Builds `title` and `message` from `RECRUITMENT_NOTIFICATION_CONFIG` + `candidateName`
-- Calls `notificationRepository.upsertByReference()` for each `targetUserId`
-- `referenceType: 'candidate'`, `referenceId: candidateId`
+- Calls `notificationRepository.upsertByReference()` for each `targetUserId` with `referenceId: BigInt(candidateId)`
+- `referenceType: 'candidate'`, `referenceId: BigInt(candidateId)`
 - Wrapped in try-catch, failures logged but don't block the caller
+- If `targetUserIds` is empty, returns immediately (no-op)
 
 ### 4. Service Changes — 4 integration points
 
-**A. `sendCandidateInvitation()` — Save `invited_by`**
+**A. `candidateService.sendCandidateInvitation()` — Save `invited_by`**
 - Add `userId` parameter (from `request.user.userId` in controller)
-- After sending invitation, update `candidate_recruitment_detail.invited_by = userId`
+- After sending invitation email, run a separate Prisma update: `candidate_recruitment_detail.invited_by = userId`
+- This is a separate update call, NOT part of `setPassword()` — keep concerns separate
 
-**B. Candidate portal — Biodata submitted (verify candidate)**
-- After candidate submits biodata and is verified
-- Query `invited_by` from `candidate_recruitment_detail`
-- Call `sendRecruitmentNotification()` with type `BIODATA_SUBMITTED`
+**B. `candidateProfileService.submitBiodata()` — Biodata submitted**
+- This function lives in `candidateProfileService.ts` (NOT `candidateService.ts`) and is called from the candidate portal via `candidateProfileController.ts`
+- After biodata is submitted and candidate is verified
+- Query `invited_by` from `candidate_recruitment_detail` for this candidate
+- If `invited_by` is not null, call `sendRecruitmentNotification()` with type `BIODATA_SUBMITTED`
 
-**C. `startAssessment()` or assessor assignment flow**
-- After assessors are assigned via `candidate_assessment_assignee`
-- Resolve `employee_id` → `userId` via `user.employeeId`
-- Call `sendRecruitmentNotification()` with type `ASSESSOR_ASSIGNED`
+**C. `candidateService.updateInterview1()` — Assessor assigned**
+- Assessors are assigned inside `updateInterview1()` (NOT `startAssessment()`) via the `setAssignees()` call using `scoringPayload.assessorIds`
+- After assignees are saved to `candidate_assessment_assignee`
+- Resolve each `employee_id` → `userId` via `prisma.user.findFirst({ where: { employeeId } })`
+- Call `sendRecruitmentNotification()` with type `ASSESSOR_ASSIGNED` for resolved userIds
 
-**D. `updateInterview2()` — Interview User completed**
+**D. `candidateService.updateInterview2()` — Interview User completed**
 - After interview2 status is set to PASSED or FAILED
 - Query `invited_by` from `candidate_recruitment_detail`
 - Call `sendRecruitmentNotification()` with type `INTERVIEW_USER_COMPLETED`, include pass/fail in message
 
-**E. `acceptOnboarding()` — Candidate accepts onboarding**
+**E. `candidateService.acceptOnboarding()` — Candidate accepts onboarding**
+- This function is called from `candidateAuthController.ts` (candidate portal route), NOT from the HR-facing controller
+- The candidate self-accepts via their portal JWT — no HR `userId` is needed here since we read `invited_by` from DB
 - After onboarding is accepted
 - Query `invited_by` from `candidate_recruitment_detail`
 - Call `sendRecruitmentNotification()` with type `ONBOARDING_ACCEPTED`
 
 ### 5. Controller/Route Changes
 
-- `candidateRoutes.ts` — Add `enrichUserContext` middleware (or pass `request.user.userId` directly)
-- `candidateController.ts` — Pass `request.user.userId` to `sendCandidateInvitation()` call
+- `candidateController.ts` — Pass `request.user.userId` to `sendCandidateInvitation()` for saving `invited_by`
+- No need to add `enrichUserContext` middleware — `request.user.userId` from `authenticate` is sufficient (lighter, no extra DB query)
+- No changes needed to candidate portal routes/controllers — they only trigger notifications using `invited_by` from DB
 
 ## Frontend Changes
 
@@ -121,6 +136,8 @@ RECRUITMENT_ASSESSOR_ASSIGNED: 'recruitment_assessor_assigned',
 RECRUITMENT_INTERVIEW_USER_COMPLETED: 'recruitment_interview_user_completed',
 RECRUITMENT_ONBOARDING_ACCEPTED: 'recruitment_onboarding_accepted',
 ```
+
+String values must exactly match backend constants to ensure correct routing.
 
 ### 2. NotificationBell.tsx — Update routing
 
@@ -154,17 +171,17 @@ Routes to candidate detail page (`/recruitment/[id]`).
 ### Backend (recruitment-hris-api)
 | File | Action |
 |------|--------|
-| `prisma/schema.prisma` | Edit — add `invited_by` column |
-| `prisma/migrations/..._add_invited_by/migration.sql` | New — auto-generated |
-| `src/constants/recruitmentNotificationConstants.ts` | New |
-| `src/services/recruitmentNotificationHelper.ts` | New |
-| `src/services/candidateService.ts` | Edit — call helper at 4 points, add userId param to sendInvitation |
-| `src/controllers/candidateController.ts` | Edit — pass userId to service |
-| `src/routes/candidateRoutes.ts` | Edit — add enrichUserContext middleware |
-| `src/repositories/candidateDetailRepository.ts` | Edit — update setPassword/invitation to save invited_by |
+| `prisma/schema.prisma` | Edit — add `invited_by` column to `candidate_recruitment_detail` |
+| `prisma/migrations/..._add_invited_by/migration.sql` | New — auto-generated via `prisma migrate dev` |
+| `src/constants/recruitmentNotificationConstants.ts` | New — notification type constants and config |
+| `src/services/recruitmentNotificationHelper.ts` | New — `sendRecruitmentNotification()` helper |
+| `src/services/candidateService.ts` | Edit — add userId param to `sendCandidateInvitation()`, call helper in `updateInterview1()`, `updateInterview2()`, `acceptOnboarding()` |
+| `src/services/candidateProfileService.ts` | Edit — call helper in `submitBiodata()` after verification |
+| `src/controllers/candidateController.ts` | Edit — pass `request.user.userId` to `sendCandidateInvitation()` |
+| `src/repositories/candidateDetailRepository.ts` | Edit — add function to update `invited_by` field |
 
 ### Frontend (recruitment-hris)
 | File | Action |
 |------|--------|
-| `src/lib/constants/notification.ts` | Edit — add 4 types |
-| `src/components/layout/NotificationBell.tsx` | Edit — add candidate routing |
+| `src/lib/constants/notification.ts` | Edit — add 4 recruitment notification types |
+| `src/components/layout/NotificationBell.tsx` | Edit — add `candidate` referenceType routing |
