@@ -16,7 +16,6 @@ import {
   Briefcase,
   Wallet,
   ClipboardList,
-  UserCog,
   Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -102,11 +101,6 @@ const navigation: NavSection[] = [
   {
     title: "User Management",
     items: [
-      {
-        title: "Users",
-        href: "/users",
-        icon: UserCog,
-      },
       {
         title: "Roles Access",
         href: "/roles-access",
