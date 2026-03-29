@@ -21,6 +21,9 @@ function getNotificationRoute(notification: Notification): string {
   if (notification.referenceType === 'employee_request' && notification.referenceId) {
     return `/employee-request/${notification.referenceId}`;
   }
+  if (notification.referenceType === 'candidate' && notification.referenceId) {
+    return `/recruitment/${notification.referenceId}`;
+  }
   return '/recruitment';
 }
 

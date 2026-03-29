@@ -9,6 +9,11 @@ export const NOTIFICATION_TYPES = {
   ER_APPROVED: 'employee_request_approved',
   ER_REVISED: 'employee_request_revised',
   ER_REJECTED: 'employee_request_rejected',
+  // Recruitment workflow
+  RECRUITMENT_BIODATA_SUBMITTED: 'recruitment_biodata_submitted',
+  RECRUITMENT_ASSESSOR_ASSIGNED: 'recruitment_assessor_assigned',
+  RECRUITMENT_INTERVIEW_USER_COMPLETED: 'recruitment_interview_user_completed',
+  RECRUITMENT_ONBOARDING_ACCEPTED: 'recruitment_onboarding_accepted',
 } as const;
 
 export type NotificationType = typeof NOTIFICATION_TYPES[keyof typeof NOTIFICATION_TYPES];
