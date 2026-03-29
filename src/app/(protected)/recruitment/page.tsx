@@ -92,28 +92,29 @@ const columns = [
   {
     key: "quantity",
     label: "Qty",
-    className: "w-1/5 text-center",
+    className: "w-[100px] text-center",
     render: (row: RecruitmentRequestRow) => (
       <span className="font-medium">{row.quantity} Position</span>
     ),
   },
   {
+    key: "sla",
+    label: "SLA",
+    className: "w-[120px]",
+    render: (row: RecruitmentRequestRow) => <SlaBadge sla={row.sla} />,
+  },
+  {
     key: "status",
     label: "Status",
-    className: "w-1/5",
+    className: "w-[140px]",
     render: (row: RecruitmentRequestRow) => {
       const config = EMPLOYEE_REQUEST_STATUS_CONFIG[row.status];
       return (
-        <Badge variant={config?.variant || "secondary"} className="text-xs">
+        <Badge variant={config?.variant || "secondary"} className="text-xs whitespace-nowrap">
           {config?.label || row.status}
         </Badge>
       );
     },
-  },
-  {
-    key: "sla",
-    label: "SLA",
-    render: (row: RecruitmentRequestRow) => <SlaBadge sla={row.sla} />,
   },
 ];
 

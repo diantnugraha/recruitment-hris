@@ -149,7 +149,7 @@ function mapEmployeeRequest(api: ApiEmployeeRequest): EmployeeRequestWithRelatio
     rejectedAt: api.rejected_at ?? null,
     recruitmentStartedAt: api.recruitment_started_at || null,
     sla: api.sla || null,
-    requestedById: api.requested_by_id || "",
+    requestedById: Number(api.requested_by_id) || 0,
     requestedByName: api.requested_by_name,
     createdAt: api.created_at,
     updatedAt: api.updated_at,

@@ -540,25 +540,24 @@ export function OnboardingContent({ candidateId, mode, onRefresh }: OnboardingCo
   // ==================== Render ====================
 
   return (
-    <>
-      <div className="space-y-6">
-        {/* Facilities Section */}
-        <div className="rounded-2xl border bg-card">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
-            <div className="flex items-center gap-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
-                <Package className="h-4 w-4 text-muted-foreground" />
-              </div>
-              <h2 className="text-base font-semibold text-foreground">Facilities / Equipment</h2>
-            </div>
+    <div className="space-y-5">
+      {/* Facilities Section */}
+      <section className="rounded-2xl border bg-card">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
+          <h2 className="text-base font-semibold text-foreground">Facilities / Equipment</h2>
+          <div className="flex items-center gap-2">
             {!isReadOnly && mode === "edit" && (
-              <Button onClick={() => handleOpenFacilityDialog("add")}>
+              <Button size="sm" onClick={() => handleOpenFacilityDialog("add")}>
                 <Plus />
                 Add Facility
               </Button>
             )}
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
+              <Package className="h-4 w-4 text-muted-foreground" />
+            </div>
           </div>
-          <div className="px-6 py-5">
+        </div>
+        <div className="px-6 py-5">
             {(!onboarding || onboarding.facilities.length === 0) ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-muted">
@@ -649,23 +648,23 @@ export function OnboardingContent({ candidateId, mode, onRefresh }: OnboardingCo
               </div>
             )}
           </div>
-        </div>
+        </section>
 
         {/* Onboarding Programs Section */}
-        <div className="rounded-2xl border bg-card">
+        <section className="rounded-2xl border bg-card">
           <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
-            <div className="flex items-center gap-3">
+            <h2 className="text-base font-semibold text-foreground">Onboarding Programs</h2>
+            <div className="flex items-center gap-2">
+              {!isReadOnly && mode === "edit" && (
+                <Button size="sm" onClick={() => handleOpenProgramDialog("add")}>
+                  <Plus />
+                  Add Program
+                </Button>
+              )}
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
                 <GraduationCap className="h-4 w-4 text-muted-foreground" />
               </div>
-              <h2 className="text-base font-semibold text-foreground">Onboarding Programs</h2>
             </div>
-            {!isReadOnly && mode === "edit" && (
-              <Button onClick={() => handleOpenProgramDialog("add")}>
-                <Plus />
-                Add Program
-              </Button>
-            )}
           </div>
           <div className="px-6 py-5">
             {(!onboarding || onboarding.programs.length === 0) ? (
@@ -757,16 +756,14 @@ export function OnboardingContent({ candidateId, mode, onRefresh }: OnboardingCo
               </div>
             )}
           </div>
-        </div>
+        </section>
 
         {/* Job Placement */}
-        <div className="rounded-2xl border bg-card">
+        <section className="rounded-2xl border bg-card">
           <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
-            <div className="flex items-center gap-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
-                <MapPin className="h-4 w-4 text-muted-foreground" />
-              </div>
-              <h2 className="text-base font-semibold text-foreground">Job Placement</h2>
+            <h2 className="text-base font-semibold text-foreground">Job Placement</h2>
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
+              <MapPin className="h-4 w-4 text-muted-foreground" />
             </div>
           </div>
           <div className="px-6 py-5 space-y-4">
@@ -814,19 +811,14 @@ export function OnboardingContent({ candidateId, mode, onRefresh }: OnboardingCo
               </Button>
             )}
           </div>
-        </div>
+        </section>
 
         {/* Onboarding Checklist */}
-        <div className="rounded-2xl border border-blue-200 bg-card dark:border-blue-900">
+        <section className="rounded-2xl border bg-card">
           <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
-            <div className="flex items-center gap-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
-                <Send className="h-4 w-4 text-muted-foreground" />
-              </div>
-              <div>
-                <h2 className="text-base font-semibold text-foreground">Onboarding Checklist</h2>
-                <p className="text-xs text-muted-foreground">Requirements before sending onboarding to candidate</p>
-              </div>
+            <h2 className="text-base font-semibold text-foreground">Onboarding Checklist</h2>
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
+              <Send className="h-4 w-4 text-muted-foreground" />
             </div>
           </div>
           <div className="px-6 py-5 space-y-3">
@@ -907,8 +899,7 @@ export function OnboardingContent({ candidateId, mode, onRefresh }: OnboardingCo
               </div>
             ) : null}
           </div>
-        </div>
-      </div>
+        </section>
 
       {/* ==================== Dialogs ==================== */}
 
@@ -1164,7 +1155,7 @@ export function OnboardingContent({ candidateId, mode, onRefresh }: OnboardingCo
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
+    </div>
   );
 }
 

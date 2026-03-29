@@ -14,6 +14,9 @@ import {
   X,
   ChevronRight,
   Check,
+  BarChart3,
+  FileText,
+  Award,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -24,7 +27,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -465,135 +467,143 @@ function InterviewUserTabInner({
   }
 
   return (
-    <>
+    <div className="space-y-5">
       {/* Post-submission notice */}
       {isCompleted && modeProp === "edit" && (
-        <div className="rounded-2xl border border-blue-500/30 bg-gradient-to-r from-blue-500/5 via-blue-500/3 to-transparent overflow-hidden relative">
-          <div className="absolute top-0 left-0 w-1 h-full bg-blue-500" />
-          <div className="flex items-center gap-4 p-5 pl-6">
-            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-blue-500/10 ring-4 ring-blue-500/5">
-              <CheckCircle2 className="h-5 w-5 text-blue-600" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-blue-700 dark:text-blue-400 text-sm">Assessment Already Submitted</h3>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                This assessment has already been submitted. Viewing in read-only mode.
-              </p>
+        <section className="rounded-2xl border bg-card">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
+            <h2 className="text-base font-semibold text-foreground">Assessment Status</h2>
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
+              <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
             </div>
           </div>
-        </div>
+          <div className="px-6 py-5">
+            <div className="flex items-center gap-3 rounded-lg bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 px-4 py-3">
+              <CheckCircle2 className="h-5 w-5 text-blue-600 shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-blue-700 dark:text-blue-400">Assessment Already Submitted</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  This assessment has already been submitted. Viewing in read-only mode.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
       )}
 
       {/* Status Banner -- Passed */}
       {interview2Status === "passed" && (
-        <div className="rounded-2xl border border-emerald-500/30 bg-gradient-to-r from-emerald-500/5 via-emerald-500/3 to-transparent overflow-hidden relative">
-          <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500" />
-          <div className="flex items-center justify-between p-5 pl-6">
-            <div className="flex items-center gap-4">
-              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-emerald-500/10 ring-4 ring-emerald-500/5">
-                <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-emerald-700 dark:text-emerald-400 text-sm">Assessment User -- Passed</h3>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Candidate cleared User assessment. Proceed to MCU for the next stage.
-                </p>
-              </div>
+        <section className="rounded-2xl border bg-card">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
+            <h2 className="text-base font-semibold text-foreground">Assessment Result</h2>
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
+              <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
             </div>
-            {onTabChange && (
-              <Button onClick={() => onTabChange("mcu")}>
-                Proceed to MCU
-                <ChevronRight className="ml-1 h-4 w-4" />
-              </Button>
-            )}
           </div>
-        </div>
+          <div className="px-6 py-5">
+            <div className="flex items-center justify-between gap-3 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 px-4 py-3">
+              <div className="flex items-center gap-3">
+                <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">Assessment User — Passed</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Candidate cleared User assessment. Proceed to MCU for the next stage.
+                  </p>
+                </div>
+              </div>
+              {onTabChange && (
+                <Button size="sm" onClick={() => onTabChange("mcu")}>
+                  Proceed to MCU
+                  <ChevronRight className="ml-1 h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          </div>
+        </section>
       )}
 
       {/* Status Banner -- Failed */}
       {interview2Status === "failed" && (
-        <div className="rounded-2xl border border-destructive/30 bg-gradient-to-r from-destructive/5 via-destructive/3 to-transparent overflow-hidden relative">
-          <div className="absolute top-0 left-0 w-1 h-full bg-destructive" />
-          <div className="flex items-center gap-4 p-5 pl-6">
-            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-destructive/10 ring-4 ring-destructive/5">
-              <XCircle className="h-5 w-5 text-destructive" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-destructive text-sm">Assessment User -- Failed</h3>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Candidate did not pass the User assessment and cannot proceed further.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Assigned Assessors Card */}
-      {assignedAssessors.length > 0 && (
-        <div className="rounded-2xl border border-blue-500/30 bg-gradient-to-r from-blue-500/5 via-blue-500/3 to-transparent overflow-hidden relative">
-          <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-blue-500 to-blue-400" />
-          <div className="p-5 pl-6">
-            <div className="flex items-start gap-4">
-              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-blue-500/10 ring-4 ring-blue-500/5 shrink-0">
-                <Users className="h-5 w-5 text-blue-600" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="font-semibold text-blue-700 text-sm mb-3">Assigned Assessors</h3>
-                <div className="flex flex-wrap gap-2">
-                  {assignedAssessors.map((assessor) => (
-                    <div
-                      key={assessor.employeeId}
-                      className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-white border border-blue-100 shadow-sm"
-                    >
-                      <div className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-500 text-white text-xs font-medium">
-                        {assessor.employeeName ? assessor.employeeName.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase() : "?"}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">
-                          {assessor.employeeName || "No Data"}
-                        </p>
-                        {assessor.employeeEmail && (
-                          <p className="text-xs text-gray-500 truncate">
-                            {assessor.employeeEmail}
-                          </p>
-                        )}
-                      </div>
-                      {/* Remove button only for canEditAssignees and not completed */}
-                      {canEditAssignees && !isCompleted && (
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveAssessor(assessor.employeeId)}
-                          disabled={isRemoving === assessor.employeeId}
-                          className="ml-1 h-5 w-5 rounded-full flex items-center justify-center bg-secondary/80 text-muted-foreground hover:bg-destructive hover:text-white transition-colors"
-                        >
-                          {isRemoving === assessor.employeeId ? (
-                            <Loader2 className="h-3 w-3 animate-spin" />
-                          ) : (
-                            <X className="h-3 w-3" />
-                          )}
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Assignee Management -- Add Assessor (only for canEditAssignees and not completed) */}
-      {canEditAssignees && !isCompleted && (
-        <div className="rounded-2xl border bg-card">
+        <section className="rounded-2xl border bg-card">
           <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
-            <div className="flex items-center gap-3">
-              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-500/10 text-blue-600">
-                <User className="h-4 w-4" />
-              </div>
+            <h2 className="text-base font-semibold text-foreground">Assessment Result</h2>
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
+              <XCircle className="h-4 w-4 text-muted-foreground" />
+            </div>
+          </div>
+          <div className="px-6 py-5">
+            <div className="flex items-center gap-3 rounded-lg bg-red-50 dark:bg-destructive/10 border border-red-200 dark:border-destructive/20 px-4 py-3">
+              <XCircle className="h-5 w-5 text-destructive shrink-0" />
               <div>
-                <h2 className="text-base font-semibold text-foreground">Manage Assessors</h2>
-                <p className="text-xs text-muted-foreground">Add or remove assessors for Interview User stage</p>
+                <p className="text-sm font-medium text-destructive">Assessment User — Failed</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Candidate did not pass the User assessment and cannot proceed further.
+                </p>
               </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Assigned Assessors */}
+      {assignedAssessors.length > 0 && (
+        <section className="rounded-2xl border bg-card">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
+            <h2 className="text-base font-semibold text-foreground">Assigned Assessors</h2>
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </div>
+          </div>
+          <div className="px-6 py-5">
+            <div className="flex flex-wrap gap-3">
+              {assignedAssessors.map((assessor) => (
+                <div
+                  key={assessor.employeeId}
+                  className="inline-flex items-center gap-2.5 px-3 py-2 rounded-lg border bg-secondary/30"
+                >
+                  <Avatar className="h-7 w-7">
+                    <AvatarFallback className="bg-accent text-accent-foreground text-xs font-medium">
+                      {assessor.employeeName ? assessor.employeeName.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase() : "?"}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate">
+                      {assessor.employeeName || "No Data"}
+                    </p>
+                    {assessor.employeeEmail && (
+                      <p className="text-xs text-muted-foreground truncate">
+                        {assessor.employeeEmail}
+                      </p>
+                    )}
+                  </div>
+                  {canEditAssignees && !isCompleted && (
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveAssessor(assessor.employeeId)}
+                      disabled={isRemoving === assessor.employeeId}
+                      className="ml-1 h-5 w-5 rounded-full flex items-center justify-center bg-secondary/80 text-muted-foreground hover:bg-destructive hover:text-white transition-colors"
+                    >
+                      {isRemoving === assessor.employeeId ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <X className="h-3 w-3" />
+                      )}
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Manage Assessors */}
+      {canEditAssignees && !isCompleted && assignedAssessors.length === 0 && (
+        <section className="rounded-2xl border bg-card">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
+            <h2 className="text-base font-semibold text-foreground">Manage Assessors</h2>
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
+              <User className="h-4 w-4 text-muted-foreground" />
             </div>
           </div>
           <div className="px-6 py-5">
@@ -698,76 +708,74 @@ function InterviewUserTabInner({
               </PopoverContent>
             </Popover>
           </div>
-        </div>
+        </section>
       )}
 
-      {/* Score Overview Stats */}
-      <div className="grid grid-cols-3 gap-4">
-        <div className="rounded-2xl border bg-card relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-accent/5 to-transparent pointer-events-none" />
-          <div className="relative p-5">
-            <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Progress</p>
-            <div className="flex items-end gap-2 mt-2">
-              <span className="text-3xl font-bold tabular-nums">{totalFilled}</span>
-              <span className="text-sm text-muted-foreground mb-1">/ {totalCriteria}</span>
-            </div>
-            <div className="mt-3 h-2 w-full rounded-full bg-secondary overflow-hidden">
-              <div
-                className="h-full rounded-full bg-accent transition-all duration-500 ease-out"
-                style={{ width: `${progressPercent}%` }}
-              />
-            </div>
-          </div>
-        </div>
-        <div className="rounded-2xl border bg-card relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent pointer-events-none" />
-          <div className="relative p-5">
-            <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Average</p>
-            <div className="flex items-end gap-2 mt-2">
-              <span className={cn("text-3xl font-bold tabular-nums", scoreColor(averageScore))}>
-                {totalFilled > 0 ? averageScore.toFixed(1) : "No Data"}
-              </span>
-              <span className="text-sm text-muted-foreground mb-1">/ 5.0</span>
-            </div>
-            <p className="text-xs text-muted-foreground mt-1.5">
-              {totalFilled === 0
-                ? "No scores yet"
-                : averageScore >= 4.5
-                ? "Excellent"
-                : averageScore >= 3.5
-                ? "Good"
-                : averageScore >= 2.5
-                ? "Fair"
-                : averageScore >= 1.5
-                ? "Poor"
-                : "Very Poor"}
-            </p>
-          </div>
-        </div>
-        <div className="rounded-2xl border bg-card relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent pointer-events-none" />
-          <div className="relative p-5">
-            <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Total Score</p>
-            <div className="flex items-end gap-2 mt-2">
-              <span className="text-3xl font-bold tabular-nums">{totalScore}</span>
-              <span className="text-sm text-muted-foreground mb-1">/ {maxTotal}</span>
-            </div>
-            <p className="text-xs text-muted-foreground mt-1.5">
-              {totalFilled > 0 ? `${Math.round((totalScore / maxTotal) * 100)}% of maximum` : "Start scoring below"}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Section 1 -- Scoring */}
-      <div className="rounded-2xl border bg-card">
+      {/* Score Overview */}
+      <section className="rounded-2xl border bg-card">
         <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
-          <div className="flex items-center gap-3">
-            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-accent/10 text-accent text-xs font-bold">1</div>
+          <h2 className="text-base font-semibold text-foreground">Score Overview</h2>
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
+            <BarChart3 className="h-4 w-4 text-muted-foreground" />
+          </div>
+        </div>
+        <div className="px-6 py-5">
+          <div className="grid grid-cols-3 gap-x-8">
             <div>
-              <h2 className="text-base font-semibold text-foreground">Interview Scoring</h2>
-              <p className="text-xs text-muted-foreground">Rate each criterion from 1 (Very Poor) to 5 (Excellent)</p>
+              <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Progress</p>
+              <div className="flex items-end gap-1.5 mt-1">
+                <span className="text-2xl font-bold tabular-nums">{totalFilled}</span>
+                <span className="text-sm text-muted-foreground mb-0.5">/ {totalCriteria}</span>
+              </div>
+              <div className="mt-2 h-1.5 w-full rounded-full bg-secondary overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-accent transition-all duration-500 ease-out"
+                  style={{ width: `${progressPercent}%` }}
+                />
+              </div>
             </div>
+            <div>
+              <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Average</p>
+              <div className="flex items-end gap-1.5 mt-1">
+                <span className={cn("text-2xl font-bold tabular-nums", scoreColor(averageScore))}>
+                  {totalFilled > 0 ? averageScore.toFixed(1) : "—"}
+                </span>
+                <span className="text-sm text-muted-foreground mb-0.5">/ 5.0</span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {totalFilled === 0
+                  ? "No scores yet"
+                  : averageScore >= 4.5
+                  ? "Excellent"
+                  : averageScore >= 3.5
+                  ? "Good"
+                  : averageScore >= 2.5
+                  ? "Fair"
+                  : averageScore >= 1.5
+                  ? "Poor"
+                  : "Very Poor"}
+              </p>
+            </div>
+            <div>
+              <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Total Score</p>
+              <div className="flex items-end gap-1.5 mt-1">
+                <span className="text-2xl font-bold tabular-nums">{totalScore}</span>
+                <span className="text-sm text-muted-foreground mb-0.5">/ {maxTotal}</span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {totalFilled > 0 ? `${Math.round((totalScore / maxTotal) * 100)}% of maximum` : "Start scoring below"}
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Interview Scoring */}
+      <section className="rounded-2xl border bg-card">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
+          <h2 className="text-base font-semibold text-foreground">Interview Scoring</h2>
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
+            <ClipboardCheck className="h-4 w-4 text-muted-foreground" />
           </div>
         </div>
         <div className="px-6 py-5">
@@ -846,17 +854,14 @@ function InterviewUserTabInner({
             })}
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* Section 2 -- Additional Information */}
-      <div className="rounded-2xl border bg-card">
+      {/* Additional Information */}
+      <section className="rounded-2xl border bg-card">
         <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
-          <div className="flex items-center gap-3">
-            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-accent/10 text-accent text-xs font-bold">2</div>
-            <div>
-              <h2 className="text-base font-semibold text-foreground">Additional Information</h2>
-              <p className="text-xs text-muted-foreground">Provide qualitative notes and competency observations</p>
-            </div>
+          <h2 className="text-base font-semibold text-foreground">Additional Information</h2>
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
+            <FileText className="h-4 w-4 text-muted-foreground" />
           </div>
         </div>
         <div className="px-6 py-5 space-y-5">
@@ -898,17 +903,14 @@ function InterviewUserTabInner({
             )}
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* Section 3 -- Conclusion */}
-      <div className="rounded-2xl border bg-card">
+      {/* Interview Result Conclusion */}
+      <section className="rounded-2xl border bg-card">
         <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
-          <div className="flex items-center gap-3">
-            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-accent/10 text-accent text-xs font-bold">3</div>
-            <div>
-              <h2 className="text-base font-semibold text-foreground">Interview Result Conclusion</h2>
-              <p className="text-xs text-muted-foreground">Select the final recommendation for this candidate</p>
-            </div>
+          <h2 className="text-base font-semibold text-foreground">Interview Result Conclusion</h2>
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
+            <Award className="h-4 w-4 text-muted-foreground" />
           </div>
         </div>
         <div className="px-6 py-5">
@@ -986,7 +988,7 @@ function InterviewUserTabInner({
             })}
           </div>
         </div>
-      </div>
+      </section>
 
       {/* Action Buttons -- edit mode only, not completed */}
       {mode === "edit" && !isCompleted && (
@@ -1242,6 +1244,6 @@ function InterviewUserTabInner({
           </div>
         </DialogContent>
       </Dialog>
-    </>
+    </div>
   );
 }

@@ -411,26 +411,28 @@ export default function EmployeeRequestDetailPage() {
                 Updated {new Intl.DateTimeFormat("id-ID", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(request.updatedAt))}
               </span>
               {/* Manager actions: draft, revise — owner or admin */}
-              {["draft", "revise"].includes(request.status) && (request.requestedById === String(user?.id) || isAdmin) && (
+              {["draft", "revise"].includes(request.status) && (request.requestedById === Number(user?.id) || isAdmin) && (
                 <>
                   <Button className="gap-2" onClick={() => router.push(`/employee-request/${id}/edit`)}>
                     <Pencil className="h-3.5 w-3.5" />
                     Edit
                   </Button>
                   {request.status === "draft" && (
-                    <Button
-                      variant="outline"
-                      className="gap-2 text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                      onClick={() => setShowDeleteDialog(true)}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                      Delete
-                    </Button>
+                    <>
+                      <Button
+                        variant="outline"
+                        className="gap-2 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                        onClick={() => setShowDeleteDialog(true)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        Delete
+                      </Button>
+                      <Button className="gap-2" onClick={() => openActionDialog("submit")}>
+                        <Send className="h-3.5 w-3.5" />
+                        Submit
+                      </Button>
+                    </>
                   )}
-                  <Button className="gap-2" onClick={() => openActionDialog(request.status === "draft" ? "submit" : "resubmit")}>
-                    <Send className="h-3.5 w-3.5" />
-                    {request.status === "draft" ? "Submit" : "Resubmit"}
-                  </Button>
                 </>
               )}
 

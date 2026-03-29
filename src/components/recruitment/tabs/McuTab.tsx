@@ -16,6 +16,7 @@ import {
   Eye,
   Pencil,
   PartyPopper,
+  FileText,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -270,62 +271,75 @@ function McuTabInner({
   };
 
   return (
-    <>
-      {/* Status Banner */}
+    <div className="space-y-5">
+      {/* Status Banner — Passed */}
       {mcuStatus === "passed" && (
-        <div className="flex items-center gap-3 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-500/10">
-            <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+        <section className="rounded-2xl border bg-card">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
+            <h2 className="text-base font-semibold text-foreground">MCU Result</h2>
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
+              <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+            </div>
           </div>
-          <div>
-            <p className="font-semibold text-emerald-700">Medical Check-Up Passed</p>
-            <p className="text-sm text-muted-foreground">Candidate has been cleared for medical examination.</p>
+          <div className="px-6 py-5">
+            <div className="flex items-center gap-3 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 px-4 py-3">
+              <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">Medical Check-Up Passed</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Candidate has been cleared for medical examination.</p>
+              </div>
+            </div>
           </div>
-        </div>
+        </section>
       )}
+
+      {/* Status Banner — Failed */}
       {mcuStatus === "failed" && (
-        <div className="flex items-center gap-3 rounded-lg border border-destructive/30 bg-destructive/5 p-4">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-destructive/10">
-            <XCircle className="h-5 w-5 text-destructive" />
+        <section className="rounded-2xl border bg-card">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
+            <h2 className="text-base font-semibold text-foreground">MCU Result</h2>
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
+              <XCircle className="h-4 w-4 text-muted-foreground" />
+            </div>
           </div>
-          <div>
-            <p className="font-semibold text-destructive">Medical Check-Up Failed</p>
-            <p className="text-sm text-muted-foreground">Candidate did not pass the medical examination.</p>
+          <div className="px-6 py-5">
+            <div className="flex items-center gap-3 rounded-lg bg-red-50 dark:bg-destructive/10 border border-red-200 dark:border-destructive/20 px-4 py-3">
+              <XCircle className="h-5 w-5 text-destructive shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-destructive">Medical Check-Up Failed</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Candidate did not pass the medical examination.</p>
+              </div>
+            </div>
           </div>
-        </div>
+        </section>
       )}
 
       {/* MCU Schedule Section */}
       {progress?.mcuDate ? (
-        <div className="rounded-2xl border bg-card">
+        <section className="rounded-2xl border bg-card">
           <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
-            <div className="flex items-center gap-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-500/10 text-sm font-bold text-blue-600">
-                <Calendar className="h-4 w-4" />
-              </div>
-              <div>
-                <h2 className="text-base font-semibold text-foreground">MCU Schedule</h2>
-                <p className="text-xs text-muted-foreground">Medical Check-Up has been scheduled</p>
+            <h2 className="text-base font-semibold text-foreground">MCU Schedule</h2>
+            <div className="flex items-center gap-2">
+              {mcuIsPending && mode === "edit" && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowScheduleMcuDialog(true)}
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                  Reschedule
+                </Button>
+              )}
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
+                <Calendar className="h-4 w-4 text-muted-foreground" />
               </div>
             </div>
-            {mcuIsPending && mode === "edit" && (
-              <Button
-                variant="outline"
-                onClick={() => setShowScheduleMcuDialog(true)}
-              >
-                <Pencil className="h-3.5 w-3.5" />
-                Reschedule
-              </Button>
-            )}
           </div>
           <div className="px-6 py-5">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-                  <Calendar className="h-3 w-3" />
-                  Date & Time
-                </p>
-                <p className="text-sm font-medium">
+            <div className="grid grid-cols-2 gap-x-8 gap-y-5">
+              <div>
+                <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Date & Time</p>
+                <p className="mt-0.5 text-sm font-medium text-foreground">
                   {new Date(progress.mcuDate).toLocaleDateString("id-ID", {
                     weekday: "long",
                     year: "numeric",
@@ -337,43 +351,45 @@ function McuTabInner({
                   })} WIB
                 </p>
               </div>
-              <div className="space-y-1">
-                <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-                  <MapPin className="h-3 w-3" />
-                  Location
-                </p>
-                <p className="text-sm font-medium">{progress.mcuLocation}</p>
+              <div>
+                <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Location</p>
+                <p className="mt-0.5 text-sm font-medium text-foreground">{progress.mcuLocation}</p>
               </div>
             </div>
           </div>
-        </div>
+        </section>
       ) : mcuIsPending && mode === "edit" ? (
-        <div className="rounded-2xl border border-dashed border-blue-500/30 bg-blue-500/5">
-          <div className="flex flex-col items-center justify-center py-10">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-500/10 mb-3">
-              <Stethoscope className="h-6 w-6 text-blue-500" />
+        <section className="rounded-2xl border bg-card">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
+            <h2 className="text-base font-semibold text-foreground">MCU Schedule</h2>
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
+              <Calendar className="h-4 w-4 text-muted-foreground" />
             </div>
-            <h3 className="text-base font-semibold">Schedule Medical Check-Up</h3>
-            <p className="text-sm text-muted-foreground text-center max-w-md mt-1 mb-4">
-              Set the MCU date and location for this candidate. The candidate will be notified via email.
-            </p>
-            <Button onClick={() => setShowScheduleMcuDialog(true)}>
-              <Calendar className="h-4 w-4" />
-              Schedule MCU
-            </Button>
           </div>
-        </div>
+          <div className="px-6 py-5">
+            <div className="flex flex-col items-center justify-center py-6 text-center">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted mb-3">
+                <Stethoscope className="h-6 w-6 text-muted-foreground" />
+              </div>
+              <h3 className="text-sm font-semibold">Schedule Medical Check-Up</h3>
+              <p className="text-xs text-muted-foreground max-w-md mt-1 mb-4">
+                Set the MCU date and location for this candidate. The candidate will be notified via email.
+              </p>
+              <Button onClick={() => setShowScheduleMcuDialog(true)}>
+                <Calendar className="h-4 w-4" />
+                Schedule MCU
+              </Button>
+            </div>
+          </div>
+        </section>
       ) : null}
 
-      {/* Section 1: Document Upload */}
-      <div className="rounded-2xl border bg-card">
+      {/* MCU Document */}
+      <section className="rounded-2xl border bg-card">
         <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
-          <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-500/10 text-sm font-bold text-blue-600">1</div>
-            <div>
-              <h2 className="text-base font-semibold text-foreground">MCU Document</h2>
-              <p className="text-xs text-muted-foreground">Upload the medical check-up result document (PDF, JPEG, or PNG, max 10MB)</p>
-            </div>
+          <h2 className="text-base font-semibold text-foreground">MCU Document</h2>
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
+            <File className="h-4 w-4 text-muted-foreground" />
           </div>
         </div>
         <div className="px-6 py-5">
@@ -464,17 +480,14 @@ function McuTabInner({
             </div>
           )}
         </div>
-      </div>
+      </section>
 
-      {/* Section 2: Notes */}
-      <div className="rounded-2xl border bg-card">
+      {/* Notes / Description */}
+      <section className="rounded-2xl border bg-card">
         <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
-          <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-500/10 text-sm font-bold text-blue-600">2</div>
-            <div>
-              <h2 className="text-base font-semibold text-foreground">Notes / Description</h2>
-              <p className="text-xs text-muted-foreground">Add any additional notes about the medical check-up results</p>
-            </div>
+          <h2 className="text-base font-semibold text-foreground">Notes / Description</h2>
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
+            <FileText className="h-4 w-4 text-muted-foreground" />
           </div>
         </div>
         <div className="px-6 py-5">
@@ -487,88 +500,93 @@ function McuTabInner({
             className="min-h-32"
           />
         </div>
-      </div>
+      </section>
 
       {/* Action Bar - Only show if pending and edit mode */}
       {mcuIsPending && mode === "edit" && (
-        <div className="sticky bottom-4 z-10">
-          <div className="rounded-2xl border-blue-500/20 shadow-lg">
-            <div className="flex items-center justify-between p-4">
-              <p className="text-sm text-muted-foreground">
-                Upload the MCU document and set the result to continue.
-              </p>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="default"
-                  className="bg-emerald-600 hover:bg-emerald-700"
-                  disabled={isSubmitting}
-                  onClick={() => setConfirmDialog({
-                    open: true,
-                    action: "PASSED",
-                  })}
-                >
-                  {isSubmitting ? (
-                    <Loader2 className="animate-spin" />
-                  ) : (
-                    <CheckCircle2 />
-                  )}
-                  Pass
-                </Button>
-                <Button
-                  variant="destructive"
-                  disabled={isSubmitting}
-                  onClick={() => setConfirmDialog({
-                    open: true,
-                    action: "FAILED",
-                  })}
-                >
-                  {isSubmitting ? (
-                    <Loader2 className="animate-spin" />
-                  ) : (
-                    <XCircle />
-                  )}
-                  Fail
-                </Button>
-              </div>
-            </div>
+        <div className="flex items-center justify-between pt-2">
+          <p className="text-xs text-muted-foreground">
+            Upload the MCU document and set the result to continue.
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              className="bg-emerald-600 hover:bg-emerald-700"
+              disabled={isSubmitting}
+              onClick={() => setConfirmDialog({
+                open: true,
+                action: "PASSED",
+              })}
+            >
+              {isSubmitting ? (
+                <Loader2 className="animate-spin" />
+              ) : (
+                <CheckCircle2 />
+              )}
+              Pass
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={isSubmitting}
+              onClick={() => setConfirmDialog({
+                open: true,
+                action: "FAILED",
+              })}
+            >
+              {isSubmitting ? (
+                <Loader2 className="animate-spin" />
+              ) : (
+                <XCircle />
+              )}
+              Fail
+            </Button>
           </div>
         </div>
       )}
 
       {/* Assessment Failed Notice */}
       {progress?.anyFailed && (
-        <div className="rounded-2xl border-destructive bg-destructive/5">
-          <div className="flex items-center gap-4 p-6">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
-              <XCircle className="h-6 w-6 text-destructive" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-destructive">Assessment Failed</h3>
-              <p className="text-sm text-muted-foreground">
-                This candidate has failed one of the assessment stages and cannot proceed further.
-              </p>
+        <section className="rounded-2xl border bg-card">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
+            <h2 className="text-base font-semibold text-foreground">Assessment Status</h2>
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
+              <XCircle className="h-4 w-4 text-muted-foreground" />
             </div>
           </div>
-        </div>
+          <div className="px-6 py-5">
+            <div className="flex items-center gap-3 rounded-lg bg-red-50 dark:bg-destructive/10 border border-red-200 dark:border-destructive/20 px-4 py-3">
+              <XCircle className="h-5 w-5 text-destructive shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-destructive">Assessment Failed</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  This candidate has failed one of the assessment stages and cannot proceed further.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
       )}
 
       {/* All Passed Notice */}
       {progress?.allPassed && (
-        <div className="rounded-2xl border-emerald-500 bg-emerald-500/5">
-          <div className="flex items-center justify-between p-6">
-            <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/10">
-                <PartyPopper className="h-6 w-6 text-emerald-600" />
-              </div>
+        <section className="rounded-2xl border bg-card">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
+            <h2 className="text-base font-semibold text-foreground">Assessment Status</h2>
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
+              <PartyPopper className="h-4 w-4 text-muted-foreground" />
+            </div>
+          </div>
+          <div className="px-6 py-5">
+            <div className="flex items-center gap-3 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 px-4 py-3">
+              <PartyPopper className="h-5 w-5 text-emerald-600 shrink-0" />
               <div>
-                <h3 className="font-semibold text-emerald-600">All Assessments Passed!</h3>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">All Assessments Passed!</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
                   This candidate has passed all assessment stages and is ready for onboarding.
                 </p>
               </div>
             </div>
           </div>
-        </div>
+        </section>
       )}
 
       {/* Confirmation Dialog */}
@@ -712,6 +730,6 @@ function McuTabInner({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </>
+    </div>
   );
 }

@@ -8,6 +8,7 @@ export interface User {
   avatar?: string;
   employeeId?: number | null;
   managedDepartments?: { id: number; name: string }[];
+  headOfDivisions?: { id: number; name: string }[];
   createdAt: string;
   updatedAt: string;
 }

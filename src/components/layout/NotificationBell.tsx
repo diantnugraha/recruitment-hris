@@ -19,7 +19,7 @@ const POLL_INTERVAL = 60000;
 
 function getNotificationRoute(notification: Notification): string {
   if (notification.referenceType === 'employee_request' && notification.referenceId) {
-    return `/recruitment/request/${notification.referenceId}`;
+    return `/employee-request/${notification.referenceId}`;
   }
   return '/recruitment';
 }

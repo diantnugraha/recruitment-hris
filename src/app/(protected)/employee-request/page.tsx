@@ -30,6 +30,14 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
 import { showToast } from "@/lib/utils/toast-messages";
 import { useDebounce } from "@/hooks/use-debounce";
 import {
@@ -39,7 +47,9 @@ import {
 } from "@/lib/constants/employeeRequest";
 import { ROLES } from "@/lib/constants/roles";
 import { employeeRequestService } from "@/services/employee-request.service";
+import { departmentService } from "@/services/department.service";
 import { useAuthStore } from "@/stores/auth-store";
+import type { Department } from "@/types";
 import type { EmployeeRequestWithRelations } from "@/types/employee-request";
 
 const PAGE_LIMIT = 10;
@@ -118,6 +128,7 @@ export default function EmployeeRequestPage() {
   const user = useAuthStore((s) => s.user);
   const userRoleId = user?.roleId ?? 0;
   const canCreate = userRoleId === ROLES.MANAGER || userRoleId === ROLES.SUPER_ADMIN;
+  const isHOD = userRoleId === ROLES.HOD;
 
   // State
   const [requests, setRequests] = React.useState<EmployeeRequestWithRelations[]>([]);
@@ -134,18 +145,39 @@ export default function EmployeeRequestPage() {
     total: 0,
     totalPages: 0,
   });
+  const [departments, setDepartments] = React.useState<Department[]>([]);
+  const [selectedDepartmentId, setSelectedDepartmentId] = React.useState<string>("");
 
   const debouncedSearch = useDebounce(searchQuery, 300);
 
+  // Fetch departments for HOD filter
+  React.useEffect(() => {
+    if (!isHOD || !user?.headOfDivisions?.length) return;
+
+    const fetchDepartments = async () => {
+      const allDepts: Department[] = [];
+      for (const division of user.headOfDivisions!) {
+        const res = await departmentService.getByDivisionId(String(division.id));
+        if (res.success && res.data) {
+          allDepts.push(...res.data);
+        }
+      }
+      setDepartments(allDepts);
+    };
+
+    fetchDepartments();
+  }, [isHOD, user?.headOfDivisions]);
+
   // Fetch function
   const fetchRequests = React.useCallback(
-    async (page: number = 1, search?: string) => {
+    async (page: number = 1, search?: string, departmentId?: string) => {
       setIsLoading(true);
       setError(null);
 
       try {
-        const filters: { search?: string } = {};
+        const filters: { search?: string; department_id?: number } = {};
         if (search) filters.search = search;
+        if (departmentId) filters.department_id = Number(departmentId);
 
         const result = await employeeRequestService.getAll(page, pageSize, filters);
 
@@ -167,10 +199,10 @@ export default function EmployeeRequestPage() {
     [pageSize]
   );
 
-  // Fetch on search/page change
+  // Fetch on search/page/department change
   React.useEffect(() => {
-    fetchRequests(currentPage, debouncedSearch || undefined);
-  }, [debouncedSearch, currentPage, fetchRequests]);
+    fetchRequests(currentPage, debouncedSearch || undefined, selectedDepartmentId || undefined);
+  }, [debouncedSearch, currentPage, selectedDepartmentId, fetchRequests]);
 
   // Computed values
   const stats = React.useMemo(() => {
@@ -193,7 +225,7 @@ export default function EmployeeRequestPage() {
       const result = await employeeRequestService.delete(deleteRequest.id);
       if (result.success) {
         showToast.deleted("Employee Request");
-        fetchRequests(currentPage, debouncedSearch || undefined);
+        fetchRequests(currentPage, debouncedSearch || undefined, selectedDepartmentId || undefined);
       } else {
         showToast.error(result.message || "Failed to delete employee request");
       }
@@ -206,7 +238,7 @@ export default function EmployeeRequestPage() {
   };
 
   const handleRefresh = () => {
-    fetchRequests(currentPage, debouncedSearch || undefined);
+    fetchRequests(currentPage, debouncedSearch || undefined, selectedDepartmentId || undefined);
   };
 
   // Error state (only show full page error on initial load)
@@ -327,9 +359,37 @@ export default function EmployeeRequestPage() {
                 setPageSize(size);
                 setCurrentPage(1);
               }}
+              filters={
+                isHOD && departments.length > 0 ? (
+                  <div className="flex items-center gap-4">
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-sm font-medium text-muted-foreground">Department</label>
+                      <Select
+                        value={selectedDepartmentId}
+                        onValueChange={(value) => {
+                          setSelectedDepartmentId(value === "all" ? "" : value);
+                          setCurrentPage(1);
+                        }}
+                      >
+                        <SelectTrigger className="w-[240px]">
+                          <SelectValue placeholder="All Departments" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Departments</SelectItem>
+                          {departments.map((dept) => (
+                            <SelectItem key={dept.id} value={String(dept.id)}>
+                              {dept.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                ) : undefined
+              }
               emptyMessage={
-                searchQuery
-                  ? "No requests found matching your search"
+                searchQuery || selectedDepartmentId
+                  ? "No requests found matching your filters"
                   : "No employee requests found"
               }
               actions={

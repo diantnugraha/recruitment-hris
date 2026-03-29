@@ -55,7 +55,18 @@
       "Bash(find /Users/diantnugraha/Documents/Documents/Development/recruitment-hris/src/hooks -type f -name *.ts)",
       "Bash(grep -r \"WORKFLOW_TRANSITIONS\\\\|allowedRoles\" /Users/diantnugraha/Documents/Documents/Development/recruitment-hris/src --include=*.ts --include=*.tsx)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(wc -l /Users/diantnugraha/Documents/Documents/Development/recruitment-hris/src/app/\\\\\\(protected\\\\\\)/recruitment/[id]/page.tsx /Users/diantnugraha/Documents/Documents/Development/recruitment-hris/src/app/\\\\\\(protected\\\\\\)/onboarding/[candidateId]/page.tsx)",
+      "Bash(git push:*)",
+      "Bash(wc -l /Users/diantnugraha/Documents/Documents/Development/recruitment-hris/src/app/\\\\\\(protected\\\\\\)/recruitment/[id]/page.tsx)",
+      "Bash(git rm:*)",
+      "Bash(git reset:*)",
+      "Bash(grep -n \"roleId\\\\|role_id\\\\|HUMAN_RESOURCES\\\\|HR_MANAGER\\\\|SUPER_ADMIN\\\\|roleId.*1\\\\|roleId.*8\\\\|roleId.*3\" /Users/diantnugraha/Documents/Documents/Development/recruitment-hris-api/src/constants/*.ts)",
+      "Bash(find /Users/diantnugraha/Documents/Documents/Development/recruitment-hris-api -type f -name *employee* -o -name *request*)",
+      "Bash(find /Users/diantnugraha/Documents/Documents/Development/recruitment-hris/app -type f -name *page*)",
+      "Bash(grep -n \"canApprove\\\\|canReview\\\\|WORKFLOW\\\\|ROLES\\\\.\" /Users/diantnugraha/Documents/Documents/Development/recruitment-hris/src/app/\\\\\\(protected\\\\\\)/employee-request/[id]/page.tsx)",
+      "Bash(find /Users/diantnugraha/Documents/Documents/Development/recruitment-hris/src -type d -name *employee* -o -type d -name *notification*)",
+      "Bash(ls -la /Users/diantnugraha/Documents/Documents/Development/recruitment-hris/src/app/\\\\\\(protected\\\\\\)/recruitment/)"
     ]
   }
 }

@@ -59,7 +59,7 @@ export interface EmployeeRequest {
   sla?: SlaInfo | null;
 
   // Metadata
-  requestedById: string;
+  requestedById: number;
   requestedByName?: string;
   createdAt: string;
   updatedAt: string;

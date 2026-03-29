@@ -18,7 +18,7 @@ export function SlaBadge({ sla }: SlaBadgeProps) {
     : `${sla.remainingDays}d remaining`;
 
   return (
-    <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${config.className}`}>
+    <span className={`inline-flex items-center whitespace-nowrap rounded-full border px-2.5 py-0.5 text-xs font-semibold ${config.className}`}>
       {label}
     </span>
   );

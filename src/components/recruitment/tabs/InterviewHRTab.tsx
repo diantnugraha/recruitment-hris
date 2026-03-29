@@ -14,6 +14,9 @@ import {
   X,
   ChevronRight,
   Check,
+  BarChart3,
+  FileText,
+  Award,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -24,7 +27,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -202,9 +204,10 @@ function InterviewHRTabInner({
     if (scoring.interviewer_notes) setHrUserNotes(scoring.interviewer_notes);
   }, []);
 
-  // ── View mode: fetch scoring on mount ──
+  // ── Fetch scoring data from API (view mode OR completed edit mode) ──
   React.useEffect(() => {
-    if (mode !== "view") return;
+    if (mode === "locked") return;
+    if (mode === "edit" && !isCompleted) return;
     let cancelled = false;
 
     const fetchScoring = async () => {
@@ -220,7 +223,7 @@ function InterviewHRTabInner({
           }
         }
       } catch {
-        // silently fail for view mode
+        // silently fail
       } finally {
         if (!cancelled) setIsLoadingScoring(false);
       }
@@ -228,7 +231,7 @@ function InterviewHRTabInner({
 
     fetchScoring();
     return () => { cancelled = true; };
-  }, [mode, candidateId, populateFromScoring]);
+  }, [mode, candidateId, isCompleted, populateFromScoring]);
 
   // ── Edit mode: stale draft cleanup ──
   // If interview1 is already submitted (not PENDING), clear the localStorage draft
@@ -411,112 +414,118 @@ function InterviewHRTabInner({
   }
 
   return (
-    <>
+    <div className="space-y-5">
       {/* Status Banner — Passed */}
       {interview1Status === "passed" && (
-        <div className="rounded-2xl border border-emerald-500/30 bg-gradient-to-r from-emerald-500/5 via-emerald-500/3 to-transparent overflow-hidden relative">
-          <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500" />
-          <div className="flex items-center justify-between p-5 pl-6">
-            <div className="flex items-center gap-4">
-              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-emerald-500/10 ring-4 ring-emerald-500/5">
-                <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-              </div>
+        <section className="rounded-2xl border bg-card">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
+            <h2 className="text-base font-semibold text-foreground">Assessment Result</h2>
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
+              <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+            </div>
+          </div>
+          <div className="px-6 py-5">
+            <div className="flex items-center gap-3 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 px-4 py-3">
+              <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
               <div>
-                <h3 className="font-semibold text-emerald-700 dark:text-emerald-400 text-sm">Assessment HR — Passed</h3>
+                <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">Assessment HR — Passed</p>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   Candidate cleared HR assessment. Proceed to the next stage.
                 </p>
               </div>
             </div>
           </div>
-        </div>
+        </section>
       )}
 
       {/* Status Banner — Failed */}
       {interview1Status === "failed" && (
-        <div className="rounded-2xl border border-destructive/30 bg-gradient-to-r from-destructive/5 via-destructive/3 to-transparent overflow-hidden relative">
-          <div className="absolute top-0 left-0 w-1 h-full bg-destructive" />
-          <div className="flex items-center gap-4 p-5 pl-6">
-            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-destructive/10 ring-4 ring-destructive/5">
-              <XCircle className="h-5 w-5 text-destructive" />
+        <section className="rounded-2xl border bg-card">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
+            <h2 className="text-base font-semibold text-foreground">Assessment Result</h2>
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
+              <XCircle className="h-4 w-4 text-muted-foreground" />
+            </div>
+          </div>
+          <div className="px-6 py-5">
+            <div className="flex items-center gap-3 rounded-lg bg-red-50 dark:bg-destructive/10 border border-red-200 dark:border-destructive/20 px-4 py-3">
+              <XCircle className="h-5 w-5 text-destructive shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-destructive">Assessment HR — Failed</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Candidate did not pass the HR assessment and cannot proceed further.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Score Overview */}
+      <section className="rounded-2xl border bg-card">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
+          <h2 className="text-base font-semibold text-foreground">Score Overview</h2>
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
+            <BarChart3 className="h-4 w-4 text-muted-foreground" />
+          </div>
+        </div>
+        <div className="px-6 py-5">
+          <div className="grid grid-cols-3 gap-x-8">
+            <div>
+              <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Progress</p>
+              <div className="flex items-end gap-1.5 mt-1">
+                <span className="text-2xl font-bold tabular-nums">{totalFilled}</span>
+                <span className="text-sm text-muted-foreground mb-0.5">/ {totalCriteria}</span>
+              </div>
+              <div className="mt-2 h-1.5 w-full rounded-full bg-secondary overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-accent transition-all duration-500 ease-out"
+                  style={{ width: `${progressPercent}%` }}
+                />
+              </div>
             </div>
             <div>
-              <h3 className="font-semibold text-destructive text-sm">Assessment HR — Failed</h3>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Candidate did not pass the HR assessment and cannot proceed further.
+              <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Average</p>
+              <div className="flex items-end gap-1.5 mt-1">
+                <span className={cn("text-2xl font-bold tabular-nums", scoreColor(averageScore))}>
+                  {totalFilled > 0 ? averageScore.toFixed(1) : "—"}
+                </span>
+                <span className="text-sm text-muted-foreground mb-0.5">/ 5.0</span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {totalFilled === 0
+                  ? "No scores yet"
+                  : averageScore >= 4.5
+                  ? "Excellent"
+                  : averageScore >= 3.5
+                  ? "Good"
+                  : averageScore >= 2.5
+                  ? "Fair"
+                  : averageScore >= 1.5
+                  ? "Poor"
+                  : "Very Poor"}
+              </p>
+            </div>
+            <div>
+              <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Total Score</p>
+              <div className="flex items-end gap-1.5 mt-1">
+                <span className="text-2xl font-bold tabular-nums">{totalScore}</span>
+                <span className="text-sm text-muted-foreground mb-0.5">/ {maxTotal}</span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {totalFilled > 0 ? `${Math.round((totalScore / maxTotal) * 100)}% of maximum` : "Start scoring below"}
               </p>
             </div>
           </div>
         </div>
-      )}
+      </section>
 
-      {/* Score Overview Stats */}
-      <div className="grid grid-cols-3 gap-4">
-        <div className="rounded-2xl border bg-card relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-accent/5 to-transparent pointer-events-none" />
-          <div className="relative p-5">
-            <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Progress</p>
-            <div className="flex items-end gap-2 mt-2">
-              <span className="text-3xl font-bold tabular-nums">{totalFilled}</span>
-              <span className="text-sm text-muted-foreground mb-1">/ {totalCriteria}</span>
-            </div>
-            <div className="mt-3 h-2 w-full rounded-full bg-secondary overflow-hidden">
-              <div
-                className="h-full rounded-full bg-accent transition-all duration-500 ease-out"
-                style={{ width: `${progressPercent}%` }}
-              />
-            </div>
-          </div>
-        </div>
-        <div className="rounded-2xl border bg-card relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent pointer-events-none" />
-          <div className="relative p-5">
-            <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Average</p>
-            <div className="flex items-end gap-2 mt-2">
-              <span className={cn("text-3xl font-bold tabular-nums", scoreColor(averageScore))}>
-                {totalFilled > 0 ? averageScore.toFixed(1) : "No Data"}
-              </span>
-              <span className="text-sm text-muted-foreground mb-1">/ 5.0</span>
-            </div>
-            <p className="text-xs text-muted-foreground mt-1.5">
-              {totalFilled === 0
-                ? "No scores yet"
-                : averageScore >= 4.5
-                ? "Excellent"
-                : averageScore >= 3.5
-                ? "Good"
-                : averageScore >= 2.5
-                ? "Fair"
-                : averageScore >= 1.5
-                ? "Poor"
-                : "Very Poor"}
-            </p>
-          </div>
-        </div>
-        <div className="rounded-2xl border bg-card relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent pointer-events-none" />
-          <div className="relative p-5">
-            <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Total Score</p>
-            <div className="flex items-end gap-2 mt-2">
-              <span className="text-3xl font-bold tabular-nums">{totalScore}</span>
-              <span className="text-sm text-muted-foreground mb-1">/ {maxTotal}</span>
-            </div>
-            <p className="text-xs text-muted-foreground mt-1.5">
-              {totalFilled > 0 ? `${Math.round((totalScore / maxTotal) * 100)}% of maximum` : "Start scoring below"}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Section 1 — Scoring */}
-      <div className="rounded-2xl border bg-card">
+      {/* Interview Scoring */}
+      <section className="rounded-2xl border bg-card">
         <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
-          <div className="flex items-center gap-3">
-            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-accent/10 text-accent text-xs font-bold">1</div>
-            <div>
-              <h2 className="text-base font-semibold text-foreground">Interview Scoring</h2>
-              <p className="text-xs text-muted-foreground">Rate each criterion from 1 (Very Poor) to 5 (Excellent)</p>
-            </div>
+          <h2 className="text-base font-semibold text-foreground">Interview Scoring</h2>
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
+            <ClipboardCheck className="h-4 w-4 text-muted-foreground" />
           </div>
         </div>
         <div className="px-6 py-5">
@@ -595,17 +604,14 @@ function InterviewHRTabInner({
             })}
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* Section 2 — Additional Information */}
-      <div className="rounded-2xl border bg-card">
+      {/* Additional Information */}
+      <section className="rounded-2xl border bg-card">
         <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
-          <div className="flex items-center gap-3">
-            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-accent/10 text-accent text-xs font-bold">2</div>
-            <div>
-              <h2 className="text-base font-semibold text-foreground">Additional Information</h2>
-              <p className="text-xs text-muted-foreground">Provide qualitative notes and competency observations</p>
-            </div>
+          <h2 className="text-base font-semibold text-foreground">Additional Information</h2>
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
+            <FileText className="h-4 w-4 text-muted-foreground" />
           </div>
         </div>
         <div className="px-6 py-5 space-y-5">
@@ -647,17 +653,14 @@ function InterviewHRTabInner({
             )}
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* Section 3 — Conclusion */}
-      <div className="rounded-2xl border bg-card">
+      {/* Interview Result Conclusion */}
+      <section className="rounded-2xl border bg-card">
         <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
-          <div className="flex items-center gap-3">
-            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-accent/10 text-accent text-xs font-bold">3</div>
-            <div>
-              <h2 className="text-base font-semibold text-foreground">Interview Result Conclusion</h2>
-              <p className="text-xs text-muted-foreground">Select the final recommendation for this candidate</p>
-            </div>
+          <h2 className="text-base font-semibold text-foreground">Interview Result Conclusion</h2>
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
+            <Award className="h-4 w-4 text-muted-foreground" />
           </div>
         </div>
         <div className="px-6 py-5">
@@ -735,7 +738,7 @@ function InterviewHRTabInner({
             })}
           </div>
         </div>
-      </div>
+      </section>
 
       {/* Action Buttons — edit mode only, not completed */}
       {mode === "edit" && !isCompleted && (
@@ -1210,6 +1213,6 @@ function InterviewHRTabInner({
           </div>
         </DialogContent>
       </Dialog>
-    </>
+    </div>
   );
 }
