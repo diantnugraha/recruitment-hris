@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Loader2, Save } from "lucide-react";
+import { ArrowLeft, Loader2, Save, Shield, Eye, EyeOff } from "lucide-react";
 
 import { Header } from "@/components/layout/header";
 import { PageContainer } from "@/components/layout/page-container";
@@ -35,6 +35,10 @@ import employeeService, {
 } from "@/services/employee.service";
 import jobTitleService from "@/services/job-title.service";
 import departmentService from "@/services/department.service";
+import userService from "@/services/user.service";
+import roleService from "@/services/role.service";
+import type { UserManagement, UpdateUserRequest } from "@/types/user-management";
+import type { Role } from "@/types/role";
 import type {
   EmployeeWithRelations,
   JobTitle,
@@ -230,6 +234,15 @@ export default function EmployeeEditPage() {
   const [showReplaceDialog, setShowReplaceDialog] = React.useState(false);
   const [structuralCheck, setStructuralCheck] = React.useState<StructuralPositionCheck | null>(null);
 
+  // Account & Access state
+  const [linkedUser, setLinkedUser] = React.useState<UserManagement | null>(null);
+  const [roles, setRoles] = React.useState<Role[]>([]);
+  const [accountRoleId, setAccountRoleId] = React.useState<string>("");
+  const [newPassword, setNewPassword] = React.useState("");
+  const [confirmPassword, setConfirmPassword] = React.useState("");
+  const [showPassword, setShowPassword] = React.useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = React.useState(false);
+
   // Derived read-only fields from selected job title
   const selectedJobTitle = React.useMemo(
     () => (form ? jobTitles.find((jt) => jt.id === form.jobTitleId) : null),
@@ -304,21 +317,30 @@ export default function EmployeeEditPage() {
     setError(null);
 
     try {
-      const [empRes, titleRes, allEmpRes] = await Promise.all([
+      const [empRes, titleRes, allEmpRes, roleRes] = await Promise.all([
         employeeService.getById(id),
         jobTitleService.fetchAll(),
         employeeService.getAll(1, 100),
+        roleService.fetchAll(),
       ]);
 
       // Get job titles first
       const fetchedJobTitles = titleRes.success && titleRes.data ? titleRes.data : [];
       setJobTitles(fetchedJobTitles);
+      if (roleRes.success && roleRes.data) setRoles(roleRes.data);
 
       if (empRes.success && empRes.data) {
         setEmployee(empRes.data);
         // Pass jobTitles to find matching ID by name
         const formState = mapEmployeeToFormState(empRes.data, fetchedJobTitles);
         setForm(formState);
+
+        // Fetch linked user account
+        const userRes = await userService.getByEmployeeId(empRes.data.employeeId || empRes.data.id);
+        if (userRes.success && userRes.data) {
+          setLinkedUser(userRes.data);
+          setAccountRoleId(String(userRes.data.roleId));
+        }
       } else {
         setError(empRes.message || "Failed to fetch employee");
       }
@@ -391,6 +413,30 @@ export default function EmployeeEditPage() {
     const response = await employeeService.update(employee.id, requestData);
 
     if (response.success) {
+      // Update user account if role or password changed
+      if (linkedUser) {
+        const hasRoleChange = accountRoleId && String(linkedUser.roleId) !== accountRoleId;
+        const hasPasswordChange = newPassword.length > 0;
+
+        if (hasRoleChange || hasPasswordChange) {
+          const userUpdateData: UpdateUserRequest = {
+            displayName: linkedUser.displayName,
+            email: linkedUser.email,
+          };
+          if (hasRoleChange) {
+            userUpdateData.roleId = Number(accountRoleId);
+          }
+          if (hasPasswordChange) {
+            userUpdateData.newPassword = newPassword;
+          }
+
+          const userRes = await userService.update(linkedUser.id, userUpdateData);
+          if (!userRes.success) {
+            showToast.updateError("user account", userRes.message);
+          }
+        }
+      }
+
       showToast.updated("Employee");
       router.push(`/employees/${employee.id}`);
     } else {
@@ -446,6 +492,8 @@ export default function EmployeeEditPage() {
   };
 
   // Form validity
+  const passwordValid = !newPassword || (newPassword.length >= 8 && newPassword === confirmPassword);
+
   const isFormValid =
     form &&
     form.fullName.trim() &&
@@ -453,6 +501,7 @@ export default function EmployeeEditPage() {
     form.jobTitleId &&
     form.joinDate &&
     form.email &&
+    passwordValid &&
     // Department required for non-structural with multiple departments
     (!structuralInfo.requireDepartmentSelection || form.departmentId);
 
@@ -957,6 +1006,93 @@ export default function EmployeeEditPage() {
                     </div>
                   )}
                 </div>
+              </div>
+
+              <div className="border-t border-dashed" />
+
+              {/* ========== SECTION: ACCOUNT & ACCESS ========== */}
+              <div>
+                <h2 className="text-base font-semibold uppercase tracking-wide mb-4 flex items-center gap-2">
+                  <Shield className="h-4 w-4" />
+                  Account & Access
+                </h2>
+                {linkedUser ? (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <Label>Role</Label>
+                        <Select
+                          value={accountRoleId}
+                          onValueChange={setAccountRoleId}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select role" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {roles.map((r) => (
+                              <SelectItem key={r.roleId} value={String(r.roleId)}>
+                                {r.roleName || `Role ${r.roleId}`}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="newPassword">New Password</Label>
+                        <div className="relative">
+                          <Input
+                            id="newPassword"
+                            type={showPassword ? "text" : "password"}
+                            placeholder="Leave blank to keep current"
+                            value={newPassword}
+                            onChange={(e) => setNewPassword(e.target.value)}
+                          />
+                          <button
+                            type="button"
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                            onClick={() => setShowPassword(!showPassword)}
+                          >
+                            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          </button>
+                        </div>
+                        {newPassword && newPassword.length < 8 && (
+                          <p className="text-xs text-destructive">Minimum 8 characters</p>
+                        )}
+                      </div>
+                      {newPassword && (
+                        <div className="space-y-1.5">
+                          <Label htmlFor="confirmPassword">Confirm Password</Label>
+                          <div className="relative">
+                            <Input
+                              id="confirmPassword"
+                              type={showConfirmPassword ? "text" : "password"}
+                              placeholder="Re-enter password"
+                              value={confirmPassword}
+                              onChange={(e) => setConfirmPassword(e.target.value)}
+                            />
+                            <button
+                              type="button"
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                            >
+                              {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                            </button>
+                          </div>
+                          {confirmPassword && newPassword !== confirmPassword && (
+                            <p className="text-xs text-destructive">Passwords do not match</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    No user account linked to this employee.
+                  </p>
+                )}
               </div>
             </CardContent>
           </Card>
