@@ -100,6 +100,23 @@ export const userService = {
     }
   },
 
+  // Get user linked to a specific employee ID
+  async getByEmployeeId(employeeId: string): Promise<ApiResponse<UserManagement | null>> {
+    try {
+      const allRes = await this.fetchAll();
+      if (!allRes.success || !allRes.data) {
+        return { success: false, message: allRes.message || "Failed to fetch users" };
+      }
+      const user = allRes.data.find(
+        (u) => String(u.employeeId) === String(employeeId)
+      ) || null;
+      return { success: true, data: user };
+    } catch (error: unknown) {
+      console.error("User getByEmployeeId Error:", error);
+      return { success: false, message: "Failed to fetch user by employee ID" };
+    }
+  },
+
   // Get single user by ID
   async getById(id: number): Promise<ApiResponse<UserManagement>> {
     try {
