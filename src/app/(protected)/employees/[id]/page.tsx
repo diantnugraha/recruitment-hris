@@ -151,7 +151,7 @@ export default function EmployeeDetailPage() {
     if (empRes.success && empRes.data) {
       setEmployee(empRes.data);
       // Fetch linked user account
-      const userRes = await userService.getByEmployeeId(empRes.data.employeeId || empRes.data.id);
+      const userRes = await userService.getByEmployeeId(empRes.data.id);
       if (userRes.success && userRes.data) {
         setLinkedUser(userRes.data);
       }

@@ -336,7 +336,7 @@ export default function EmployeeEditPage() {
         setForm(formState);
 
         // Fetch linked user account
-        const userRes = await userService.getByEmployeeId(empRes.data.employeeId || empRes.data.id);
+        const userRes = await userService.getByEmployeeId(empRes.data.id);
         if (userRes.success && userRes.data) {
           setLinkedUser(userRes.data);
           setAccountRoleId(String(userRes.data.roleId));
