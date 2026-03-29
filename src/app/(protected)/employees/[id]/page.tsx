@@ -12,7 +12,6 @@ import {
   Briefcase,
   Mail,
   AlertTriangle,
-  Shield,
 } from "lucide-react";
 
 import { Header } from "@/components/layout/header";
@@ -429,6 +428,37 @@ export default function EmployeeDetailPage() {
                       )}
                     </div>
                   </div>
+
+                  {/* Account & Access */}
+                  {linkedUser && (
+                    <div className="mt-5 pt-4 border-t border-border/40">
+                      <div className="grid grid-cols-2 gap-x-8 gap-y-5">
+                        <div>
+                          <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                            Role
+                          </p>
+                          <div className="mt-1">
+                            <Badge variant="secondary" className="text-xs">
+                              {linkedUser.role?.roleName || "No Role"}
+                            </Badge>
+                          </div>
+                        </div>
+                        <div>
+                          <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                            Email Verified
+                          </p>
+                          <div className="mt-1">
+                            <Badge
+                              variant={linkedUser.emailVerifiedAt ? "default" : "outline"}
+                              className="text-xs"
+                            >
+                              {linkedUser.emailVerifiedAt ? "Verified" : "Not Verified"}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </section>
 
@@ -512,48 +542,6 @@ export default function EmployeeDetailPage() {
                 </div>
               </section>
 
-              {/* Account & Access Card */}
-              <section className="rounded-2xl border bg-card">
-                <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
-                  <h2 className="text-base font-semibold text-foreground">Account & Access</h2>
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
-                    <Shield className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                </div>
-                <div className="px-6 py-5">
-                  {linkedUser ? (
-                    <div className="grid grid-cols-1 gap-x-8 gap-y-5">
-                      <div>
-                        <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                          Role
-                        </p>
-                        <div className="mt-1">
-                          <Badge variant="secondary" className="text-xs">
-                            {linkedUser.role?.roleName || "No Role"}
-                          </Badge>
-                        </div>
-                      </div>
-                      <div>
-                        <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                          Email Verified
-                        </p>
-                        <div className="mt-1">
-                          <Badge
-                            variant={linkedUser.emailVerifiedAt ? "default" : "outline"}
-                            className="text-xs"
-                          >
-                            {linkedUser.emailVerifiedAt ? "Verified" : "Not Verified"}
-                          </Badge>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">
-                      No user account linked to this employee.
-                    </p>
-                  )}
-                </div>
-              </section>
             </div>
           </div>
         </div>
