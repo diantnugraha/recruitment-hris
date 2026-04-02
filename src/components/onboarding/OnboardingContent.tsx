@@ -6,7 +6,7 @@ import {
   AlertCircle,
   CheckCircle2,
   XCircle,
-  Plus,
+
   Pencil,
   Trash2,
   Package,
@@ -15,21 +15,12 @@ import {
   Send,
   Lock,
   AlertTriangle,
-  Save,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { TuvBadge } from "@/components/shared/tuv-badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import {
   Select,
   SelectContent,
@@ -63,6 +54,7 @@ import {
   type Facility,
   type OnboardingProgram,
 } from "@/services/candidate.service";
+import { EmployeeMultiSelect } from "@/components/shared/employee-multi-select";
 import { formatShortDate, cn } from "@/lib/utils";
 import { showToast } from "@/lib/utils/toast-messages";
 import {
@@ -70,6 +62,217 @@ import {
   type WorkLocation,
 } from "@/lib/constants/employeeRequest";
 import type { TabMode } from "@/hooks/useAssessmentPermission";
+
+// ==================== TUV Button Style Helpers ====================
+
+const btnPrimary = {
+  backgroundColor: "var(--hsd-ui-background-color-primary)",
+  borderColor: "var(--hsd-ui-border-color-primary)",
+  color: "var(--hsd-ui-text-color-primary)",
+  borderRadius: "4px",
+  height: "38px",
+  padding: "0 16px",
+  fontSize: "0.875rem",
+  fontWeight: 500,
+} as const;
+
+const btnSecondary = {
+  borderRadius: "4px",
+  height: "38px",
+  padding: "0 16px",
+  fontSize: "0.875rem",
+  fontWeight: 500,
+  borderColor: "rgba(120,134,127,0.2)",
+} as const;
+
+const btnDanger = {
+  backgroundColor: "rgba(250, 55, 70, 1)",
+  borderColor: "rgba(250, 55, 70, 1)",
+  color: "#fff",
+  borderRadius: "4px",
+  height: "38px",
+  padding: "0 16px",
+  fontSize: "0.875rem",
+  fontWeight: 500,
+} as const;
+
+// ==================== TUV Reusable Sub-Components ====================
+
+function DetailItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p
+        style={{
+          fontSize: "0.6875rem",
+          fontWeight: 500,
+          textTransform: "uppercase",
+          letterSpacing: "0.05em",
+          color: "var(--hsd-ui-color-gray-500)",
+          margin: 0,
+        }}
+      >
+        {label}
+      </p>
+      <p
+        style={{
+          fontSize: "0.875rem",
+          fontWeight: 500,
+          color: value ? "var(--hsd-ui-color-gray-900)" : "var(--hsd-ui-color-gray-400)",
+          margin: "2px 0 0",
+        }}
+      >
+        {value || "No Data"}
+      </p>
+    </div>
+  );
+}
+
+function SectionCard({
+  title,
+  icon: Icon,
+  children,
+  headerRight,
+}: {
+  title: string;
+  icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
+  children: React.ReactNode;
+  headerRight?: React.ReactNode;
+}) {
+  return (
+    <section
+      className="border"
+      style={{
+        borderRadius: "8px",
+        backgroundColor: "#fff",
+        borderColor: "rgba(120, 134, 127, 0.2)",
+      }}
+    >
+      <div
+        className="flex items-center justify-between px-6 py-4"
+        style={{ borderBottom: "1px solid rgba(120, 134, 127, 0.15)" }}
+      >
+        <h2
+          style={{
+            fontSize: "0.9375rem",
+            fontWeight: 600,
+            color: "var(--hsd-ui-color-gray-900)",
+            margin: 0,
+          }}
+        >
+          {title}
+        </h2>
+        <div className="flex items-center gap-3">
+          {headerRight}
+          <div
+            className="flex h-8 w-8 items-center justify-center rounded-lg"
+            style={{ backgroundColor: "var(--hsd-ui-color-gray-100)" }}
+          >
+            <Icon
+              style={{ width: "16px", height: "16px", color: "var(--hsd-ui-color-gray-500)" }}
+            />
+          </div>
+        </div>
+      </div>
+      <div className="px-6 py-5">{children}</div>
+    </section>
+  );
+}
+
+// ==================== TUV Table Styles ====================
+
+const tableStyles = {
+  wrapper: {
+    borderRadius: "8px",
+    border: "1px solid rgba(120, 134, 127, 0.2)",
+    overflow: "hidden",
+  } as React.CSSProperties,
+  th: {
+    textAlign: "left" as const,
+    padding: "12px 16px",
+    fontSize: "0.6875rem",
+    fontWeight: 500,
+    textTransform: "uppercase" as const,
+    letterSpacing: "0.05em",
+    color: "var(--hsd-ui-color-gray-500)",
+    backgroundColor: "var(--hsd-ui-color-gray-50)",
+    borderBottom: "1px solid rgba(120, 134, 127, 0.15)",
+  } as React.CSSProperties,
+  thCenter: {
+    textAlign: "center" as const,
+    padding: "12px 16px",
+    fontSize: "0.6875rem",
+    fontWeight: 500,
+    textTransform: "uppercase" as const,
+    letterSpacing: "0.05em",
+    color: "var(--hsd-ui-color-gray-500)",
+    backgroundColor: "var(--hsd-ui-color-gray-50)",
+    borderBottom: "1px solid rgba(120, 134, 127, 0.15)",
+  } as React.CSSProperties,
+  thRight: {
+    textAlign: "right" as const,
+    padding: "12px 16px",
+    fontSize: "0.6875rem",
+    fontWeight: 500,
+    textTransform: "uppercase" as const,
+    letterSpacing: "0.05em",
+    color: "var(--hsd-ui-color-gray-500)",
+    backgroundColor: "var(--hsd-ui-color-gray-50)",
+    borderBottom: "1px solid rgba(120, 134, 127, 0.15)",
+  } as React.CSSProperties,
+  td: {
+    padding: "12px 16px",
+    fontSize: "0.875rem",
+    color: "var(--hsd-ui-color-gray-600)",
+    borderBottom: "1px solid rgba(120, 134, 127, 0.1)",
+  } as React.CSSProperties,
+  tdBold: {
+    padding: "12px 16px",
+    fontSize: "0.875rem",
+    fontWeight: 500,
+    color: "var(--hsd-ui-color-gray-900)",
+    borderBottom: "1px solid rgba(120, 134, 127, 0.1)",
+  } as React.CSSProperties,
+  tdCenter: {
+    padding: "12px 16px",
+    fontSize: "0.875rem",
+    color: "var(--hsd-ui-color-gray-600)",
+    borderBottom: "1px solid rgba(120, 134, 127, 0.1)",
+    textAlign: "center" as const,
+  } as React.CSSProperties,
+  tdRight: {
+    padding: "12px 16px",
+    fontSize: "0.875rem",
+    color: "var(--hsd-ui-color-gray-600)",
+    borderBottom: "1px solid rgba(120, 134, 127, 0.1)",
+    textAlign: "right" as const,
+  } as React.CSSProperties,
+};
+
+const emptyText: React.CSSProperties = {
+  fontSize: "0.875rem",
+  color: "var(--hsd-ui-color-gray-400)",
+  margin: 0,
+  fontStyle: "italic",
+};
+
+// ==================== TUV Badge Variant Mapping ====================
+
+const FACILITY_STATUS_BADGE: Record<string, "success" | "dark" | "info" | "warning"> = {
+  Assigned: "info",
+  Returned: "dark",
+};
+
+const PROGRAM_STATUS_BADGE: Record<string, "success" | "dark" | "info" | "warning" | "danger" | "brand"> = {
+  Scheduled: "info",
+  "In Progress": "brand",
+  Completed: "success",
+  Cancelled: "danger",
+};
+
+const CONDITION_BADGE: Record<string, "success" | "dark" | "warning"> = {
+  New: "success",
+  Used: "warning",
+};
 
 // ==================== Constants ====================
 
@@ -103,7 +306,6 @@ export function OnboardingContent({ candidateId, mode, onRefresh }: OnboardingCo
   const [onboarding, setOnboarding] = React.useState<Onboarding | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
-  const [isSaving, setIsSaving] = React.useState(false);
   const [isConverting, setIsConverting] = React.useState(false);
 
   // Job placement form
@@ -117,12 +319,10 @@ export function OnboardingContent({ candidateId, mode, onRefresh }: OnboardingCo
     facility?: Facility;
   }>({ open: false, mode: "add" });
   const [facilityForm, setFacilityForm] = React.useState({
-    inventoryNo: "",
     item: "" as string,
     qty: 1,
-    unit: "Unit",
     condition: "New",
-    status: "Assigned",
+    pics: [] as Array<{ id: string; name: string; email: string }>,
   });
 
   // Program dialog state
@@ -135,7 +335,7 @@ export function OnboardingContent({ candidateId, mode, onRefresh }: OnboardingCo
     program: "",
     date: "",
     location: "",
-    pic: "",
+    pics: [] as Array<{ id: string; name: string; email: string }>,
     status: "Scheduled",
   });
 
@@ -183,6 +383,9 @@ export function OnboardingContent({ candidateId, mode, onRefresh }: OnboardingCo
         setOnboarding(onboardingRes.data || null);
         if (onboardingRes.data) {
           setJobPlacement(onboardingRes.data.jobPlacement || "");
+          setJoinDate(onboardingRes.data.joinDate || "");
+        } else if (candidateRes.data?.employeeRequest?.jobPlacement) {
+          setJobPlacement(candidateRes.data.employeeRequest.jobPlacement);
         }
       }
     } catch (err) {
@@ -229,59 +432,26 @@ export function OnboardingContent({ candidateId, mode, onRefresh }: OnboardingCo
     }
   };
 
-  // ==================== Job Placement Handlers ====================
-
-  const handleSaveJobPlacement = async () => {
-    setIsSaving(true);
-
-    try {
-      if (!onboarding) {
-        const created = await ensureOnboarding();
-        if (!created) {
-          setIsSaving(false);
-          return;
-        }
-      }
-
-      const response = await candidateService.updateOnboarding(candidateId, {
-        job_placement: jobPlacement,
-      });
-
-      if (response.success) {
-        showToast.success("Job placement saved");
-        if (response.data) {
-          setOnboarding(response.data);
-        }
-      } else {
-        showToast.error(response.message || "Failed to save");
-      }
-    } catch (err) {
-      showToast.error("Failed to save job placement");
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
   // ==================== Facility Handlers ====================
 
   const handleOpenFacilityDialog = (dialogMode: "add" | "edit", facility?: Facility) => {
     if (dialogMode === "edit" && facility) {
       setFacilityForm({
-        inventoryNo: facility.inventoryNo,
         item: facility.item,
         qty: facility.qty,
-        unit: facility.unit,
         condition: facility.condition,
-        status: facility.status,
+        pics: (facility.pics || []).map((p) => ({
+          id: String(p.id),
+          name: p.name,
+          email: p.email,
+        })),
       });
     } else {
       setFacilityForm({
-        inventoryNo: "",
         item: "",
         qty: 1,
-        unit: "Unit",
         condition: "New",
-        status: "Assigned",
+        pics: [],
       });
     }
     setFacilityDialog({ open: true, mode: dialogMode, facility });
@@ -292,15 +462,15 @@ export function OnboardingContent({ candidateId, mode, onRefresh }: OnboardingCo
     if (!hasOnboarding) return;
 
     try {
+      const facilityPayload = {
+        item: facilityForm.item,
+        qty: facilityForm.qty,
+        condition: facilityForm.condition,
+        pic_employee_ids: facilityForm.pics.map((p) => Number(p.id)),
+      };
+
       if (facilityDialog.mode === "add") {
-        const response = await candidateService.addFacility(candidateId, {
-          inventory_no: facilityForm.inventoryNo,
-          item: facilityForm.item,
-          qty: facilityForm.qty,
-          unit: facilityForm.unit,
-          condition: facilityForm.condition,
-          status: facilityForm.status,
-        });
+        const response = await candidateService.addFacility(candidateId, facilityPayload);
 
         if (response.success) {
           showToast.success("Facility added");
@@ -315,14 +485,7 @@ export function OnboardingContent({ candidateId, mode, onRefresh }: OnboardingCo
         const response = await candidateService.updateFacility(
           candidateId,
           facilityDialog.facility.id,
-          {
-            inventory_no: facilityForm.inventoryNo,
-            item: facilityForm.item,
-            qty: facilityForm.qty,
-            unit: facilityForm.unit,
-            condition: facilityForm.condition,
-            status: facilityForm.status,
-          }
+          facilityPayload
         );
 
         if (response.success) {
@@ -368,7 +531,11 @@ export function OnboardingContent({ candidateId, mode, onRefresh }: OnboardingCo
         program: program.program,
         date: program.date,
         location: program.location,
-        pic: program.pic,
+        pics: (program.pics || []).map((p) => ({
+          id: String(p.id),
+          name: p.name,
+          email: p.email,
+        })),
         status: program.status,
       });
     } else {
@@ -376,7 +543,7 @@ export function OnboardingContent({ candidateId, mode, onRefresh }: OnboardingCo
         program: "",
         date: "",
         location: "",
-        pic: "",
+        pics: [],
         status: "Scheduled",
       });
     }
@@ -388,14 +555,16 @@ export function OnboardingContent({ candidateId, mode, onRefresh }: OnboardingCo
     if (!hasOnboarding) return;
 
     try {
+      const programPayload = {
+        program: programForm.program,
+        date: programForm.date,
+        location: programForm.location,
+        pic_employee_ids: programForm.pics.map((p) => Number(p.id)),
+        status: programForm.status,
+      };
+
       if (programDialog.mode === "add") {
-        const response = await candidateService.addProgram(candidateId, {
-          program: programForm.program,
-          date: programForm.date,
-          location: programForm.location,
-          pic: programForm.pic,
-          status: programForm.status,
-        });
+        const response = await candidateService.addProgram(candidateId, programPayload);
 
         if (response.success) {
           showToast.success("Program added");
@@ -410,13 +579,7 @@ export function OnboardingContent({ candidateId, mode, onRefresh }: OnboardingCo
         const response = await candidateService.updateProgram(
           candidateId,
           programDialog.program.id,
-          {
-            program: programForm.program,
-            date: programForm.date,
-            location: programForm.location,
-            pic: programForm.pic,
-            status: programForm.status,
-          }
+          programPayload
         );
 
         if (response.success) {
@@ -466,16 +629,16 @@ export function OnboardingContent({ candidateId, mode, onRefresh }: OnboardingCo
         return;
       }
 
-      // Save job placement before sending
-      await candidateService.updateOnboarding(candidateId, { job_placement: jobPlacement });
-
-      // Send onboarding email to candidate
       const portalBaseUrl = window.location.origin;
-      const response = await candidateService.sendOnboardingEmail(candidateId, portalBaseUrl);
+      const response = await candidateService.sendOnboardingEmail(
+        candidateId,
+        portalBaseUrl,
+        joinDate,
+        jobPlacement
+      );
       if (response.success) {
-        showToast.success("Onboarding email sent to candidate!");
+        showToast.success("Onboarding sent successfully!");
         setShowSendDialog(false);
-        // Refresh onboarding data
         const onboardingRes = await candidateService.getOnboarding(candidateId);
         if (onboardingRes.success && onboardingRes.data) {
           setOnboarding(onboardingRes.data);
@@ -495,17 +658,51 @@ export function OnboardingContent({ candidateId, mode, onRefresh }: OnboardingCo
 
   if (mode === "locked") {
     return (
-      <div className="rounded-2xl border bg-card">
+      <div
+        className="border"
+        style={{
+          borderRadius: "8px",
+          backgroundColor: "#fff",
+          borderColor: "rgba(120, 134, 127, 0.2)",
+        }}
+      >
         <div className="flex flex-col items-center justify-center py-16">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted">
-            <Lock className="h-8 w-8 text-muted-foreground" />
+          <div
+            className="flex h-16 w-16 items-center justify-center rounded-full"
+            style={{ backgroundColor: "var(--hsd-ui-color-gray-100)" }}
+          >
+            <Lock style={{ width: "32px", height: "32px", color: "var(--hsd-ui-color-gray-400)" }} />
           </div>
-          <h3 className="mt-4 text-lg font-medium">Onboarding Locked</h3>
-          <p className="text-muted-foreground text-center max-w-md mt-2">
+          <h3
+            style={{
+              fontSize: "1.125rem",
+              fontWeight: 600,
+              color: "var(--hsd-ui-color-gray-900)",
+              margin: "16px 0 0",
+            }}
+          >
+            Onboarding Locked
+          </h3>
+          <p
+            style={{
+              fontSize: "0.875rem",
+              color: "var(--hsd-ui-color-gray-500)",
+              margin: "8px 0 0",
+              textAlign: "center",
+              maxWidth: "28rem",
+            }}
+          >
             The candidate must pass all assessment stages before the onboarding process can begin.
           </p>
-          <div className="flex items-center gap-2 mt-4 text-sm text-amber-600">
-            <AlertTriangle className="h-4 w-4" />
+          <div
+            className="flex items-center gap-2"
+            style={{
+              marginTop: "16px",
+              fontSize: "0.875rem",
+              color: "rgba(217, 119, 6, 1)",
+            }}
+          >
+            <AlertTriangle style={{ width: "16px", height: "16px" }} />
             <span>Complete previous stage first</span>
           </div>
         </div>
@@ -518,7 +715,10 @@ export function OnboardingContent({ candidateId, mode, onRefresh }: OnboardingCo
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-16">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <Loader2
+          className="animate-spin"
+          style={{ width: "32px", height: "32px", color: "var(--hsd-ui-color-gray-400)" }}
+        />
       </div>
     );
   }
@@ -527,10 +727,15 @@ export function OnboardingContent({ candidateId, mode, onRefresh }: OnboardingCo
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 gap-4">
-        <AlertCircle className="h-12 w-12 text-destructive" />
-        <p className="text-muted-foreground">{error}</p>
-        <Button variant="outline" onClick={fetchData}>
+      <div
+        className="flex flex-col items-center justify-center py-16 gap-4"
+        style={{ minHeight: "300px" }}
+      >
+        <AlertCircle style={{ width: "48px", height: "48px", color: "rgba(250, 55, 70, 1)" }} />
+        <p style={{ fontSize: "0.875rem", color: "var(--hsd-ui-color-gray-500)", margin: 0 }}>
+          {error}
+        </p>
+        <Button variant="outline" onClick={fetchData} style={btnSecondary}>
           Try Again
         </Button>
       </div>
@@ -542,364 +747,470 @@ export function OnboardingContent({ candidateId, mode, onRefresh }: OnboardingCo
   return (
     <div className="space-y-5">
       {/* Facilities Section */}
-      <section className="rounded-2xl border bg-card">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
-          <h2 className="text-base font-semibold text-foreground">Facilities / Equipment</h2>
-          <div className="flex items-center gap-2">
+      <SectionCard
+        title="Facilities / Equipment"
+        icon={Package}
+        headerRight={
+          !isReadOnly && mode === "edit" ? (
+            <Button
+              size="default"
+              onClick={() => handleOpenFacilityDialog("add")}
+              style={btnPrimary}
+            >
+              Add Facility
+            </Button>
+          ) : undefined
+        }
+      >
+        {(!onboarding || onboarding.facilities.length === 0) ? (
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <div
+              className="flex h-14 w-14 items-center justify-center rounded-xl"
+              style={{ backgroundColor: "var(--hsd-ui-color-gray-100)" }}
+            >
+              <Package style={{ width: "28px", height: "28px", color: "var(--hsd-ui-color-gray-400)" }} />
+            </div>
+            <h4
+              style={{
+                fontSize: "0.9375rem",
+                fontWeight: 600,
+                color: "var(--hsd-ui-color-gray-900)",
+                margin: "16px 0 0",
+              }}
+            >
+              No facilities assigned
+            </h4>
+            <p
+              style={{
+                fontSize: "0.875rem",
+                color: "var(--hsd-ui-color-gray-500)",
+                margin: "4px 0 0",
+                maxWidth: "20rem",
+              }}
+            >
+              Assign equipment and items for the new employee
+            </p>
             {!isReadOnly && mode === "edit" && (
-              <Button size="sm" onClick={() => handleOpenFacilityDialog("add")}>
-                <Plus />
+              <Button
+                variant="outline"
+                onClick={() => handleOpenFacilityDialog("add")}
+                style={{ ...btnSecondary, marginTop: "16px" }}
+              >
                 Add Facility
               </Button>
             )}
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
-              <Package className="h-4 w-4 text-muted-foreground" />
-            </div>
           </div>
-        </div>
-        <div className="px-6 py-5">
-            {(!onboarding || onboarding.facilities.length === 0) ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-muted">
-                  <Package className="h-7 w-7 text-muted-foreground" />
-                </div>
-                <h4 className="mt-4 font-semibold">No facilities assigned</h4>
-                <p className="mt-1 text-sm text-muted-foreground max-w-xs">
-                  Assign equipment and items for the new employee
-                </p>
-                {!isReadOnly && mode === "edit" && (
-                  <Button
-                    variant="outline"
-                    className="mt-4"
-                    onClick={() => handleOpenFacilityDialog("add")}
+        ) : (
+          <div className="overflow-x-auto" style={tableStyles.wrapper}>
+            <table style={{ width: "100%" }}>
+              <thead>
+                <tr>
+                  <th style={tableStyles.th}>Item</th>
+                  <th style={tableStyles.thCenter}>Qty</th>
+                  <th style={tableStyles.th}>Condition</th>
+                  <th style={tableStyles.th}>PIC</th>
+                  <th style={tableStyles.th}>Status</th>
+                  {!isReadOnly && mode === "edit" && (
+                    <th style={tableStyles.thRight}>Actions</th>
+                  )}
+                </tr>
+              </thead>
+              <tbody>
+                {onboarding.facilities.map((facility, index) => (
+                  <tr
+                    key={facility.id}
+                    style={
+                      index === onboarding.facilities.length - 1
+                        ? { borderBottom: "none" }
+                        : undefined
+                    }
                   >
-                    <Plus />
-                    Add Facility
-                  </Button>
-                )}
-              </div>
-            ) : (
-              <div className="rounded-lg border overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-secondary/30">
-                      <TableHead className="font-semibold">Inventory No</TableHead>
-                      <TableHead className="font-semibold">Item</TableHead>
-                      <TableHead className="text-center font-semibold">Qty</TableHead>
-                      <TableHead className="font-semibold">Condition</TableHead>
-                      <TableHead className="font-semibold">Status</TableHead>
-                      {!isReadOnly && mode === "edit" && (
-                        <TableHead className="text-right font-semibold">Actions</TableHead>
-                      )}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {onboarding.facilities.map((facility) => (
-                      <TableRow key={facility.id}>
-                        <TableCell className="text-sm">
-                          {facility.inventoryNo || "No Data"}
-                        </TableCell>
-                        <TableCell className="font-medium">{facility.item}</TableCell>
-                        <TableCell className="text-center">{facility.qty} {facility.unit}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="font-normal">{facility.condition}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={
-                              facility.status === "Assigned" ? "default" :
-                              facility.status === "Returned" ? "secondary" : "outline"
-                            }
+                    <td style={tableStyles.tdBold}>{facility.item}</td>
+                    <td style={tableStyles.tdCenter}>{facility.qty}</td>
+                    <td style={tableStyles.td}>
+                      <TuvBadge
+                        text={facility.condition}
+                        variant={CONDITION_BADGE[facility.condition] || "dark"}
+                        size="sm"
+                        border
+                      />
+                    </td>
+                    <td style={tableStyles.td}>
+                      {facility.pics && facility.pics.length > 0
+                        ? facility.pics.map((p) => p.name).join(", ")
+                        : "\u2014"}
+                    </td>
+                    <td style={tableStyles.td}>
+                      <TuvBadge
+                        text={facility.status}
+                        variant={FACILITY_STATUS_BADGE[facility.status] || "dark"}
+                        size="sm"
+                        border
+                      />
+                    </td>
+                    {!isReadOnly && mode === "edit" && (
+                      <td style={tableStyles.tdRight}>
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => handleOpenFacilityDialog("edit", facility)}
                           >
-                            {facility.status}
-                          </Badge>
-                        </TableCell>
-                        {!isReadOnly && mode === "edit" && (
-                          <TableCell className="text-right">
-                            <div className="flex items-center justify-end gap-1">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8"
-                                onClick={() => handleOpenFacilityDialog("edit", facility)}
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-destructive hover:text-destructive"
-                                onClick={() => setDeleteConfirm({
-                                  open: true,
-                                  type: "facility",
-                                  id: facility.id,
-                                  name: facility.item,
-                                })}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        )}
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </div>
-        </section>
-
-        {/* Onboarding Programs Section */}
-        <section className="rounded-2xl border bg-card">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
-            <h2 className="text-base font-semibold text-foreground">Onboarding Programs</h2>
-            <div className="flex items-center gap-2">
-              {!isReadOnly && mode === "edit" && (
-                <Button size="sm" onClick={() => handleOpenProgramDialog("add")}>
-                  <Plus />
-                  Add Program
-                </Button>
-              )}
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
-                <GraduationCap className="h-4 w-4 text-muted-foreground" />
-              </div>
-            </div>
-          </div>
-          <div className="px-6 py-5">
-            {(!onboarding || onboarding.programs.length === 0) ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-muted">
-                  <GraduationCap className="h-7 w-7 text-muted-foreground" />
-                </div>
-                <h4 className="mt-4 font-semibold">No programs scheduled</h4>
-                <p className="mt-1 text-sm text-muted-foreground max-w-xs">
-                  Schedule training and orientation for the new employee
-                </p>
-                {!isReadOnly && mode === "edit" && (
-                  <Button
-                    variant="outline"
-                    className="mt-4"
-                    onClick={() => handleOpenProgramDialog("add")}
-                  >
-                    <Plus />
-                    Add Program
-                  </Button>
-                )}
-              </div>
-            ) : (
-              <div className="rounded-lg border overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-secondary/30">
-                      <TableHead className="font-semibold">Program</TableHead>
-                      <TableHead className="font-semibold">Date</TableHead>
-                      <TableHead className="font-semibold">Location</TableHead>
-                      <TableHead className="font-semibold">PIC</TableHead>
-                      <TableHead className="font-semibold">Status</TableHead>
-                      {!isReadOnly && mode === "edit" && (
-                        <TableHead className="text-right font-semibold">Actions</TableHead>
-                      )}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {onboarding.programs.map((program) => (
-                      <TableRow key={program.id}>
-                        <TableCell className="font-medium">{program.program}</TableCell>
-                        <TableCell>
-                          {program.date ? formatShortDate(program.date) : "No Data"}
-                        </TableCell>
-                        <TableCell>{program.location || "No Data"}</TableCell>
-                        <TableCell>{program.pic || "No Data"}</TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={
-                              program.status === "Completed" ? "default" :
-                              program.status === "In Progress" ? "secondary" :
-                              program.status === "Cancelled" ? "destructive" : "outline"
-                            }
+                            <Pencil style={{ width: "16px", height: "16px", color: "var(--hsd-ui-color-gray-500)" }} />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => setDeleteConfirm({
+                              open: true,
+                              type: "facility",
+                              id: facility.id,
+                              name: facility.item,
+                            })}
                           >
-                            {program.status}
-                          </Badge>
-                        </TableCell>
-                        {!isReadOnly && mode === "edit" && (
-                          <TableCell className="text-right">
-                            <div className="flex items-center justify-end gap-1">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8"
-                                onClick={() => handleOpenProgramDialog("edit", program)}
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-destructive hover:text-destructive"
-                                onClick={() => setDeleteConfirm({
-                                  open: true,
-                                  type: "program",
-                                  id: program.id,
-                                  name: program.program,
-                                })}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        )}
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
+                            <Trash2 style={{ width: "16px", height: "16px", color: "rgba(250, 55, 70, 1)" }} />
+                          </Button>
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        </section>
+        )}
+      </SectionCard>
 
-        {/* Job Placement */}
-        <section className="rounded-2xl border bg-card">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
-            <h2 className="text-base font-semibold text-foreground">Job Placement</h2>
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
-              <MapPin className="h-4 w-4 text-muted-foreground" />
+      {/* Onboarding Programs Section */}
+      <SectionCard
+        title="Onboarding Programs"
+        icon={GraduationCap}
+        headerRight={
+          !isReadOnly && mode === "edit" ? (
+            <Button
+              size="default"
+              onClick={() => handleOpenProgramDialog("add")}
+              style={btnPrimary}
+            >
+              Add Program
+            </Button>
+          ) : undefined
+        }
+      >
+        {(!onboarding || onboarding.programs.length === 0) ? (
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <div
+              className="flex h-14 w-14 items-center justify-center rounded-xl"
+              style={{ backgroundColor: "var(--hsd-ui-color-gray-100)" }}
+            >
+              <GraduationCap style={{ width: "28px", height: "28px", color: "var(--hsd-ui-color-gray-400)" }} />
             </div>
-          </div>
-          <div className="px-6 py-5 space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="jobPlacement">Work Location / Placement</Label>
-              {mode === "view" || isOnboardingAccepted ? (
-                <Input
-                  id="jobPlacement"
-                  value={formatJobPlacement(jobPlacement)}
-                  disabled
-                  className="bg-muted"
-                />
-              ) : (
-                <Input
-                  id="jobPlacement"
-                  placeholder="e.g., Jakarta Head Office"
-                  value={jobPlacement}
-                  onChange={(e) => setJobPlacement(e.target.value)}
-                />
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="joinDate">Join Date</Label>
-              <Input
-                id="joinDate"
-                type="date"
-                value={joinDate}
-                onChange={(e) => setJoinDate(e.target.value)}
-                disabled={mode === "view" || isOnboardingAccepted}
-                className={mode === "view" || isOnboardingAccepted ? "bg-muted" : ""}
-              />
-            </div>
-            {mode === "edit" && !isOnboardingAccepted && (
+            <h4
+              style={{
+                fontSize: "0.9375rem",
+                fontWeight: 600,
+                color: "var(--hsd-ui-color-gray-900)",
+                margin: "16px 0 0",
+              }}
+            >
+              No programs scheduled
+            </h4>
+            <p
+              style={{
+                fontSize: "0.875rem",
+                color: "var(--hsd-ui-color-gray-500)",
+                margin: "4px 0 0",
+                maxWidth: "20rem",
+              }}
+            >
+              Schedule training and orientation for the new employee
+            </p>
+            {!isReadOnly && mode === "edit" && (
               <Button
-                className="w-full"
-                onClick={handleSaveJobPlacement}
-                disabled={isSaving}
+                variant="outline"
+                onClick={() => handleOpenProgramDialog("add")}
+                style={{ ...btnSecondary, marginTop: "16px" }}
               >
-                {isSaving ? (
-                  <Loader2 className="animate-spin" />
-                ) : (
-                  <Save />
-                )}
-                Save
+                Add Program
               </Button>
             )}
           </div>
-        </section>
-
-        {/* Onboarding Checklist */}
-        <section className="rounded-2xl border bg-card">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
-            <h2 className="text-base font-semibold text-foreground">Onboarding Checklist</h2>
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
-              <Send className="h-4 w-4 text-muted-foreground" />
-            </div>
+        ) : (
+          <div className="overflow-x-auto" style={tableStyles.wrapper}>
+            <table style={{ width: "100%" }}>
+              <thead>
+                <tr>
+                  <th style={tableStyles.th}>Program</th>
+                  <th style={tableStyles.th}>Date</th>
+                  <th style={tableStyles.th}>Location</th>
+                  <th style={tableStyles.th}>PIC</th>
+                  <th style={tableStyles.th}>Status</th>
+                  {!isReadOnly && mode === "edit" && (
+                    <th style={tableStyles.thRight}>Actions</th>
+                  )}
+                </tr>
+              </thead>
+              <tbody>
+                {onboarding.programs.map((program, index) => (
+                  <tr
+                    key={program.id}
+                    style={
+                      index === onboarding.programs.length - 1
+                        ? { borderBottom: "none" }
+                        : undefined
+                    }
+                  >
+                    <td style={tableStyles.tdBold}>{program.program}</td>
+                    <td style={tableStyles.td}>
+                      {program.date ? formatShortDate(program.date) : "No Data"}
+                    </td>
+                    <td style={tableStyles.td}>{program.location || "No Data"}</td>
+                    <td style={tableStyles.td}>
+                      {program.pics && program.pics.length > 0
+                        ? program.pics.map((p) => p.name).join(", ")
+                        : program.pic || "No Data"}
+                    </td>
+                    <td style={tableStyles.td}>
+                      <TuvBadge
+                        text={program.status}
+                        variant={PROGRAM_STATUS_BADGE[program.status] || "dark"}
+                        size="sm"
+                        border
+                      />
+                    </td>
+                    {!isReadOnly && mode === "edit" && (
+                      <td style={tableStyles.tdRight}>
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => handleOpenProgramDialog("edit", program)}
+                          >
+                            <Pencil style={{ width: "16px", height: "16px", color: "var(--hsd-ui-color-gray-500)" }} />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => setDeleteConfirm({
+                              open: true,
+                              type: "program",
+                              id: program.id,
+                              name: program.program,
+                            })}
+                          >
+                            <Trash2 style={{ width: "16px", height: "16px", color: "rgba(250, 55, 70, 1)" }} />
+                          </Button>
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-          <div className="px-6 py-5 space-y-3">
-            <div className="flex items-center gap-3">
-              {joinDate ? (
-                <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
-              ) : (
-                <XCircle className="h-5 w-5 text-muted-foreground shrink-0" />
-              )}
-              <span className={cn(
-                "text-sm",
-                joinDate ? "" : "text-muted-foreground"
-              )}>
-                Join date set
-              </span>
-            </div>
-            <div className="flex items-center gap-3">
-              {onboarding && onboarding.facilities.length > 0 ? (
-                <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
-              ) : (
-                <XCircle className="h-5 w-5 text-muted-foreground shrink-0" />
-              )}
-              <span className={cn(
-                "text-sm",
-                onboarding && onboarding.facilities.length > 0 ? "" : "text-muted-foreground"
-              )}>
-                At least 1 facility assigned
-              </span>
-            </div>
-            <div className="flex items-center gap-3">
-              {onboarding && onboarding.programs.length > 0 ? (
-                <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
-              ) : (
-                <XCircle className="h-5 w-5 text-muted-foreground shrink-0" />
-              )}
-              <span className={cn(
-                "text-sm",
-                onboarding && onboarding.programs.length > 0 ? "" : "text-muted-foreground"
-              )}>
-                At least 1 program scheduled
-              </span>
-            </div>
+        )}
+      </SectionCard>
 
-            {/* Send Onboarding CTA */}
-            {isOnboardingAccepted ? (
-              <div className="mt-5 rounded-xl bg-gradient-to-b from-emerald-50 to-emerald-100/50 dark:from-emerald-950/40 dark:to-emerald-900/20 border border-emerald-100 dark:border-emerald-900/50 px-6 py-6 flex flex-col items-center text-center gap-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/50">
-                  <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-                </div>
-                <div>
-                  <p className="font-semibold text-sm text-emerald-700 dark:text-emerald-300">Onboarding Accepted</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Candidate has accepted the onboarding offer
-                  </p>
-                </div>
+      {/* Job Placement */}
+      <SectionCard title="Job Placement" icon={MapPin}>
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label
+              htmlFor="jobPlacement"
+              style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--hsd-ui-color-gray-700)" }}
+            >
+              Work Location / Placement
+            </Label>
+            {mode === "view" || isOnboardingAccepted ? (
+              <Input
+                id="jobPlacement"
+                value={formatJobPlacement(jobPlacement)}
+                disabled
+                style={{ backgroundColor: "var(--hsd-ui-color-gray-50)" }}
+              />
+            ) : (
+              <Input
+                id="jobPlacement"
+                placeholder="e.g., Jakarta Head Office"
+                value={jobPlacement}
+                onChange={(e) => setJobPlacement(e.target.value)}
+              />
+            )}
+          </div>
+          <div className="space-y-2">
+            <Label
+              htmlFor="joinDate"
+              style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--hsd-ui-color-gray-700)" }}
+            >
+              Join Date
+            </Label>
+            <Input
+              id="joinDate"
+              type="date"
+              value={joinDate}
+              onChange={(e) => setJoinDate(e.target.value)}
+              disabled={mode === "view" || isOnboardingAccepted}
+              style={
+                mode === "view" || isOnboardingAccepted
+                  ? { backgroundColor: "var(--hsd-ui-color-gray-50)" }
+                  : undefined
+              }
+            />
+          </div>
+        </div>
+      </SectionCard>
+
+      {/* Onboarding Checklist */}
+      <SectionCard title="Onboarding Checklist" icon={Send}>
+        <div className="space-y-3">
+          <div className="flex items-center gap-3">
+            {joinDate ? (
+              <CheckCircle2 style={{ width: "20px", height: "20px", color: "rgba(0, 168, 120, 1)", flexShrink: 0 }} />
+            ) : (
+              <XCircle style={{ width: "20px", height: "20px", color: "var(--hsd-ui-color-gray-400)", flexShrink: 0 }} />
+            )}
+            <span
+              style={{
+                fontSize: "0.875rem",
+                color: joinDate ? "var(--hsd-ui-color-gray-900)" : "var(--hsd-ui-color-gray-400)",
+              }}
+            >
+              Join date set
+            </span>
+          </div>
+          <div className="flex items-center gap-3">
+            {onboarding && onboarding.facilities.length > 0 ? (
+              <CheckCircle2 style={{ width: "20px", height: "20px", color: "rgba(0, 168, 120, 1)", flexShrink: 0 }} />
+            ) : (
+              <XCircle style={{ width: "20px", height: "20px", color: "var(--hsd-ui-color-gray-400)", flexShrink: 0 }} />
+            )}
+            <span
+              style={{
+                fontSize: "0.875rem",
+                color: onboarding && onboarding.facilities.length > 0 ? "var(--hsd-ui-color-gray-900)" : "var(--hsd-ui-color-gray-400)",
+              }}
+            >
+              At least 1 facility assigned
+            </span>
+          </div>
+          <div className="flex items-center gap-3">
+            {onboarding && onboarding.programs.length > 0 ? (
+              <CheckCircle2 style={{ width: "20px", height: "20px", color: "rgba(0, 168, 120, 1)", flexShrink: 0 }} />
+            ) : (
+              <XCircle style={{ width: "20px", height: "20px", color: "var(--hsd-ui-color-gray-400)", flexShrink: 0 }} />
+            )}
+            <span
+              style={{
+                fontSize: "0.875rem",
+                color: onboarding && onboarding.programs.length > 0 ? "var(--hsd-ui-color-gray-900)" : "var(--hsd-ui-color-gray-400)",
+              }}
+            >
+              At least 1 program scheduled
+            </span>
+          </div>
+
+          {/* Send Onboarding CTA */}
+          {isOnboardingAccepted ? (
+            <div
+              className="flex flex-col items-center text-center gap-3"
+              style={{
+                marginTop: "20px",
+                borderRadius: "8px",
+                backgroundColor: "rgba(0, 168, 120, 0.04)",
+                border: "1px solid rgba(0, 168, 120, 0.2)",
+                padding: "24px",
+              }}
+            >
+              <div
+                className="flex h-12 w-12 items-center justify-center rounded-full"
+                style={{ backgroundColor: "rgba(0, 168, 120, 0.1)" }}
+              >
+                <CheckCircle2 style={{ width: "20px", height: "20px", color: "rgba(0, 168, 120, 1)" }} />
               </div>
-            ) : mode === "edit" ? (
-              <div className="mt-5 rounded-xl bg-gradient-to-b from-blue-50 to-blue-100/50 dark:from-blue-950/40 dark:to-blue-900/20 border border-blue-100 dark:border-blue-900/50 px-6 py-6 flex flex-col items-center text-center gap-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/50">
-                  <Send className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                </div>
-                <div>
-                  <p className="font-semibold text-sm">Ready to Send?</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {canSendOnboarding
-                      ? "All requirements met. Send onboarding details to the candidate."
-                      : "Complete all checklist items above before sending."}
-                  </p>
-                </div>
-                <Button
-                  className="bg-blue-600 hover:bg-blue-700 px-6 mt-1"
-                  onClick={() => setShowSendDialog(true)}
-                  disabled={!canSendOnboarding}
+              <div>
+                <p
+                  style={{
+                    fontSize: "0.875rem",
+                    fontWeight: 600,
+                    color: "rgba(0, 168, 120, 1)",
+                    margin: 0,
+                  }}
                 >
-                  <Send />
-                  Send Onboarding
-                </Button>
+                  Onboarding Accepted
+                </p>
+                <p
+                  style={{
+                    fontSize: "0.75rem",
+                    color: "var(--hsd-ui-color-gray-500)",
+                    margin: "4px 0 0",
+                  }}
+                >
+                  Candidate has accepted the onboarding offer
+                </p>
               </div>
-            ) : null}
-          </div>
-        </section>
+            </div>
+          ) : mode === "edit" ? (
+            <div
+              className="flex flex-col items-center text-center gap-3"
+              style={{
+                marginTop: "20px",
+                borderRadius: "8px",
+                backgroundColor: "rgba(59, 130, 246, 0.04)",
+                border: "1px solid rgba(59, 130, 246, 0.2)",
+                padding: "24px",
+              }}
+            >
+              <div
+                className="flex h-12 w-12 items-center justify-center rounded-full"
+                style={{ backgroundColor: "rgba(59, 130, 246, 0.1)" }}
+              >
+                <Send style={{ width: "20px", height: "20px", color: "rgba(59, 130, 246, 1)" }} />
+              </div>
+              <div>
+                <p
+                  style={{
+                    fontSize: "0.875rem",
+                    fontWeight: 600,
+                    color: "var(--hsd-ui-color-gray-900)",
+                    margin: 0,
+                  }}
+                >
+                  Ready to Send?
+                </p>
+                <p
+                  style={{
+                    fontSize: "0.75rem",
+                    color: "var(--hsd-ui-color-gray-500)",
+                    margin: "4px 0 0",
+                  }}
+                >
+                  {canSendOnboarding
+                    ? "All requirements met. Send onboarding details to the candidate."
+                    : "Complete all checklist items above before sending."}
+                </p>
+              </div>
+              <Button
+                onClick={() => setShowSendDialog(true)}
+                disabled={!canSendOnboarding}
+                style={{
+                  ...btnPrimary,
+                  marginTop: "4px",
+                  backgroundColor: canSendOnboarding
+                    ? "var(--hsd-ui-background-color-primary)"
+                    : undefined,
+                }}
+              >
+                <Send style={{ width: "16px", height: "16px", marginRight: "6px" }} />
+                Send Onboarding
+              </Button>
+            </div>
+          ) : null}
+        </div>
+      </SectionCard>
 
       {/* ==================== Dialogs ==================== */}
 
@@ -922,15 +1233,9 @@ export function OnboardingContent({ candidateId, mode, onRefresh }: OnboardingCo
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label>Inventory No</Label>
-                <Input
-                  placeholder="e.g., INV-001"
-                  value={facilityForm.inventoryNo}
-                  onChange={(e) => setFacilityForm({ ...facilityForm, inventoryNo: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Item *</Label>
+                <Label style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--hsd-ui-color-gray-700)" }}>
+                  Item *
+                </Label>
                 <Select
                   value={facilityForm.item}
                   onValueChange={(v) => setFacilityForm({ ...facilityForm, item: v })}
@@ -947,7 +1252,9 @@ export function OnboardingContent({ candidateId, mode, onRefresh }: OnboardingCo
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Quantity</Label>
+                  <Label style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--hsd-ui-color-gray-700)" }}>
+                    Quantity
+                  </Label>
                   <Input
                     type="number"
                     min={1}
@@ -956,16 +1263,9 @@ export function OnboardingContent({ candidateId, mode, onRefresh }: OnboardingCo
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Unit</Label>
-                  <Input
-                    value={facilityForm.unit}
-                    disabled
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Condition</Label>
+                  <Label style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--hsd-ui-color-gray-700)" }}>
+                    Condition
+                  </Label>
                   <Select
                     value={facilityForm.condition}
                     onValueChange={(v) => setFacilityForm({ ...facilityForm, condition: v })}
@@ -980,20 +1280,30 @@ export function OnboardingContent({ candidateId, mode, onRefresh }: OnboardingCo
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
-                  <Label>Status</Label>
-                  <Input
-                    value={facilityForm.status}
-                    disabled
-                  />
-                </div>
+              </div>
+              <div className="space-y-2">
+                <Label style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--hsd-ui-color-gray-700)" }}>
+                  PIC (Person In Charge) *
+                </Label>
+                <EmployeeMultiSelect
+                  value={facilityForm.pics}
+                  onChange={(pics) => setFacilityForm({ ...facilityForm, pics })}
+                />
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setFacilityDialog({ open: false, mode: "add" })}>
+              <Button
+                variant="outline"
+                onClick={() => setFacilityDialog({ open: false, mode: "add" })}
+                style={btnSecondary}
+              >
                 Cancel
               </Button>
-              <Button onClick={handleSaveFacility} disabled={!facilityForm.item}>
+              <Button
+                onClick={handleSaveFacility}
+                disabled={!facilityForm.item || facilityForm.pics.length === 0}
+                style={btnPrimary}
+              >
                 {facilityDialog.mode === "add" ? "Add" : "Save"}
               </Button>
             </DialogFooter>
@@ -1020,7 +1330,9 @@ export function OnboardingContent({ candidateId, mode, onRefresh }: OnboardingCo
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label>Program Name *</Label>
+                <Label style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--hsd-ui-color-gray-700)" }}>
+                  Program Name *
+                </Label>
                 <Input
                   placeholder="e.g., Company Orientation"
                   value={programForm.program}
@@ -1029,7 +1341,9 @@ export function OnboardingContent({ candidateId, mode, onRefresh }: OnboardingCo
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Date</Label>
+                  <Label style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--hsd-ui-color-gray-700)" }}>
+                    Date
+                  </Label>
                   <Input
                     type="date"
                     value={programForm.date}
@@ -1037,7 +1351,9 @@ export function OnboardingContent({ candidateId, mode, onRefresh }: OnboardingCo
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Location</Label>
+                  <Label style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--hsd-ui-color-gray-700)" }}>
+                    Location
+                  </Label>
                   <Input
                     placeholder="e.g., Meeting Room A"
                     value={programForm.location}
@@ -1045,38 +1361,47 @@ export function OnboardingContent({ candidateId, mode, onRefresh }: OnboardingCo
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>PIC (Person In Charge)</Label>
-                  <Input
-                    placeholder="e.g., HR Team"
-                    value={programForm.pic}
-                    onChange={(e) => setProgramForm({ ...programForm, pic: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Status</Label>
-                  <Select
-                    value={programForm.status}
-                    onValueChange={(v) => setProgramForm({ ...programForm, status: v })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {PROGRAM_STATUSES.map((s) => (
-                        <SelectItem key={s} value={s}>{s}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="space-y-2">
+                <Label style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--hsd-ui-color-gray-700)" }}>
+                  PIC (Person In Charge) *
+                </Label>
+                <EmployeeMultiSelect
+                  value={programForm.pics}
+                  onChange={(pics) => setProgramForm({ ...programForm, pics })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--hsd-ui-color-gray-700)" }}>
+                  Status
+                </Label>
+                <Select
+                  value={programForm.status}
+                  onValueChange={(v) => setProgramForm({ ...programForm, status: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PROGRAM_STATUSES.map((s) => (
+                      <SelectItem key={s} value={s}>{s}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setProgramDialog({ open: false, mode: "add" })}>
+              <Button
+                variant="outline"
+                onClick={() => setProgramDialog({ open: false, mode: "add" })}
+                style={btnSecondary}
+              >
                 Cancel
               </Button>
-              <Button onClick={handleSaveProgram} disabled={!programForm.program}>
+              <Button
+                onClick={handleSaveProgram}
+                disabled={!programForm.program || programForm.pics.length === 0}
+                style={btnPrimary}
+              >
                 {programDialog.mode === "add" ? "Add" : "Save"}
               </Button>
             </DialogFooter>
@@ -1097,9 +1422,9 @@ export function OnboardingContent({ candidateId, mode, onRefresh }: OnboardingCo
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel style={btnSecondary}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              style={btnDanger}
               onClick={() => {
                 if (deleteConfirm?.type === "facility") {
                   handleDeleteFacility(deleteConfirm.id);
@@ -1119,7 +1444,7 @@ export function OnboardingContent({ candidateId, mode, onRefresh }: OnboardingCo
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
-              <Send className="h-5 w-5 text-blue-600" />
+              <Send style={{ width: "20px", height: "20px", color: "var(--hsd-ui-background-color-primary)" }} />
               Send Onboarding
             </AlertDialogTitle>
             <AlertDialogDescription>
@@ -1128,12 +1453,27 @@ export function OnboardingContent({ candidateId, mode, onRefresh }: OnboardingCo
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="py-4">
-            <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900">
-              <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
-                <CheckCircle2 className="h-5 w-5" />
-                <span className="font-medium">Onboarding Summary</span>
+            <div
+              style={{
+                padding: "16px",
+                borderRadius: "8px",
+                backgroundColor: "rgba(0, 168, 120, 0.04)",
+                border: "1px solid rgba(0, 168, 120, 0.2)",
+              }}
+            >
+              <div className="flex items-center gap-2" style={{ color: "var(--hsd-ui-background-color-primary)" }}>
+                <CheckCircle2 style={{ width: "20px", height: "20px" }} />
+                <span style={{ fontWeight: 500, fontSize: "0.875rem" }}>Onboarding Summary</span>
               </div>
-              <ul className="mt-2 text-sm text-blue-600 dark:text-blue-400 space-y-1">
+              <ul
+                style={{
+                  marginTop: "8px",
+                  fontSize: "0.875rem",
+                  color: "var(--hsd-ui-color-gray-600)",
+                  paddingLeft: "20px",
+                }}
+                className="space-y-1"
+              >
                 <li>Work Location: {formatJobPlacement(jobPlacement) || "No Data"}</li>
                 <li>Join Date: {joinDate || "No Data"}</li>
                 <li>{onboarding?.facilities.length || 0} facilities assigned</li>
@@ -1142,14 +1482,14 @@ export function OnboardingContent({ candidateId, mode, onRefresh }: OnboardingCo
             </div>
           </div>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isConverting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isConverting} style={btnSecondary}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleSendOnboarding}
               disabled={isConverting}
-              className="bg-blue-600 hover:bg-blue-700"
+              style={btnPrimary}
             >
-              {isConverting && <Loader2 className="animate-spin" />}
-              <Send />
+              {isConverting && <Loader2 className="animate-spin" style={{ width: "16px", height: "16px", marginRight: "6px" }} />}
+              <Send style={{ width: "16px", height: "16px", marginRight: "6px" }} />
               Send Onboarding
             </AlertDialogAction>
           </AlertDialogFooter>
