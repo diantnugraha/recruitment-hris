@@ -125,6 +125,7 @@ export interface Facility {
   unit: string;
   condition: string;
   status: string;
+  pics: Array<{ id: number; name: string; email: string }>;
 }
 
 export interface OnboardingProgram {
@@ -133,7 +134,9 @@ export interface OnboardingProgram {
   date: string;
   location: string;
   pic: string;
+  picLegacy?: string;
   status: string;
+  pics: Array<{ id: number; name: string; email: string }>;
 }
 
 export interface Onboarding {
@@ -141,6 +144,7 @@ export interface Onboarding {
   candidateId: number;
   employeeRequestId: number;
   jobPlacement: string;
+  joinDate: string;
   document: string;
   documentCandidate: string;
   onboardingAcceptedAt: string | null;
@@ -955,6 +959,7 @@ export const candidateService = {
           candidate_id: number;
           employee_request_id: number;
           job_placement: string;
+          join_date?: string;
           document: string;
           document_candidate: string;
           onboarding_accepted_at: string | null;
@@ -966,14 +971,16 @@ export const candidateService = {
             unit: string;
             condition: string;
             status: string;
+            pics?: Array<{ id: number; name: string; email: string }>;
           }>;
           programs: Array<{
             id: number;
             program: string;
             date: string;
             location: string;
-            pic: string;
+            pic_legacy?: string;
             status: string;
+            pics?: Array<{ id: number; name: string; email: string }>;
           }>;
         } | null
       };
@@ -989,6 +996,7 @@ export const candidateService = {
             candidateId: res.data.candidate_id,
             employeeRequestId: res.data.employee_request_id,
             jobPlacement: res.data.job_placement,
+            joinDate: res.data.join_date || "",
             document: res.data.document,
             documentCandidate: res.data.document_candidate,
             onboardingAcceptedAt: res.data.onboarding_accepted_at,
@@ -1000,14 +1008,17 @@ export const candidateService = {
               unit: f.unit,
               condition: f.condition,
               status: f.status,
+              pics: f.pics || [],
             })),
             programs: (res.data.programs || []).map(p => ({
               id: p.id,
               program: p.program,
               date: p.date,
               location: p.location,
-              pic: p.pic,
+              pic: p.pic_legacy || "",
+              picLegacy: p.pic_legacy,
               status: p.status,
+              pics: p.pics || [],
             })),
           },
         };
@@ -1040,6 +1051,7 @@ export const candidateService = {
           candidate_id: number;
           employee_request_id: number;
           job_placement: string;
+          join_date?: string;
           document: string;
           document_candidate: string;
           facilities: Array<{
@@ -1050,14 +1062,16 @@ export const candidateService = {
             unit: string;
             condition: string;
             status: string;
+            pics?: Array<{ id: number; name: string; email: string }>;
           }>;
           programs: Array<{
             id: number;
             program: string;
             date: string;
             location: string;
-            pic: string;
+            pic_legacy?: string;
             status: string;
+            pics?: Array<{ id: number; name: string; email: string }>;
           }>;
         };
         message?: string;
@@ -1071,6 +1085,7 @@ export const candidateService = {
             candidateId: res.data.candidate_id,
             employeeRequestId: res.data.employee_request_id,
             jobPlacement: res.data.job_placement,
+            joinDate: res.data.join_date || "",
             document: res.data.document,
             documentCandidate: res.data.document_candidate,
             onboardingAcceptedAt: null,
@@ -1082,14 +1097,17 @@ export const candidateService = {
               unit: f.unit,
               condition: f.condition,
               status: f.status,
+              pics: f.pics || [],
             })),
             programs: (res.data.programs || []).map(p => ({
               id: p.id,
               program: p.program,
               date: p.date,
               location: p.location,
-              pic: p.pic,
+              pic: p.pic_legacy || "",
+              picLegacy: p.pic_legacy,
               status: p.status,
+              pics: p.pics || [],
             })),
           },
         };
@@ -1104,7 +1122,7 @@ export const candidateService = {
 
   async updateOnboarding(
     candidateId: string | number,
-    data: { job_placement?: string; document?: string; document_candidate?: string }
+    data: { job_placement?: string; join_date?: string; document?: string; document_candidate?: string }
   ): Promise<ApiResponse<Onboarding>> {
     try {
       const response = await put<unknown, typeof data>(
@@ -1118,6 +1136,7 @@ export const candidateService = {
           candidate_id: number;
           employee_request_id: number;
           job_placement: string;
+          join_date?: string;
           document: string;
           document_candidate: string;
           facilities: Array<{
@@ -1128,14 +1147,16 @@ export const candidateService = {
             unit: string;
             condition: string;
             status: string;
+            pics?: Array<{ id: number; name: string; email: string }>;
           }>;
           programs: Array<{
             id: number;
             program: string;
             date: string;
             location: string;
-            pic: string;
+            pic_legacy?: string;
             status: string;
+            pics?: Array<{ id: number; name: string; email: string }>;
           }>;
         };
         message?: string;
@@ -1149,6 +1170,7 @@ export const candidateService = {
             candidateId: res.data.candidate_id,
             employeeRequestId: res.data.employee_request_id,
             jobPlacement: res.data.job_placement,
+            joinDate: res.data.join_date || "",
             document: res.data.document,
             documentCandidate: res.data.document_candidate,
             onboardingAcceptedAt: null,
@@ -1160,14 +1182,17 @@ export const candidateService = {
               unit: f.unit,
               condition: f.condition,
               status: f.status,
+              pics: f.pics || [],
             })),
             programs: (res.data.programs || []).map(p => ({
               id: p.id,
               program: p.program,
               date: p.date,
               location: p.location,
-              pic: p.pic,
+              pic: p.pic_legacy || "",
+              picLegacy: p.pic_legacy,
               status: p.status,
+              pics: p.pics || [],
             })),
           },
         };
@@ -1185,22 +1210,37 @@ export const candidateService = {
   async addFacility(
     candidateId: string | number,
     data: {
-      inventory_no: string;
       item: string;
       qty: number;
-      unit: string;
       condition: string;
-      status: string;
+      pic_employee_ids: number[];
     }
   ): Promise<ApiResponse<Facility>> {
     try {
-      const response = await post<unknown, typeof data>(
+      const payload = {
+        item: data.item,
+        qty: data.qty,
+        unit: "Unit",
+        condition: data.condition,
+        status: "Assigned",
+        pic_employee_ids: data.pic_employee_ids,
+      };
+      const response = await post<unknown, typeof payload>(
         `/v1/candidate/${candidateId}/onboarding/facilities`,
-        data
+        payload
       );
       const res = response as {
         success?: boolean;
-        data?: { id: number; inventory_no: string; item: string; qty: number; unit: string; condition: string; status: string };
+        data?: {
+          id: number;
+          inventory_no: string;
+          item: string;
+          qty: number;
+          unit: string;
+          condition: string;
+          status: string;
+          pics?: Array<{ id: number; name: string; email: string }>;
+        };
         message?: string;
       };
 
@@ -1215,6 +1255,7 @@ export const candidateService = {
             unit: res.data.unit,
             condition: res.data.condition,
             status: res.data.status,
+            pics: res.data.pics || [],
           },
         };
       }
@@ -1230,12 +1271,10 @@ export const candidateService = {
     candidateId: string | number,
     facilityId: number,
     data: Partial<{
-      inventory_no: string;
       item: string;
       qty: number;
-      unit: string;
       condition: string;
-      status: string;
+      pic_employee_ids: number[];
     }>
   ): Promise<ApiResponse<Facility>> {
     try {
@@ -1245,7 +1284,16 @@ export const candidateService = {
       );
       const res = response as {
         success?: boolean;
-        data?: { id: number; inventory_no: string; item: string; qty: number; unit: string; condition: string; status: string };
+        data?: {
+          id: number;
+          inventory_no: string;
+          item: string;
+          qty: number;
+          unit: string;
+          condition: string;
+          status: string;
+          pics?: Array<{ id: number; name: string; email: string }>;
+        };
         message?: string;
       };
 
@@ -1260,6 +1308,7 @@ export const candidateService = {
             unit: res.data.unit,
             condition: res.data.condition,
             status: res.data.status,
+            pics: res.data.pics || [],
           },
         };
       }
@@ -1288,7 +1337,7 @@ export const candidateService = {
       program: string;
       date: string;
       location: string;
-      pic: string;
+      pic_employee_ids: number[];
       status: string;
     }
   ): Promise<ApiResponse<OnboardingProgram>> {
@@ -1297,10 +1346,34 @@ export const candidateService = {
         `/v1/candidate/${candidateId}/onboarding/programs`,
         data
       );
-      const res = response as { success?: boolean; data?: OnboardingProgram; message?: string };
+      const res = response as {
+        success?: boolean;
+        data?: {
+          id: number;
+          program: string;
+          date: string;
+          location: string;
+          pic_legacy?: string;
+          status: string;
+          pics?: Array<{ id: number; name: string; email: string }>;
+        };
+        message?: string;
+      };
 
       if (res.success && res.data) {
-        return { success: true, data: res.data };
+        return {
+          success: true,
+          data: {
+            id: res.data.id,
+            program: res.data.program,
+            date: res.data.date,
+            location: res.data.location,
+            pic: res.data.pic_legacy || "",
+            picLegacy: res.data.pic_legacy,
+            status: res.data.status,
+            pics: res.data.pics || [],
+          },
+        };
       }
 
       return { success: false, message: res.message || "Unexpected response format" };
@@ -1317,7 +1390,7 @@ export const candidateService = {
       program: string;
       date: string;
       location: string;
-      pic: string;
+      pic_employee_ids: number[];
       status: string;
     }>
   ): Promise<ApiResponse<OnboardingProgram>> {
@@ -1326,10 +1399,34 @@ export const candidateService = {
         `/v1/candidate/${candidateId}/onboarding/programs/${programId}`,
         data
       );
-      const res = response as { success?: boolean; data?: OnboardingProgram; message?: string };
+      const res = response as {
+        success?: boolean;
+        data?: {
+          id: number;
+          program: string;
+          date: string;
+          location: string;
+          pic_legacy?: string;
+          status: string;
+          pics?: Array<{ id: number; name: string; email: string }>;
+        };
+        message?: string;
+      };
 
       if (res.success && res.data) {
-        return { success: true, data: res.data };
+        return {
+          success: true,
+          data: {
+            id: res.data.id,
+            program: res.data.program,
+            date: res.data.date,
+            location: res.data.location,
+            pic: res.data.pic_legacy || "",
+            picLegacy: res.data.pic_legacy,
+            status: res.data.status,
+            pics: res.data.pics || [],
+          },
+        };
       }
 
       return { success: false, message: res.message || "Unexpected response format" };
@@ -1352,12 +1449,14 @@ export const candidateService = {
 
   async sendOnboardingEmail(
     candidateId: string | number,
-    portalBaseUrl: string
+    portalBaseUrl: string,
+    joinDate: string,
+    workLocation: string
   ): Promise<ApiResponse<{ success: boolean; message: string }>> {
     try {
-      const response = await post<unknown, { portal_base_url: string }>(
+      const response = await post<unknown, { portal_base_url: string; join_date: string; work_location: string }>(
         `/v1/candidate/${candidateId}/onboarding/send`,
-        { portal_base_url: portalBaseUrl }
+        { portal_base_url: portalBaseUrl, join_date: joinDate, work_location: workLocation }
       );
       const res = response as { success?: boolean; data?: { success: boolean; message: string }; message?: string };
 
