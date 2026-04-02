@@ -720,6 +720,43 @@ export const employeeService = {
   },
 
   /**
+   * Lightweight employee search for dropdowns (e.g. PIC multi-select).
+   * Returns only id, name, and email. Requires min 2 chars.
+   */
+  async search(
+    query: string,
+    limit: number = 20
+  ): Promise<ApiResponse<Array<{ id: string; name: string; email: string }>>> {
+    try {
+      if (!query || query.length < 2) {
+        return { success: true, data: [] };
+      }
+      const response = await get<unknown>(
+        `/v1/employee?name=${encodeURIComponent(query)}&limit=${limit}`
+      );
+      const res = response as { success?: boolean; data?: ApiEmployee[] };
+
+      if (res.success && res.data) {
+        return {
+          success: true,
+          data: res.data.map((emp) => ({
+            id: String(emp.employee_id ?? emp.id),
+            name:
+              `${emp.first_name || ""} ${emp.last_name || ""}`.trim() ||
+              emp.nickname ||
+              "",
+            email: emp.email || "",
+          })),
+        };
+      }
+
+      return { success: false, message: "Unexpected response" };
+    } catch {
+      return { success: false, message: "Failed to search employees" };
+    }
+  },
+
+  /**
    * Check if a structural position is currently occupied
    * Used for showing confirmation before replacing
    */
