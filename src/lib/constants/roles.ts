@@ -86,3 +86,21 @@ export const ROLE_CONFIG: Record<
     description: 'Candidate access',
   },
 };
+
+/**
+ * Roles allowed to CRUD master data and employee list.
+ * Must match backend HR_ROLE_IDS in recruitment-hris-api/src/middlewares/roleMiddleware.ts.
+ */
+export const HR_ROLES: RoleId[] = [
+  ROLES.HUMAN_RESOURCES,
+  ROLES.HR_MANAGER,
+  ROLES.SUPER_ADMIN,
+];
+
+/**
+ * Type guard for HR role membership.
+ * Accepts unknown numeric values from user store.
+ */
+export function isHrRole(roleId: number | undefined | null): boolean {
+  return roleId != null && (HR_ROLES as number[]).includes(roleId);
+}
