@@ -28,6 +28,7 @@ import { useOrganizationStore } from "@/stores/organization-store";
 import { jobTitleService } from "@/services/job-title.service";
 import { jobLevelService } from "@/services/job-level.service";
 import { showToast } from "@/lib/utils/toast-messages";
+import { useIsHr } from "@/hooks/useIsHr";
 import type { JobTitle } from "@/types";
 
 // Helper to get department names from job title's many-to-many relation
@@ -46,6 +47,7 @@ function getTypeBadgeVariant(type: string): "brand" | "purple" | "dark" {
 
 export default function JobTitlesPage() {
   const router = useRouter();
+  const isHr = useIsHr();
   const {
     jobTitles,
     setJobTitles,
@@ -163,21 +165,23 @@ export default function JobTitlesPage() {
               Manage job titles, levels, and department assignments.
             </p>
           </div>
-          <Button
-            onClick={() => router.push("/organization/job-titles/new")}
-            style={{
-              backgroundColor: "var(--hsd-ui-background-color-primary)",
-              borderColor: "var(--hsd-ui-border-color-primary)",
-              color: "var(--hsd-ui-text-color-primary)",
-              borderRadius: "4px",
-              height: "38px",
-              padding: "0 16px",
-              fontSize: "0.875rem",
-              fontWeight: 500,
-            }}
-          >
-            Create Job Title
-          </Button>
+          {isHr && (
+            <Button
+              onClick={() => router.push("/organization/job-titles/new")}
+              style={{
+                backgroundColor: "var(--hsd-ui-background-color-primary)",
+                borderColor: "var(--hsd-ui-border-color-primary)",
+                color: "var(--hsd-ui-text-color-primary)",
+                borderRadius: "4px",
+                height: "38px",
+                padding: "0 16px",
+                fontSize: "0.875rem",
+                fontWeight: 500,
+              }}
+            >
+              Create Job Title
+            </Button>
+          )}
         </div>
 
         {/* 2. Outer wrapper -- white bg, rounded */}

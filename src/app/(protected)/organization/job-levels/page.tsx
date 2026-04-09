@@ -42,6 +42,7 @@ import { useOrganizationStore } from "@/stores/organization-store";
 import { jobLevelService } from "@/services/job-level.service";
 import type { CreateJobLevelRequest } from "@/services/job-level.service";
 import { showToast } from "@/lib/utils/toast-messages";
+import { useIsHr } from "@/hooks/useIsHr";
 
 const JOB_LEVEL_CATEGORIES = ["Structural", "Functional"] as const;
 
@@ -65,6 +66,7 @@ const initialFormData: FormData = {
 
 export default function JobLevelsPage() {
   const router = useRouter();
+  const isHr = useIsHr();
   const {
     jobLevels,
     setJobLevels,
@@ -199,21 +201,23 @@ export default function JobLevelsPage() {
               Manage job levels and their categories.
             </p>
           </div>
-          <Button
-            onClick={handleAddClick}
-            style={{
-              backgroundColor: "var(--hsd-ui-background-color-primary)",
-              borderColor: "var(--hsd-ui-border-color-primary)",
-              color: "var(--hsd-ui-text-color-primary)",
-              borderRadius: "4px",
-              height: "38px",
-              padding: "0 16px",
-              fontSize: "0.875rem",
-              fontWeight: 500,
-            }}
-          >
-            Create Job Level
-          </Button>
+          {isHr && (
+            <Button
+              onClick={handleAddClick}
+              style={{
+                backgroundColor: "var(--hsd-ui-background-color-primary)",
+                borderColor: "var(--hsd-ui-border-color-primary)",
+                color: "var(--hsd-ui-text-color-primary)",
+                borderRadius: "4px",
+                height: "38px",
+                padding: "0 16px",
+                fontSize: "0.875rem",
+                fontWeight: 500,
+              }}
+            >
+              Create Job Level
+            </Button>
+          )}
         </div>
 
         {/* 2. Outer wrapper — white bg, rounded */}

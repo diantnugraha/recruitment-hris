@@ -30,6 +30,7 @@ import { useEmployeeStore } from "@/stores/employee-store";
 import employeeService from "@/services/employee.service";
 import type { EmployeeWithRelations } from "@/types";
 import { showToast } from "@/lib/utils/toast-messages";
+import { useIsHr } from "@/hooks/useIsHr";
 import {
   EMPLOYEE_STATUSES,
   ACTIVE_STATUSES,
@@ -60,6 +61,7 @@ function getStatusTuvVariant(status: string): TuvBadgeVariant {
 
 export default function EmployeesPage() {
   const router = useRouter();
+  const isHr = useIsHr();
 
   // Store
   const {
@@ -219,21 +221,23 @@ export default function EmployeesPage() {
               Manage and monitor all employee data across your organization.
             </p>
           </div>
-          <Button
-            onClick={() => router.push("/employees/new")}
-            style={{
-              backgroundColor: "var(--hsd-ui-background-color-primary)",
-              borderColor: "var(--hsd-ui-border-color-primary)",
-              color: "var(--hsd-ui-text-color-primary)",
-              borderRadius: "4px",
-              height: "38px",
-              padding: "0 16px",
-              fontSize: "0.875rem",
-              fontWeight: 500,
-            }}
-          >
-            Create Employee
-          </Button>
+          {isHr && (
+            <Button
+              onClick={() => router.push("/employees/new")}
+              style={{
+                backgroundColor: "var(--hsd-ui-background-color-primary)",
+                borderColor: "var(--hsd-ui-border-color-primary)",
+                color: "var(--hsd-ui-text-color-primary)",
+                borderRadius: "4px",
+                height: "38px",
+                padding: "0 16px",
+                fontSize: "0.875rem",
+                fontWeight: 500,
+              }}
+            >
+              Create Employee
+            </Button>
+          )}
         </div>
 
         {/* 2. Outer wrapper -- white bg, rounded */}

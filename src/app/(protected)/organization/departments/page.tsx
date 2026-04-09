@@ -43,6 +43,7 @@ import type { CreateDepartmentRequest } from "@/services/department.service";
 import { divisionService } from "@/services/division.service";
 import { obsService } from "@/services/obs.service";
 import { showToast } from "@/lib/utils/toast-messages";
+import { useIsHr } from "@/hooks/useIsHr";
 import type { Organization, Division } from "@/types";
 
 const DEPARTMENT_CATEGORIES = ["Profit Center", "Non Profit Center"] as const;
@@ -69,6 +70,7 @@ const initialFormData: FormData = {
 
 export default function DepartmentsPage() {
   const router = useRouter();
+  const isHr = useIsHr();
   const {
     departments,
     setDepartments,
@@ -225,21 +227,23 @@ export default function DepartmentsPage() {
               Manage departments, categories, and their division assignments.
             </p>
           </div>
-          <Button
-            onClick={handleAddClick}
-            style={{
-              backgroundColor: "var(--hsd-ui-background-color-primary)",
-              borderColor: "var(--hsd-ui-border-color-primary)",
-              color: "var(--hsd-ui-text-color-primary)",
-              borderRadius: "4px",
-              height: "38px",
-              padding: "0 16px",
-              fontSize: "0.875rem",
-              fontWeight: 500,
-            }}
-          >
-            Create Department
-          </Button>
+          {isHr && (
+            <Button
+              onClick={handleAddClick}
+              style={{
+                backgroundColor: "var(--hsd-ui-background-color-primary)",
+                borderColor: "var(--hsd-ui-border-color-primary)",
+                color: "var(--hsd-ui-text-color-primary)",
+                borderRadius: "4px",
+                height: "38px",
+                padding: "0 16px",
+                fontSize: "0.875rem",
+                fontWeight: 500,
+              }}
+            >
+              Create Department
+            </Button>
+          )}
         </div>
 
         {/* 2. Outer wrapper — white bg, rounded */}

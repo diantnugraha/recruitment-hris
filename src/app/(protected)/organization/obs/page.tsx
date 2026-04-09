@@ -41,6 +41,7 @@ import { useOrganizationStore } from "@/stores/organization-store";
 import { obsService } from "@/services/obs.service";
 import type { CreateOrganizationRequest } from "@/services/obs.service";
 import { showToast } from "@/lib/utils/toast-messages";
+import { useIsHr } from "@/hooks/useIsHr";
 import { Organization } from "@/types";
 
 interface FormData {
@@ -57,6 +58,7 @@ const initialFormData: FormData = {
 
 export default function OBSPage() {
   const router = useRouter();
+  const isHr = useIsHr();
   const {
     organizations,
     setOrganizations,
@@ -184,21 +186,23 @@ export default function OBSPage() {
               Manage organization breakdown structure and cluster groupings.
             </p>
           </div>
-          <Button
-            onClick={handleAddClick}
-            style={{
-              backgroundColor: "var(--hsd-ui-background-color-primary)",
-              borderColor: "var(--hsd-ui-border-color-primary)",
-              color: "var(--hsd-ui-text-color-primary)",
-              borderRadius: "4px",
-              height: "38px",
-              padding: "0 16px",
-              fontSize: "0.875rem",
-              fontWeight: 500,
-            }}
-          >
-            Create OBS
-          </Button>
+          {isHr && (
+            <Button
+              onClick={handleAddClick}
+              style={{
+                backgroundColor: "var(--hsd-ui-background-color-primary)",
+                borderColor: "var(--hsd-ui-border-color-primary)",
+                color: "var(--hsd-ui-text-color-primary)",
+                borderRadius: "4px",
+                height: "38px",
+                padding: "0 16px",
+                fontSize: "0.875rem",
+                fontWeight: 500,
+              }}
+            >
+              Create OBS
+            </Button>
+          )}
         </div>
 
         {/* 2. Outer wrapper — gray bg, rounded */}
