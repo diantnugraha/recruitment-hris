@@ -4,7 +4,8 @@ import type { ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { ShieldX } from 'lucide-react';
 
-import { useIsHr } from '@/hooks/useIsHr';
+import { useAuthStore } from '@/stores/auth-store';
+import { isHrRole } from '@/lib/constants/roles';
 import { Button } from '@/components/ui/button';
 
 interface RequireHrProps {
@@ -21,7 +22,14 @@ interface RequireHrProps {
  */
 export function RequireHr({ children }: RequireHrProps) {
   const router = useRouter();
-  const isHr = useIsHr();
+  const user = useAuthStore((s) => s.user);
+  const isHr = isHrRole(user?.roleId);
+
+  // During hydration user is null — render nothing until the store rehydrates.
+  // The layout's auth redirect handles truly unauthenticated users.
+  if (!user) {
+    return null;
+  }
 
   if (!isHr) {
     return (
