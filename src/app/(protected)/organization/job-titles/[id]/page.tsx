@@ -34,6 +34,7 @@ import { jobTitleService } from "@/services/job-title.service";
 import { jobLevelService } from "@/services/job-level.service";
 import { LexicalRenderer, hasLexicalContent } from "@/components/shared/lexical-renderer";
 import { showToast } from "@/lib/utils/toast-messages";
+import { useIsHr } from "@/hooks/useIsHr";
 import { JobTitle, JobLevel } from "@/types";
 
 // --- TUV button style helpers (from Job Level detail) ---
@@ -154,6 +155,7 @@ export default function JobTitleDetailPage() {
   const params = useParams();
   const router = useRouter();
   const id = params.id as string;
+  const isHr = useIsHr();
 
   const [jobTitle, setJobTitle] = React.useState<JobTitle | null>(null);
   const [allJobLevels, setAllJobLevels] = React.useState<JobLevel[]>([]);
@@ -277,16 +279,18 @@ export default function JobTitleDetailPage() {
               <ChevronLeft style={{ width: "16px", height: "16px" }} />
               Position: Job Titles
             </Link>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <Button onClick={() => setIsDeleteDialogOpen(true)} style={btnDanger}>
-                <Trash2 style={{ width: "16px", height: "16px", marginRight: "6px" }} />
-                Delete
-              </Button>
-              <Button onClick={() => router.push(`/organization/job-titles/${id}/edit`)} style={btnPrimary}>
-                <Pencil style={{ width: "16px", height: "16px", marginRight: "6px" }} />
-                Edit
-              </Button>
-            </div>
+            {isHr && (
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <Button onClick={() => setIsDeleteDialogOpen(true)} style={btnDanger}>
+                  <Trash2 style={{ width: "16px", height: "16px", marginRight: "6px" }} />
+                  Delete
+                </Button>
+                <Button onClick={() => router.push(`/organization/job-titles/${id}/edit`)} style={btnPrimary}>
+                  <Pencil style={{ width: "16px", height: "16px", marginRight: "6px" }} />
+                  Edit
+                </Button>
+              </div>
+            )}
           </div>
 
           {/* ===== Profile Header Card ===== */}

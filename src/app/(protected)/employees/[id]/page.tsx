@@ -38,6 +38,7 @@ import { EmployeeWithRelations, JobTitle } from "@/types";
 import type { UserManagement } from "@/types/user-management";
 import { formatShortDate, getInitials } from "@/lib/utils";
 import { showToast } from "@/lib/utils/toast-messages";
+import { useIsHr } from "@/hooks/useIsHr";
 import { getEmployeeStatusConfig } from "@/lib/constants/employeeStatus";
 
 /* TUV button style helpers */
@@ -298,6 +299,7 @@ export default function EmployeeDetailPage() {
   const params = useParams();
   const router = useRouter();
   const id = params.id as string;
+  const isHr = useIsHr();
 
   const [employee, setEmployee] =
     React.useState<EmployeeWithRelations | null>(null);
@@ -494,34 +496,36 @@ export default function EmployeeDetailPage() {
               <ChevronLeft style={{ width: "16px", height: "16px" }} />
               Employees
             </Link>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <Button
-                onClick={() => setIsDeleteDialogOpen(true)}
-                style={btnDanger}
-              >
-                <Trash2
-                  style={{
-                    width: "16px",
-                    height: "16px",
-                    marginRight: "6px",
-                  }}
-                />
-                Delete
-              </Button>
-              <Button
-                onClick={() => router.push(`/employees/${employee.id}/edit`)}
-                style={btnPrimary}
-              >
-                <Pencil
-                  style={{
-                    width: "16px",
-                    height: "16px",
-                    marginRight: "6px",
-                  }}
-                />
-                Edit
-              </Button>
-            </div>
+            {isHr && (
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <Button
+                  onClick={() => setIsDeleteDialogOpen(true)}
+                  style={btnDanger}
+                >
+                  <Trash2
+                    style={{
+                      width: "16px",
+                      height: "16px",
+                      marginRight: "6px",
+                    }}
+                  />
+                  Delete
+                </Button>
+                <Button
+                  onClick={() => router.push(`/employees/${employee.id}/edit`)}
+                  style={btnPrimary}
+                >
+                  <Pencil
+                    style={{
+                      width: "16px",
+                      height: "16px",
+                      marginRight: "6px",
+                    }}
+                  />
+                  Edit
+                </Button>
+              </div>
+            )}
           </div>
 
           {/* ===== Profile Header Card ===== */}
