@@ -42,6 +42,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { jobLevelService } from "@/services/job-level.service";
 import { showToast } from "@/lib/utils/toast-messages";
+import { useIsHr } from "@/hooks/useIsHr";
 import type { JobLevel } from "@/types";
 
 const JOB_LEVEL_CATEGORIES = ["Structural", "Functional"] as const;
@@ -159,6 +160,7 @@ export default function JobLevelDetailPage() {
   const router = useRouter();
   const params = useParams();
   const id = params.id as string;
+  const isHr = useIsHr();
 
   const [jobLevel, setJobLevel] = React.useState<JobLevel | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -326,16 +328,18 @@ export default function JobLevelDetailPage() {
                   </Button>
                 </>
               ) : (
-                <>
-                  <Button onClick={() => setIsDeleteDialogOpen(true)} style={btnDanger}>
-                    <Trash2 style={{ width: "16px", height: "16px", marginRight: "6px" }} />
-                    Delete
-                  </Button>
-                  <Button onClick={handleStartEdit} style={btnPrimary}>
-                    <Pencil style={{ width: "16px", height: "16px", marginRight: "6px" }} />
-                    Edit
-                  </Button>
-                </>
+                isHr && (
+                  <>
+                    <Button onClick={() => setIsDeleteDialogOpen(true)} style={btnDanger}>
+                      <Trash2 style={{ width: "16px", height: "16px", marginRight: "6px" }} />
+                      Delete
+                    </Button>
+                    <Button onClick={handleStartEdit} style={btnPrimary}>
+                      <Pencil style={{ width: "16px", height: "16px", marginRight: "6px" }} />
+                      Edit
+                    </Button>
+                  </>
+                )
               )}
             </div>
           </div>

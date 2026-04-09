@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { obsService } from "@/services/obs.service";
 import { showToast } from "@/lib/utils/toast-messages";
+import { useIsHr } from "@/hooks/useIsHr";
 import { Organization } from "@/types";
 
 /* TUV button style helpers */
@@ -149,6 +150,7 @@ export default function OBSDetailPage() {
   const router = useRouter();
   const params = useParams();
   const id = params.id as string;
+  const isHr = useIsHr();
 
   const [org, setOrg] = React.useState<Organization | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -302,16 +304,18 @@ export default function OBSDetailPage() {
                   </Button>
                 </>
               ) : (
-                <>
-                  <Button onClick={() => setIsDeleteDialogOpen(true)} style={btnDanger}>
-                    <Trash2 style={{ width: "16px", height: "16px", marginRight: "6px" }} />
-                    Delete
-                  </Button>
-                  <Button onClick={handleStartEdit} style={btnPrimary}>
-                    <Pencil style={{ width: "16px", height: "16px", marginRight: "6px" }} />
-                    Edit
-                  </Button>
-                </>
+                isHr && (
+                  <>
+                    <Button onClick={() => setIsDeleteDialogOpen(true)} style={btnDanger}>
+                      <Trash2 style={{ width: "16px", height: "16px", marginRight: "6px" }} />
+                      Delete
+                    </Button>
+                    <Button onClick={handleStartEdit} style={btnPrimary}>
+                      <Pencil style={{ width: "16px", height: "16px", marginRight: "6px" }} />
+                      Edit
+                    </Button>
+                  </>
+                )
               )}
             </div>
           </div>
