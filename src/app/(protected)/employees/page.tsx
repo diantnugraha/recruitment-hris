@@ -1,25 +1,14 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AlertCircle } from "lucide-react";
+import { Loader2, Search, AlertCircle } from "lucide-react";
 
 import { Header } from "@/components/layout/header";
 import { PageContainer } from "@/components/layout/page-container";
-import { DataTable } from "@/components/shared/data-table";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -28,10 +17,18 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { TuvBadge } from "@/components/shared/tuv-badge";
 
 import { useEmployeeStore } from "@/stores/employee-store";
 import employeeService from "@/services/employee.service";
-import { EmployeeWithRelations } from "@/types";
+import type { EmployeeWithRelations } from "@/types";
 import { showToast } from "@/lib/utils/toast-messages";
 import {
   EMPLOYEE_STATUSES,
@@ -39,129 +36,24 @@ import {
   getEmployeeStatusConfig,
 } from "@/lib/constants/employeeStatus";
 
-// --- Table columns (module-level to avoid re-creation) ---
+// --- TuvBadge variant mapping for employee statuses ---
 
-function EmployeeCell({
-  row,
-  onClick,
-}: {
-  row: EmployeeWithRelations;
-  onClick: () => void;
-}) {
-  const fullName = `${row.firstName || ""} ${row.lastName || ""}`.trim();
-  const initials = fullName
-    .split(" ")
-    .map((n) => n[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
+type TuvBadgeVariant = "success" | "danger" | "info" | "warning" | "dark" | "brand" | "purple" | "rose";
 
-  return (
-    <button
-      type="button"
-      className="flex items-center gap-3 text-left"
-      onClick={onClick}
-    >
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent/10 text-sm font-semibold text-accent">
-        {initials || "?"}
-      </div>
-      <div className="min-w-0">
-        <p className="font-medium text-accent hover:underline truncate">
-          {fullName || "No Data"}
-        </p>
-        <p className="text-xs text-muted-foreground truncate">
-          {row.email || "No Data"}
-        </p>
-      </div>
-    </button>
-  );
-}
+const STATUS_TO_TUV_VARIANT: Record<string, TuvBadgeVariant> = {
+  active: "success",
+  permanent: "success",
+  contract: "brand",
+  probation: "warning",
+  outsource: "info",
+  on_leave: "warning",
+  inactive: "dark",
+  terminated: "danger",
+  exit: "danger",
+};
 
-const COLUMNS = [
-  {
-    key: "employee",
-    label: "Employee",
-  },
-  {
-    key: "nik",
-    label: "NIK",
-    render: (row: EmployeeWithRelations) => (
-      <span className="text-sm text-muted-foreground">
-        {row.employeeNik || "No Data"}
-      </span>
-    ),
-  },
-  {
-    key: "department",
-    label: "Department",
-    render: (row: EmployeeWithRelations) => (
-      <span className="text-sm">{row.department?.name || "No Data"}</span>
-    ),
-  },
-  {
-    key: "position",
-    label: "Position",
-    render: (row: EmployeeWithRelations) => (
-      <span className="text-sm">{row.jobTitle?.name || "No Data"}</span>
-    ),
-  },
-  {
-    key: "status",
-    label: "Status",
-    render: (row: EmployeeWithRelations) => {
-      const config = getEmployeeStatusConfig(row.status);
-      return <Badge variant={config.variant}>{config.label}</Badge>;
-    },
-  },
-];
-
-// --- Table skeleton ---
-
-function TableSkeleton() {
-  return (
-    <Card>
-      <CardContent className="p-0">
-        <Table>
-          <TableHeader>
-            <TableRow className="hover:bg-transparent">
-              <TableHead className="font-medium">Employee</TableHead>
-              <TableHead className="font-medium">NIK</TableHead>
-              <TableHead className="font-medium">Department</TableHead>
-              <TableHead className="font-medium">Position</TableHead>
-              <TableHead className="font-medium">Status</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {Array.from({ length: 5 }).map((_, i) => (
-              <TableRow key={i}>
-                <TableCell>
-                  <div className="flex items-center gap-3">
-                    <Skeleton className="h-9 w-9 rounded-full" />
-                    <div className="space-y-1.5">
-                      <Skeleton className="h-4 w-32" />
-                      <Skeleton className="h-3 w-40" />
-                    </div>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <Skeleton className="h-4 w-20" />
-                </TableCell>
-                <TableCell>
-                  <Skeleton className="h-4 w-24" />
-                </TableCell>
-                <TableCell>
-                  <Skeleton className="h-4 w-24" />
-                </TableCell>
-                <TableCell>
-                  <Skeleton className="h-5 w-16 rounded-full" />
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
-  );
+function getStatusTuvVariant(status: string): TuvBadgeVariant {
+  return STATUS_TO_TUV_VARIANT[status] ?? "dark";
 }
 
 // --- Page component ---
@@ -236,25 +128,6 @@ export default function EmployeesPage() {
     fetchEmployees();
   }, [fetchEmployees]);
 
-  // Columns with router-dependent render (memoized)
-  const columns = React.useMemo(
-    () =>
-      COLUMNS.map((col) =>
-        col.key === "employee"
-          ? {
-              ...col,
-              render: (row: EmployeeWithRelations) => (
-                <EmployeeCell
-                  row={row}
-                  onClick={() => router.push(`/employees/${row.id}`)}
-                />
-              ),
-            }
-          : col
-      ),
-    [router]
-  );
-
   // Filter and pagination
   const filteredData = React.useMemo(() => {
     const empArray = Array.isArray(employees) ? employees : [];
@@ -286,133 +159,516 @@ export default function EmployeesPage() {
     return result;
   }, [searchQuery, statusFilter, employees]);
 
+  const totalItems = filteredData.length;
+  const totalPages = Math.ceil(totalItems / pageSize);
+  const startItem = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+  const endItem = Math.min(currentPage * pageSize, totalItems);
+
   const paginatedData = React.useMemo(() => {
     const start = (currentPage - 1) * pageSize;
     return filteredData.slice(start, start + pageSize);
   }, [filteredData, currentPage, pageSize]);
 
-  // Stats
-  const stats = React.useMemo(() => {
-    const empArray = Array.isArray(employees) ? employees : [];
-    const activeCount = empArray.filter((e) => ACTIVE_STATUSES.has(e.status)).length;
-    const permanentCount = empArray.filter((e) => e.status === "permanent").length;
-    const contractCount = empArray.filter((e) => e.status === "contract").length;
-    const probationCount = empArray.filter((e) => e.status === "probation").length;
-
-    return [
-      { label: "Total Employees", value: empArray.length, accent: true },
-      { label: "Active", value: activeCount, accent: false },
-      { label: "Permanent", value: permanentCount, accent: false },
-      { label: "Contract", value: contractCount, accent: false },
-      { label: "Probation", value: probationCount, accent: false },
-    ];
-  }, [employees]);
-
   return (
     <>
-      <Header title="Employees" />
+      <Header />
       <PageContainer>
-        <div className="space-y-6">
-          {/* Header & Stats */}
+        {/* 1. Page Title Row -- title + count + action button */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: "24px",
+          }}
+        >
           <div>
-            <h2 className="text-lg font-semibold text-foreground">Employee Overview</h2>
-            <p className="text-sm text-muted-foreground">Manage and monitor all employee data across your organization.</p>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <h1
+                style={{
+                  fontSize: "1.5rem",
+                  fontWeight: 600,
+                  color: "var(--hsd-ui-color-gray-900)",
+                  margin: 0,
+                }}
+              >
+                Employee List
+              </h1>
+              <span
+                style={{
+                  backgroundColor: "var(--hsd-ui-color-blue-50)",
+                  color: "var(--hsd-ui-color-blue-600)",
+                  padding: "2px 10px",
+                  borderRadius: "4px",
+                  fontSize: "0.75rem",
+                  fontWeight: 500,
+                  border: "1px solid var(--hsd-ui-color-blue-200)",
+                }}
+              >
+                {isLoading ? "\u2014" : totalItems}
+              </span>
+            </div>
+            <p
+              style={{
+                fontSize: "0.875rem",
+                fontWeight: 300,
+                color: "var(--hsd-ui-color-gray-500)",
+                margin: "4px 0 0",
+              }}
+            >
+              Manage and monitor all employee data across your organization.
+            </p>
           </div>
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-sm text-muted-foreground">
-            {stats.map((stat, i) => (
-              <React.Fragment key={stat.label}>
-                {i > 0 && <span className="text-border">|</span>}
-                <span>
-                  {stat.label}:{" "}
-                  <span className={`font-semibold tabular-nums ${stat.accent ? "text-accent" : "text-foreground"}`}>
-                    {isLoading ? "\u2014" : stat.value}
-                  </span>
-                </span>
-              </React.Fragment>
-            ))}
+          <Button
+            onClick={() => router.push("/employees/new")}
+            style={{
+              backgroundColor: "var(--hsd-ui-background-color-primary)",
+              borderColor: "var(--hsd-ui-border-color-primary)",
+              color: "var(--hsd-ui-text-color-primary)",
+              borderRadius: "4px",
+              height: "38px",
+              padding: "0 16px",
+              fontSize: "0.875rem",
+              fontWeight: 500,
+            }}
+          >
+            Create Employee
+          </Button>
+        </div>
+
+        {/* 2. Outer wrapper -- white bg, rounded */}
+        <div
+          style={{
+            backgroundColor: "#fff",
+            borderRadius: "8px",
+            padding: "16px",
+            border: "1px solid rgba(120, 134, 127, 0.2)",
+          }}
+        >
+          {/* Search row */}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              marginBottom: "16px",
+            }}
+          >
+            {/* Search */}
+            <div className="relative" style={{ width: "280px" }}>
+              <Search
+                className="absolute left-3 top-1/2 -translate-y-1/2"
+                style={{ width: "16px", height: "16px", color: "var(--hsd-ui-color-gray-400)" }}
+              />
+              <Input
+                placeholder="Search by name, email, NIK..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="pl-9"
+                style={{
+                  borderColor: "rgba(120, 134, 127, 0.2)",
+                  borderRadius: "4px",
+                  backgroundColor: "#fff",
+                  fontSize: "0.875rem",
+                }}
+              />
+            </div>
           </div>
 
-          {/* Table */}
-          <div>
-            {isLoading ? (
-              <TableSkeleton />
-            ) : error ? (
-              <Card>
-                <CardContent className="flex flex-col items-center justify-center gap-3 py-12">
-                  <AlertCircle className="h-8 w-8 text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground">{error}</p>
-                  <Button variant="outline" onClick={fetchEmployees}>
+          {/* Inner white card -- table + pagination */}
+          <div
+            style={{
+              backgroundColor: "#fff",
+              border: "1px solid rgba(120, 134, 127, 0.2)",
+              borderRadius: "8px",
+              overflow: "hidden",
+            }}
+          >
+            {/* Table */}
+            <div>
+              {isLoading ? (
+                <div style={{ display: "flex", justifyContent: "center", alignItems: "center", padding: "48px 0" }}>
+                  <Loader2
+                    className="animate-spin"
+                    style={{ width: "24px", height: "24px", color: "var(--hsd-ui-color-navy-500)" }}
+                  />
+                </div>
+              ) : error ? (
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "12px",
+                    padding: "48px 0",
+                  }}
+                >
+                  <AlertCircle
+                    style={{ width: "32px", height: "32px", color: "var(--hsd-ui-color-gray-400)" }}
+                  />
+                  <p
+                    style={{
+                      fontSize: "0.875rem",
+                      color: "var(--hsd-ui-color-gray-500)",
+                      margin: 0,
+                    }}
+                  >
+                    {error}
+                  </p>
+                  <Button
+                    variant="outline"
+                    onClick={fetchEmployees}
+                    style={{
+                      borderRadius: "4px",
+                      height: "38px",
+                      padding: "0 16px",
+                      fontSize: "0.875rem",
+                      fontWeight: 500,
+                      borderColor: "rgba(120, 134, 127, 0.2)",
+                    }}
+                  >
                     Try Again
                   </Button>
-                </CardContent>
-              </Card>
-            ) : (
-              <DataTable
-                data={paginatedData}
-                columns={columns}
-                searchable
-                searchPlaceholder="Search by name, email, NIK, or ID..."
-                onSearch={(value) => {
-                  setSearchQuery(value);
-                  setCurrentPage(1);
+                </div>
+              ) : paginatedData.length === 0 ? (
+                <div
+                  style={{
+                    textAlign: "center",
+                    padding: "48px 0",
+                    color: "var(--hsd-ui-color-gray-500)",
+                    fontSize: "0.875rem",
+                  }}
+                >
+                  No employees found
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow
+                      onMouseOver={undefined}
+                      onMouseOut={undefined}
+                      style={{ backgroundColor: "transparent", borderBottom: "1px solid rgba(120, 134, 127, 0.2)" }}
+                    >
+                      <TableHead style={{ width: "30%" }}>Employee</TableHead>
+                      <TableHead style={{ width: "15%" }}>NIK</TableHead>
+                      <TableHead style={{ width: "20%" }}>Department</TableHead>
+                      <TableHead style={{ width: "20%" }}>Position</TableHead>
+                      <TableHead style={{ width: "15%" }}>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedData.map((row) => {
+                      const fullName = `${row.firstName || ""} ${row.lastName || ""}`.trim();
+                      const initials = fullName
+                        .split(" ")
+                        .map((n) => n[0])
+                        .slice(0, 2)
+                        .join("")
+                        .toUpperCase();
+                      const statusConfig = getEmployeeStatusConfig(row.status);
+
+                      return (
+                        <TableRow key={row.id}>
+                          {/* Employee name + avatar */}
+                          <TableCell>
+                            <button
+                              type="button"
+                              className="flex items-center gap-3 text-left"
+                              style={{
+                                background: "none",
+                                border: "none",
+                                cursor: "pointer",
+                                padding: 0,
+                              }}
+                              onClick={() => router.push(`/employees/${row.id}`)}
+                            >
+                              <div
+                                style={{
+                                  width: "36px",
+                                  height: "36px",
+                                  borderRadius: "50%",
+                                  backgroundColor: "var(--hsd-ui-color-navy-50)",
+                                  color: "var(--hsd-ui-color-navy-500)",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  fontSize: "0.75rem",
+                                  fontWeight: 600,
+                                  flexShrink: 0,
+                                }}
+                              >
+                                {initials || "?"}
+                              </div>
+                              <div style={{ minWidth: 0 }}>
+                                <p
+                                  className="hover:underline"
+                                  style={{
+                                    color: "var(--hsd-ui-color-navy-500)",
+                                    fontWeight: 500,
+                                    fontSize: "0.875rem",
+                                    margin: 0,
+                                    overflow: "hidden",
+                                    textOverflow: "ellipsis",
+                                    whiteSpace: "nowrap",
+                                  }}
+                                >
+                                  {fullName || "No Data"}
+                                </p>
+                                <p
+                                  style={{
+                                    fontSize: "0.75rem",
+                                    fontWeight: 400,
+                                    color: "var(--hsd-ui-color-gray-400)",
+                                    margin: 0,
+                                    overflow: "hidden",
+                                    textOverflow: "ellipsis",
+                                    whiteSpace: "nowrap",
+                                  }}
+                                >
+                                  {row.email || "No Data"}
+                                </p>
+                              </div>
+                            </button>
+                          </TableCell>
+
+                          {/* NIK */}
+                          <TableCell>
+                            <span
+                              style={{
+                                fontSize: "0.875rem",
+                                fontWeight: 400,
+                                color: "var(--hsd-ui-color-gray-500)",
+                              }}
+                            >
+                              {row.employeeNik || "No Data"}
+                            </span>
+                          </TableCell>
+
+                          {/* Department */}
+                          <TableCell>
+                            <span
+                              style={{
+                                fontSize: "0.875rem",
+                                fontWeight: 400,
+                                color: "var(--hsd-ui-color-gray-700)",
+                              }}
+                            >
+                              {row.department?.name || "No Data"}
+                            </span>
+                          </TableCell>
+
+                          {/* Position */}
+                          <TableCell>
+                            <span
+                              style={{
+                                fontSize: "0.875rem",
+                                fontWeight: 400,
+                                color: "var(--hsd-ui-color-gray-700)",
+                              }}
+                            >
+                              {row.jobTitle?.name || "No Data"}
+                            </span>
+                          </TableCell>
+
+                          {/* Status */}
+                          <TableCell>
+                            <TuvBadge
+                              text={statusConfig.label}
+                              variant={getStatusTuvVariant(row.status)}
+                              size="sm"
+                              border
+                            />
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              )}
+            </div>
+
+            {/* Pagination */}
+            {totalItems > 0 && (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "12px 16px",
+                  borderTop: "1px solid rgba(120, 134, 127, 0.2)",
+                  borderRadius: "0 0 8px 8px",
                 }}
-                pagination
-                pageSize={pageSize}
-                totalItems={filteredData.length}
-                currentPage={currentPage}
-                onPageChange={setCurrentPage}
-                onPageSizeChange={(size) => {
-                  setPageSize(size);
-                  setCurrentPage(1);
-                }}
-                emptyMessage="No employees found"
-                filters={
-                  <div className="flex flex-wrap items-end gap-3">
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">Status</Label>
-                      <Select
-                        value={statusFilter}
-                        onValueChange={(value) => {
-                          setStatusFilter(value);
-                          setCurrentPage(1);
-                        }}
-                      >
-                        <SelectTrigger className="h-9 w-[180px]">
-                          <SelectValue placeholder="All Statuses" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Statuses</SelectItem>
-                          <SelectItem value="active_all">All Active</SelectItem>
-                          {EMPLOYEE_STATUSES.map((s) => (
-                            <SelectItem key={s.value} value={s.value}>
-                              {s.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    {statusFilter !== "all" && (
-                      <Button
-                        variant="ghost"
-                        className="h-9"
-                        onClick={() => {
-                          setStatusFilter("all");
-                          setCurrentPage(1);
-                        }}
-                      >
-                        Clear Filters
-                      </Button>
-                    )}
-                  </div>
-                }
-                actions={
-                  <Button asChild>
-                    <Link href="/employees/new">
-                      New
-                    </Link>
-                  </Button>
-                }
-              />
+              >
+                {/* Left: "X - Y of Z" | divider | "N Per row" */}
+                <div style={{ display: "flex", alignItems: "center", gap: "24px" }}>
+                  <span
+                    style={{
+                      fontSize: "0.875rem",
+                      fontWeight: 400,
+                      color: "var(--hsd-ui-color-gray-400)",
+                    }}
+                  >
+                    {startItem} - {endItem} of {totalItems}
+                  </span>
+                  <div style={{ width: "1px", height: "32px", backgroundColor: "rgba(120, 134, 127, 0.15)" }} />
+                  <Select
+                    value={String(pageSize)}
+                    onValueChange={(value) => {
+                      setPageSize(Number(value));
+                      setCurrentPage(1);
+                    }}
+                  >
+                    <SelectTrigger
+                      style={{
+                        width: "auto",
+                        minWidth: "145px",
+                        height: "38px",
+                        border: "1px solid rgba(120, 134, 127, 0.2)",
+                        borderRadius: "4px",
+                        fontSize: "0.875rem",
+                        fontWeight: 400,
+                        color: "var(--hsd-ui-color-gray-700)",
+                        padding: "0 12px",
+                        gap: "8px",
+                        backgroundColor: "#fff",
+                      }}
+                    >
+                      <SelectValue placeholder="10 Per row" />
+                    </SelectTrigger>
+                    <SelectContent
+                      side="top"
+                      style={{
+                        minWidth: "140px",
+                        borderRadius: "8px",
+                        fontSize: "0.875rem",
+                      }}
+                    >
+                      {[5, 10, 20, 50, 100].map((size) => (
+                        <SelectItem
+                          key={size}
+                          value={String(size)}
+                          style={{ fontSize: "0.875rem", padding: "8px 12px" }}
+                        >
+                          {size} Per row
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Right: page numbers */}
+                <div style={{ display: "flex", alignItems: "center", gap: "0" }}>
+                  {(() => {
+                    const buildPageItems = (): (number | "dots")[] => {
+                      if (totalPages <= 7) {
+                        return Array.from({ length: totalPages }, (_, i) => i + 1);
+                      }
+                      const middle = Array.from(
+                        { length: Math.min(3, totalPages - 2) },
+                        (_, i) => Math.max(2, currentPage - 1) + i
+                      ).filter((n) => n >= 2 && n <= totalPages - 1);
+
+                      return [
+                        1,
+                        ...(middle[0] > 2 ? ["dots" as const] : []),
+                        ...middle,
+                        ...(middle[middle.length - 1] < totalPages - 1 ? ["dots" as const] : []),
+                        totalPages,
+                      ];
+                    };
+                    const items = buildPageItems();
+
+                    const pageBtn = (num: number | "dots", idx: number) => {
+                      if (num === "dots") {
+                        return (
+                          <span
+                            key={`dots-${idx}`}
+                            style={{
+                              width: "36px",
+                              height: "36px",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              fontSize: "0.875rem",
+                              color: "var(--hsd-ui-color-gray-700)",
+                            }}
+                          >
+                            ...
+                          </span>
+                        );
+                      }
+                      const isActive = currentPage === num;
+                      return (
+                        <button
+                          key={num}
+                          onClick={() => setCurrentPage(num)}
+                          style={{
+                            width: "36px",
+                            height: "36px",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            borderRadius: "6px",
+                            border: "none",
+                            cursor: "pointer",
+                            fontSize: "0.875rem",
+                            fontWeight: isActive ? 500 : 400,
+                            backgroundColor: isActive ? "var(--hsd-ui-color-navy-500)" : "transparent",
+                            color: isActive ? "#fff" : "var(--hsd-ui-color-gray-900)",
+                          }}
+                        >
+                          {num}
+                        </button>
+                      );
+                    };
+
+                    return (
+                      <>
+                        <button
+                          onClick={() => currentPage > 1 && setCurrentPage(currentPage - 1)}
+                          disabled={currentPage === 1}
+                          style={{
+                            width: "36px",
+                            height: "36px",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            border: "none",
+                            background: "none",
+                            cursor: currentPage === 1 ? "default" : "pointer",
+                            color: currentPage === 1 ? "var(--hsd-ui-color-gray-300)" : "var(--hsd-ui-color-gray-700)",
+                            fontSize: "1.25rem",
+                          }}
+                        >
+                          &#8249;
+                        </button>
+                        {items.map((item, idx) => pageBtn(item, idx))}
+                        <button
+                          onClick={() => currentPage < totalPages && setCurrentPage(currentPage + 1)}
+                          disabled={currentPage === totalPages}
+                          style={{
+                            width: "36px",
+                            height: "36px",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            border: "none",
+                            background: "none",
+                            cursor: currentPage === totalPages ? "default" : "pointer",
+                            color: currentPage === totalPages ? "var(--hsd-ui-color-gray-300)" : "var(--hsd-ui-color-gray-700)",
+                            fontSize: "1.25rem",
+                          }}
+                        >
+                          &#8250;
+                        </button>
+                      </>
+                    );
+                  })()}
+                </div>
+              </div>
             )}
           </div>
         </div>

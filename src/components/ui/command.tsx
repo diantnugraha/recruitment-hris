@@ -39,14 +39,62 @@ const CommandInput = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive.Input>,
   React.ComponentPropsWithoutRef<typeof CommandPrimitive.Input>
 >(({ className, ...props }, ref) => (
-  <div className="flex items-center border-b px-3" cmdk-input-wrapper="">
-    <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+  <div
+    cmdk-input-wrapper=""
+    style={{
+      display: "flex",
+      alignItems: "center",
+      gap: "8px",
+      margin: "8px",
+      padding: "0 10px",
+      height: "38px",
+      border: "1px solid rgba(120, 134, 127, 0.2)",
+      borderRadius: "4px",
+      backgroundColor: "#fff",
+    }}
+  >
+    <Search
+      style={{
+        width: "16px",
+        height: "16px",
+        color: "var(--hsd-ui-color-gray-400)",
+        flexShrink: 0,
+      }}
+    />
     <CommandPrimitive.Input
       ref={ref}
       className={cn(
-        "flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50",
+        "flex h-full w-full bg-transparent text-sm outline-none disabled:cursor-not-allowed disabled:opacity-50",
         className
       )}
+      style={{
+        fontFamily: "'Poppins', sans-serif",
+        fontWeight: 400,
+        color: "#232933",
+        border: "none",
+        boxShadow: "none",
+        height: "auto",
+        borderRadius: 0,
+      }}
+      onFocus={(e) => {
+        // Move focus ring to parent wrapper
+        e.currentTarget.style.boxShadow = "none";
+        e.currentTarget.style.border = "none";
+        const wrapper = e.currentTarget.closest("[cmdk-input-wrapper]") as HTMLElement;
+        if (wrapper) {
+          wrapper.style.borderColor = "#8a98ea";
+          wrapper.style.boxShadow = "0px 0px 0px 2px rgba(138, 152, 234, 0.32)";
+        }
+        props.onFocus?.(e);
+      }}
+      onBlur={(e) => {
+        const wrapper = e.currentTarget.closest("[cmdk-input-wrapper]") as HTMLElement;
+        if (wrapper) {
+          wrapper.style.borderColor = "rgba(120, 134, 127, 0.2)";
+          wrapper.style.boxShadow = "none";
+        }
+        props.onBlur?.(e);
+      }}
       {...props}
     />
   </div>

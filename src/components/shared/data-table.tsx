@@ -103,18 +103,25 @@ export function DataTable<T extends object>({
   };
 
   return (
-    <div className="space-y-4">
+    <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
       {/* Toolbar */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-1 items-center gap-2">
           {searchable && (
             <div className="relative w-full max-w-sm">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Search
+                className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2"
+                style={{ color: "var(--hsd-ui-color-gray-400)" }}
+              />
               <Input
                 placeholder={searchPlaceholder}
                 value={searchValue}
                 onChange={(e) => handleSearch(e.target.value)}
                 className="pl-9"
+                style={{
+                  borderColor: "rgba(var(--hsd-ui-raw-color-gray-500), 0.2)",
+                  borderRadius: "8px",
+                }}
               />
               {searchValue && (
                 <Button
@@ -131,9 +138,12 @@ export function DataTable<T extends object>({
           {filters && (
             <Button
               variant="outline"
-             
               onClick={() => setShowFilters(!showFilters)}
               className={cn(showFilters && "bg-secondary")}
+              style={{
+                borderColor: "rgba(var(--hsd-ui-raw-color-gray-500), 0.2)",
+                borderRadius: "8px",
+              }}
             >
               <SlidersHorizontal />
               Filters
@@ -145,18 +155,35 @@ export function DataTable<T extends object>({
 
       {/* Filters */}
       {showFilters && filters && (
-        <div className="rounded-lg border p-4">
+        <div
+          style={{
+            borderRadius: "8px",
+            border: "1px solid var(--hsd-ui-color-gray-200)",
+            padding: "16px",
+          }}
+        >
           {filters}
         </div>
       )}
 
-      {/* Table */}
-      <div className={cn("rounded-lg border bg-card overflow-x-auto", tableClassName)}>
+      {/* Table — TUV simple variant: white bg, border, rounded */}
+      <div
+        className={cn("overflow-x-auto", tableClassName)}
+        style={{
+          borderRadius: "8px",
+          border: "1px solid rgba(120, 134, 127, 0.2)",
+          backgroundColor: "#fff",
+        }}
+      >
         <Table>
           <TableHeader>
-            <TableRow className="hover:bg-transparent">
+            <TableRow
+              onMouseOver={undefined}
+              onMouseOut={undefined}
+              style={{ borderBottom: "1px solid rgba(120, 134, 127, 0.2)", backgroundColor: "#F8F9FB" }}
+            >
               {columns.map((column) => (
-                <TableHead key={column.key} className={cn("font-medium", column.className)}>
+                <TableHead key={column.key} className={column.className}>
                   {column.label}
                 </TableHead>
               ))}
@@ -167,7 +194,10 @@ export function DataTable<T extends object>({
               <TableRow>
                 <TableCell colSpan={columns.length} className="h-32 text-center">
                   <div className="flex items-center justify-center">
-                    <div className="h-6 w-6 animate-spin rounded-full border-2 border-foreground border-t-transparent" />
+                    <div
+                      className="h-6 w-6 animate-spin rounded-full border-2 border-t-transparent"
+                      style={{ borderColor: "var(--hsd-ui-color-navy-500)", borderTopColor: "transparent" }}
+                    />
                   </div>
                 </TableCell>
               </TableRow>
@@ -175,7 +205,8 @@ export function DataTable<T extends object>({
               <TableRow>
                 <TableCell
                   colSpan={columns.length}
-                  className="h-32 text-center text-muted-foreground"
+                  className="h-32 text-center"
+                  style={{ color: "var(--hsd-ui-color-gray-500)" }}
                 >
                   {emptyMessage}
                 </TableCell>
@@ -200,13 +231,22 @@ export function DataTable<T extends object>({
       {/* Pagination */}
       {pagination && totalItems > 0 && (
         <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
-          <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+          <div
+            className="flex flex-wrap items-center gap-2"
+            style={{ fontSize: "0.875rem", color: "var(--hsd-ui-color-gray-500)" }}
+          >
             <span>Rows per page</span>
             <Select
               value={String(pageSize)}
               onValueChange={(value) => onPageSizeChange?.(Number(value))}
             >
-              <SelectTrigger className="h-8 w-[80px] px-3">
+              <SelectTrigger
+                className="h-8 w-[80px] px-3"
+                style={{
+                  borderColor: "rgba(var(--hsd-ui-raw-color-gray-500), 0.2)",
+                  borderRadius: "6px",
+                }}
+              >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="min-w-0">
@@ -227,6 +267,7 @@ export function DataTable<T extends object>({
               size="icon-sm"
               onClick={() => onPageChange?.(1)}
               disabled={currentPage === 1}
+              style={{ borderColor: "rgba(var(--hsd-ui-raw-color-gray-500), 0.2)", borderRadius: "6px" }}
             >
               <ChevronsLeft />
             </Button>
@@ -235,6 +276,7 @@ export function DataTable<T extends object>({
               size="icon-sm"
               onClick={() => onPageChange?.(currentPage - 1)}
               disabled={currentPage === 1}
+              style={{ borderColor: "rgba(var(--hsd-ui-raw-color-gray-500), 0.2)", borderRadius: "6px" }}
             >
               <ChevronLeft />
             </Button>
@@ -256,6 +298,13 @@ export function DataTable<T extends object>({
                     variant={currentPage === pageNum ? "default" : "ghost"}
                     size="icon-sm"
                     onClick={() => onPageChange?.(pageNum)}
+                    style={currentPage === pageNum ? {
+                      backgroundColor: "var(--hsd-ui-color-navy-500)",
+                      color: "#fff",
+                      borderRadius: "6px",
+                    } : {
+                      borderRadius: "6px",
+                    }}
                   >
                     {pageNum}
                   </Button>
@@ -267,6 +316,7 @@ export function DataTable<T extends object>({
               size="icon-sm"
               onClick={() => onPageChange?.(currentPage + 1)}
               disabled={currentPage === totalPages}
+              style={{ borderColor: "rgba(var(--hsd-ui-raw-color-gray-500), 0.2)", borderRadius: "6px" }}
             >
               <ChevronRight />
             </Button>
@@ -275,6 +325,7 @@ export function DataTable<T extends object>({
               size="icon-sm"
               onClick={() => onPageChange?.(totalPages)}
               disabled={currentPage === totalPages}
+              style={{ borderColor: "rgba(var(--hsd-ui-raw-color-gray-500), 0.2)", borderRadius: "6px" }}
             >
               <ChevronsRight />
             </Button>

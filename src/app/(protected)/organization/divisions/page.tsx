@@ -1,18 +1,31 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import {
-  Pencil,
-  Trash2,
   Loader2,
+  Search,
 } from "lucide-react";
 
 import { Header } from "@/components/layout/header";
 import { PageContainer } from "@/components/layout/page-container";
-import { DataTable } from "@/components/shared/data-table";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -21,48 +34,36 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-
+import { TuvBadge } from "@/components/shared/tuv-badge";
 import { useOrganizationStore } from "@/stores/organization-store";
-import { divisionService, CreateDivisionRequest } from "@/services/division.service";
+import { divisionService } from "@/services/division.service";
+import type { CreateDivisionRequest } from "@/services/division.service";
 import { obsService } from "@/services/obs.service";
 import { showToast } from "@/lib/utils/toast-messages";
-import { Division } from "@/types";
-
+import type { Organization } from "@/types";
 
 interface FormData {
   name: string;
   code: string;
   description: string;
+  organizationId: string;
 }
 
 const initialFormData: FormData = {
   name: "",
   code: "",
   description: "",
+  organizationId: "",
 };
 
 export default function DivisionsPage() {
+  const router = useRouter();
   const {
     divisions,
     setDivisions,
     addDivision,
-    updateDivision,
-    deleteDivision,
-    organizations,
-    setOrganizations,
     isLoading,
     setLoading,
   } = useOrganizationStore();
@@ -72,16 +73,11 @@ export default function DivisionsPage() {
   const [totalItems, setTotalItems] = React.useState(0);
   const [searchQuery, setSearchQuery] = React.useState("");
 
-  // Dialog states
-  const [isDetailDialogOpen, setIsDetailDialogOpen] = React.useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false);
-  const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
-  const [selectedDivision, setSelectedDivision] = React.useState<Division | null>(null);
   const [formData, setFormData] = React.useState<FormData>(initialFormData);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [organizations, setOrganizations] = React.useState<Organization[]>([]);
 
-  // Fetch data on mount and when pagination changes
   React.useEffect(() => {
     fetchDivisions(currentPage, pageSize);
   }, [currentPage, pageSize]);
@@ -92,9 +88,7 @@ export default function DivisionsPage() {
 
   const fetchDivisions = async (page: number, limit: number) => {
     setLoading(true);
-
     const response = await divisionService.getAll(page, limit);
-
     if (response.success && response.data) {
       const divData = response.data.data || [];
       setDivisions(divData);
@@ -103,19 +97,16 @@ export default function DivisionsPage() {
       showToast.fetchError("divisions", response.message);
       setDivisions([]);
     }
-
     setLoading(false);
   };
 
   const fetchOrganizations = async () => {
     const response = await obsService.fetchAll();
     if (response.success && response.data) {
-      const orgData = Array.isArray(response.data) ? response.data : [];
-      setOrganizations(orgData);
+      setOrganizations(response.data);
     }
   };
 
-  // Client-side search on current page data
   const filteredData = React.useMemo(() => {
     const divArray = Array.isArray(divisions) ? divisions : [];
     if (!searchQuery) return divArray;
@@ -123,177 +114,408 @@ export default function DivisionsPage() {
     return divArray.filter(
       (div) =>
         div.name.toLowerCase().includes(query) ||
-        div.code.toLowerCase().includes(query) ||
+        (div.code && div.code.toLowerCase().includes(query)) ||
         (div.description && div.description.toLowerCase().includes(query))
     );
   }, [searchQuery, divisions]);
 
-  const handleDetailClick = (div: Division) => {
-    setSelectedDivision(div);
-    setIsDetailDialogOpen(true);
-  };
+  const totalPages = Math.ceil(totalItems / pageSize);
+  const startItem = (currentPage - 1) * pageSize + 1;
+  const endItem = Math.min(currentPage * pageSize, totalItems);
 
   const handleAddClick = () => {
     setFormData(initialFormData);
     setIsAddDialogOpen(true);
   };
 
-  const handleEditClick = (div: Division) => {
-    setSelectedDivision(div);
-    setFormData({
-      name: div.name,
-      code: div.code,
-      description: div.description || "",
-    });
-    setIsEditDialogOpen(true);
-  };
-
-  const handleDeleteClick = (div: Division) => {
-    setSelectedDivision(div);
-    setIsDeleteDialogOpen(true);
-  };
-
   const handleCreate = async () => {
     setIsSubmitting(true);
-
     const data: CreateDivisionRequest = {
       name: formData.name,
       code: formData.code,
       description: formData.description || undefined,
-      organizationId: organizations[0]?.id || "",
+      organizationId: formData.organizationId,
     };
-
     const response = await divisionService.create(data);
-
     if (response.success && response.data) {
       addDivision(response.data);
       setIsAddDialogOpen(false);
       setFormData(initialFormData);
       setTotalItems((prev) => prev + 1);
-
       showToast.created("Division");
     } else {
       showToast.createError("division", response.message);
     }
-
     setIsSubmitting(false);
   };
 
-  const handleUpdate = async () => {
-    if (!selectedDivision) return;
-
-    setIsSubmitting(true);
-
-    const response = await divisionService.update(selectedDivision.id, {
-      name: formData.name,
-      code: formData.code,
-      description: formData.description || undefined,
-      organizationId: selectedDivision.organizationId,
-    });
-
-    if (response.success && response.data) {
-      updateDivision(selectedDivision.id, response.data);
-      setIsEditDialogOpen(false);
-      setSelectedDivision(null);
-      setFormData(initialFormData);
-      showToast.updated("Division");
-    } else {
-      showToast.updateError("division", response.message);
-    }
-
-    setIsSubmitting(false);
-  };
-
-  const handleDelete = async () => {
-    if (!selectedDivision) return;
-
-    setIsSubmitting(true);
-
-    const response = await divisionService.delete(selectedDivision.id);
-
-    if (response.success) {
-      deleteDivision(selectedDivision.id);
-      setIsDeleteDialogOpen(false);
-      setSelectedDivision(null);
-      setTotalItems((prev) => prev - 1);
-
-      showToast.deleted("Division");
-    } else {
-      showToast.deleteError("division", response.message);
-    }
-
-    setIsSubmitting(false);
-  };
-
-  const columns = [
-    {
-      key: "name",
-      label: "Division",
-      className: "w-1/2",
-      render: (row: Division) => (
-        <button
-          type="button"
-          className="font-medium text-accent hover:underline text-left"
-          onClick={() => handleDetailClick(row)}
-        >
-          {row.name}
-        </button>
-      ),
-    },
-    {
-      key: "code",
-      label: "Code",
-      className: "w-1/2",
-      render: (row: Division) => (
-        <Badge variant="secondary">{row.code}</Badge>
-      ),
-    },
-  ];
 
   return (
     <>
-      <Header title="Organization" />
+      <Header />
       <PageContainer>
-        <div className="space-y-6">
+        {/* 1. Page Title Row — title + count + action button */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: "24px",
+          }}
+        >
           <div>
-            <h2 className="text-lg font-semibold">Divisions</h2>
-            <p className="text-sm text-muted-foreground">Manage divisions within your organization structure.</p>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <h1
+                style={{
+                  fontSize: "1.5rem",
+                  fontWeight: 600,
+                  color: "var(--hsd-ui-color-gray-900)",
+                  margin: 0,
+                }}
+              >
+                Divisions
+              </h1>
+              <span
+                style={{
+                  backgroundColor: "var(--hsd-ui-color-blue-50)",
+                  color: "var(--hsd-ui-color-blue-600)",
+                  padding: "2px 10px",
+                  borderRadius: "4px",
+                  fontSize: "0.75rem",
+                  fontWeight: 500,
+                  border: "1px solid var(--hsd-ui-color-blue-200)",
+                }}
+              >
+                {totalItems}
+              </span>
+            </div>
+            <p
+              style={{
+                fontSize: "0.875rem",
+                fontWeight: 300,
+                color: "var(--hsd-ui-color-gray-500)",
+                margin: "4px 0 0",
+              }}
+            >
+              Manage divisions within your organization structure.
+            </p>
+          </div>
+          <Button
+            onClick={handleAddClick}
+            style={{
+              backgroundColor: "var(--hsd-ui-background-color-primary)",
+              borderColor: "var(--hsd-ui-border-color-primary)",
+              color: "var(--hsd-ui-text-color-primary)",
+              borderRadius: "4px",
+              height: "38px",
+              padding: "0 16px",
+              fontSize: "0.875rem",
+              fontWeight: 500,
+            }}
+          >
+            Create Division
+          </Button>
+        </div>
+
+        {/* 2. Outer wrapper — white bg, rounded */}
+        <div
+          style={{
+            backgroundColor: "#fff",
+            borderRadius: "8px",
+            padding: "16px",
+            border: "1px solid rgba(120, 134, 127, 0.2)",
+          }}
+        >
+          {/* Search — right aligned */}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              marginBottom: "16px",
+            }}
+          >
+            <div className="relative" style={{ width: "280px" }}>
+              <Search
+                className="absolute left-3 top-1/2 -translate-y-1/2"
+                style={{ width: "16px", height: "16px", color: "var(--hsd-ui-color-gray-400)" }}
+              />
+              <Input
+                placeholder="Search divisions"
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="pl-9"
+                style={{
+                  borderColor: "rgba(120, 134, 127, 0.2)",
+                  borderRadius: "4px",
+                  backgroundColor: "#fff",
+                  fontSize: "0.875rem",
+                }}
+              />
+            </div>
           </div>
 
+          {/* Inner white card — table + pagination */}
+          <div
+            style={{
+              backgroundColor: "#fff",
+              border: "1px solid rgba(120, 134, 127, 0.2)",
+              borderRadius: "8px",
+              overflow: "hidden",
+            }}
+          >
           {/* Table */}
+          <div>
           {isLoading ? (
-            <Card>
-              <CardContent className="flex items-center justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-              </CardContent>
-            </Card>
+            <div style={{ display: "flex", justifyContent: "center", alignItems: "center", padding: "48px 0" }}>
+              <Loader2
+                className="animate-spin"
+                style={{ width: "24px", height: "24px", color: "var(--hsd-ui-color-navy-500)" }}
+              />
+            </div>
+          ) : filteredData.length === 0 ? (
+            <div
+              style={{
+                textAlign: "center",
+                padding: "48px 0",
+                color: "var(--hsd-ui-color-gray-500)",
+                fontSize: "0.875rem",
+              }}
+            >
+              No divisions found
+            </div>
           ) : (
-            <DataTable
-              data={filteredData || []}
-              columns={columns}
-              searchable
-              searchPlaceholder="Search by name, code, or description..."
-              onSearch={(value) => {
-                setSearchQuery(value);
-                setCurrentPage(1);
-              }}
-              pagination
-              pageSize={pageSize}
-              totalItems={totalItems}
-              currentPage={currentPage}
-              onPageChange={setCurrentPage}
-              onPageSizeChange={(size) => {
-                setPageSize(size);
-                setCurrentPage(1);
-              }}
-              emptyMessage="No divisions found"
-              actions={
-                <Button onClick={handleAddClick}>
-                  New
-                </Button>
-              }
-            />
+            <Table>
+              <TableHeader>
+                <TableRow
+                  onMouseOver={undefined}
+                  onMouseOut={undefined}
+                  style={{ backgroundColor: "transparent", borderBottom: "1px solid rgba(120, 134, 127, 0.2)" }}
+                >
+                  <TableHead className="w-1/2">Division</TableHead>
+                  <TableHead className="w-1/2">Code</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredData.map((div) => (
+                  <TableRow key={div.id}>
+                    <TableCell>
+                      <button
+                        type="button"
+                        className="hover:underline text-left"
+                        style={{
+                          color: "var(--hsd-ui-color-navy-500)",
+                          fontWeight: 500,
+                          fontSize: "0.875rem",
+                          background: "none",
+                          border: "none",
+                          cursor: "pointer",
+                          padding: 0,
+                        }}
+                        onClick={() => router.push(`/organization/divisions/${div.id}`)}
+                      >
+                        {div.name}
+                      </button>
+                    </TableCell>
+                    <TableCell>
+                      <TuvBadge
+                        text={div.code || "-"}
+                        variant="info"
+                        size="sm"
+                        border
+                      />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           )}
+          </div>
+
+          {/* Pagination */}
+          {totalItems > 0 && (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              padding: "12px 16px",
+              borderTop: "1px solid rgba(120, 134, 127, 0.2)",
+              borderRadius: "0 0 8px 8px",
+            }}
+          >
+            {/* Left: "X - Y of Z" | divider | "N Per row" */}
+            <div style={{ display: "flex", alignItems: "center", gap: "24px" }}>
+              <span
+                style={{
+                  fontSize: "0.875rem",
+                  fontWeight: 400,
+                  color: "var(--hsd-ui-color-gray-400)",
+                }}
+              >
+                {startItem} - {endItem} of {totalItems}
+              </span>
+              <div style={{ width: "1px", height: "32px", backgroundColor: "rgba(120, 134, 127, 0.15)" }} />
+              <Select
+                value={String(pageSize)}
+                onValueChange={(value) => {
+                  setPageSize(Number(value));
+                  setCurrentPage(1);
+                }}
+              >
+                <SelectTrigger
+                  style={{
+                    width: "auto",
+                    minWidth: "145px",
+                    height: "38px",
+                    border: "1px solid rgba(120, 134, 127, 0.2)",
+                    borderRadius: "4px",
+                    fontSize: "0.875rem",
+                    fontWeight: 400,
+                    color: "var(--hsd-ui-color-gray-700)",
+                    padding: "0 12px",
+                    gap: "8px",
+                    backgroundColor: "#fff",
+                  }}
+                >
+                  <SelectValue placeholder="10 Per row" />
+                </SelectTrigger>
+                <SelectContent
+                  side="top"
+                  style={{
+                    minWidth: "140px",
+                    borderRadius: "8px",
+                    fontSize: "0.875rem",
+                  }}
+                >
+                  {[5, 10, 20, 50, 100].map((size) => (
+                    <SelectItem
+                      key={size}
+                      value={String(size)}
+                      style={{ fontSize: "0.875rem", padding: "8px 12px" }}
+                    >
+                      {size} Per row
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Right: page numbers */}
+            <div style={{ display: "flex", alignItems: "center", gap: "0" }}>
+              {(() => {
+                // Build page items with dots like TUV Pagination
+                const buildPageItems = (): (number | "dots")[] => {
+                  if (totalPages <= 7) {
+                    return Array.from({ length: totalPages }, (_, i) => i + 1);
+                  }
+                  const middle = Array.from(
+                    { length: Math.min(3, totalPages - 2) },
+                    (_, i) => Math.max(2, currentPage - 1) + i
+                  ).filter((n) => n >= 2 && n <= totalPages - 1);
+
+                  return [
+                    1,
+                    ...(middle[0] > 2 ? ["dots" as const] : []),
+                    ...middle,
+                    ...(middle[middle.length - 1] < totalPages - 1 ? ["dots" as const] : []),
+                    totalPages,
+                  ];
+                };
+                const items = buildPageItems();
+
+                const pageBtn = (num: number | "dots", idx: number) => {
+                  if (num === "dots") {
+                    return (
+                      <span
+                        key={`dots-${idx}`}
+                        style={{
+                          width: "36px",
+                          height: "36px",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: "0.875rem",
+                          color: "var(--hsd-ui-color-gray-700)",
+                        }}
+                      >
+                        ...
+                      </span>
+                    );
+                  }
+                  const isActive = currentPage === num;
+                  return (
+                    <button
+                      key={num}
+                      onClick={() => setCurrentPage(num)}
+                      style={{
+                        width: "36px",
+                        height: "36px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        borderRadius: "6px",
+                        border: "none",
+                        cursor: "pointer",
+                        fontSize: "0.875rem",
+                        fontWeight: isActive ? 500 : 400,
+                        backgroundColor: isActive ? "var(--hsd-ui-color-navy-500)" : "transparent",
+                        color: isActive ? "#fff" : "var(--hsd-ui-color-gray-900)",
+                      }}
+                    >
+                      {num}
+                    </button>
+                  );
+                };
+
+                return (
+                  <>
+                    <button
+                      onClick={() => currentPage > 1 && setCurrentPage(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      style={{
+                        width: "36px",
+                        height: "36px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        border: "none",
+                        background: "none",
+                        cursor: currentPage === 1 ? "default" : "pointer",
+                        color: currentPage === 1 ? "var(--hsd-ui-color-gray-300)" : "var(--hsd-ui-color-gray-700)",
+                        fontSize: "1.25rem",
+                      }}
+                    >
+                      ‹
+                    </button>
+                    {items.map((item, idx) => pageBtn(item, idx))}
+                    <button
+                      onClick={() => currentPage < totalPages && setCurrentPage(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                      style={{
+                        width: "36px",
+                        height: "36px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        border: "none",
+                        background: "none",
+                        cursor: currentPage === totalPages ? "default" : "pointer",
+                        color: currentPage === totalPages ? "var(--hsd-ui-color-gray-300)" : "var(--hsd-ui-color-gray-700)",
+                        fontSize: "1.25rem",
+                      }}
+                    >
+                      ›
+                    </button>
+                  </>
+                );
+              })()}
+            </div>
+          </div>
+          )}
+          </div>
         </div>
 
         {/* Add Dialog */}
@@ -301,218 +523,49 @@ export default function DivisionsPage() {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>New Division</DialogTitle>
-              <DialogDescription>
-                Create a new division in your organization.
-              </DialogDescription>
+              <DialogDescription>Create a new division.</DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="space-y-1.5">
                 <Label htmlFor="name">Name *</Label>
-                <Input
-                  id="name"
-                  placeholder="Enter division name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                />
+                <Input id="name" placeholder="Enter division name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="code">Code *</Label>
-                <Input
-                  id="code"
-                  placeholder="Enter division code"
-                  value={formData.code}
-                  onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                />
+                <Input id="code" placeholder="Enter division code" value={formData.code} onChange={(e) => setFormData({ ...formData, code: e.target.value })} />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="organizationId">Organization *</Label>
+                <Select
+                  value={formData.organizationId}
+                  onValueChange={(value) => setFormData({ ...formData, organizationId: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select organization" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {organizations.map((org) => (
+                      <SelectItem key={org.id} value={org.id}>
+                        {org.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  placeholder="Enter description"
-                  value={formData.description}
-                  onChange={(e) =>
-                    setFormData({ ...formData, description: e.target.value })
-                  }
-                />
+                <Textarea id="description" placeholder="Enter description" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} />
               </div>
             </div>
             <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => setIsAddDialogOpen(false)}
-                disabled={isSubmitting}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleCreate}
-                disabled={isSubmitting || !formData.name || !formData.code}
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="animate-spin" />
-                    Creating...
-                  </>
-                ) : (
-                  "Create Division"
-                )}
+              <Button variant="outline" onClick={() => setIsAddDialogOpen(false)} disabled={isSubmitting} style={{ borderRadius: "4px", height: "38px", padding: "0 16px", fontSize: "0.875rem", fontWeight: 500, borderColor: "rgba(120,134,127,0.2)" }}>Cancel</Button>
+              <Button onClick={handleCreate} disabled={isSubmitting || !formData.name || !formData.code || !formData.organizationId} style={{ backgroundColor: "var(--hsd-ui-background-color-primary)", borderColor: "var(--hsd-ui-border-color-primary)", color: "var(--hsd-ui-text-color-primary)", borderRadius: "4px", height: "38px", padding: "0 16px", fontSize: "0.875rem", fontWeight: 500 }}>
+                {isSubmitting ? (<><Loader2 className="animate-spin" />Creating...</>) : "Create Division"}
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
-        {/* Edit Dialog */}
-        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Edit Division</DialogTitle>
-              <DialogDescription>
-                Update the division details.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="edit-name">Name *</Label>
-                <Input
-                  id="edit-name"
-                  placeholder="Enter division name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="edit-code">Code *</Label>
-                <Input
-                  id="edit-code"
-                  placeholder="Enter division code"
-                  value={formData.code}
-                  onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="edit-description">Description</Label>
-                <Textarea
-                  id="edit-description"
-                  placeholder="Enter description"
-                  value={formData.description}
-                  onChange={(e) =>
-                    setFormData({ ...formData, description: e.target.value })
-                  }
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => setIsEditDialogOpen(false)}
-                disabled={isSubmitting}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleUpdate}
-                disabled={isSubmitting || !formData.name || !formData.code}
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  "Save Changes"
-                )}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Detail Dialog */}
-        <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Division Detail</DialogTitle>
-              <DialogDescription>
-                Viewing division information.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">Name</p>
-                  <p className="text-sm font-medium">{selectedDivision?.name || "No Data"}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">Code</p>
-                  <p className="text-sm font-medium">{selectedDivision?.code || "No Data"}</p>
-                </div>
-              </div>
-              {selectedDivision?.description && (
-                <div className="space-y-1 border-t pt-3">
-                  <p className="text-xs text-muted-foreground">Description</p>
-                  <p className="text-sm text-muted-foreground">{selectedDivision.description}</p>
-                </div>
-              )}
-            </div>
-            <DialogFooter className="flex-row gap-2 sm:justify-end">
-              <Button
-                variant="ghost"
-                className="mr-auto text-destructive hover:text-destructive hover:bg-destructive/10"
-                onClick={() => {
-                  setIsDetailDialogOpen(false);
-                  if (selectedDivision) handleDeleteClick(selectedDivision);
-                }}
-              >
-                <Trash2 className="h-4 w-4" />
-                Delete
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => setIsDetailDialogOpen(false)}
-              >
-                Close
-              </Button>
-              <Button
-                onClick={() => {
-                  setIsDetailDialogOpen(false);
-                  if (selectedDivision) handleEditClick(selectedDivision);
-                }}
-              >
-                <Pencil className="h-4 w-4" />
-                Edit
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Delete Confirmation Dialog */}
-        <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Delete Division</AlertDialogTitle>
-              <AlertDialogDescription>
-                Are you sure you want to delete &quot;{selectedDivision?.name}&quot;? This
-                action cannot be undone.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel disabled={isSubmitting}>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={handleDelete}
-                disabled={isSubmitting}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="animate-spin" />
-                    Deleting...
-                  </>
-                ) : (
-                  "Delete"
-                )}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
       </PageContainer>
     </>
   );

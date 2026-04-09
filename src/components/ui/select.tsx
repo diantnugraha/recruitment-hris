@@ -15,13 +15,23 @@ const SelectValue = SelectPrimitive.Value;
 const SelectTrigger = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Trigger>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Trigger>
->(({ className, children, ...props }, ref) => (
+>(({ className, children, style, ...props }, ref) => (
   <SelectPrimitive.Trigger
     ref={ref}
     className={cn(
-      "flex h-10 w-full items-center gap-2 rounded-lg border border-input bg-background px-4 py-2 text-sm ring-offset-background transition-all duration-200 placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+      "flex w-full items-center gap-2 px-3 py-2 text-sm transition-all duration-200 placeholder:text-muted-foreground focus:outline-none disabled:cursor-not-allowed disabled:opacity-50",
       className
     )}
+    style={{
+      height: "38px",
+      borderRadius: "4px",
+      border: "1px solid rgba(120, 134, 127, 0.2)",
+      backgroundColor: "#fff",
+      fontFamily: "'Poppins', sans-serif",
+      fontWeight: 400,
+      color: "#232933",
+      ...style,
+    }}
     {...props}
   >
     <span
@@ -86,21 +96,21 @@ const SelectContent = React.forwardRef<
     <SelectPrimitive.Content
       ref={ref}
       className={cn(
-        "relative z-50 max-h-96 min-w-[8rem] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+        "relative z-50 max-h-96 overflow-y-auto shadow-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
         position === "popper" &&
           "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
         className
       )}
+      style={{
+        backgroundColor: "#fff",
+      }}
       position={position}
+      sideOffset={4}
       {...props}
     >
       <SelectScrollUpButton />
       <SelectPrimitive.Viewport
-        className={cn(
-          "p-1 space-y-0.5",
-          position === "popper" &&
-            "h-[var(--radix-select-trigger-height)] w-[var(--radix-select-trigger-width)]"
-        )}
+        className="p-1.5 space-y-0.5 w-full"
       >
         {children}
       </SelectPrimitive.Viewport>
@@ -129,9 +139,14 @@ const SelectItem = React.forwardRef<
   <SelectPrimitive.Item
     ref={ref}
     className={cn(
-      "relative flex w-full cursor-default select-none items-center rounded-md py-1.5 px-3 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[state=checked]:bg-accent data-[state=checked]:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      "relative flex w-full cursor-default select-none items-center py-2 px-3 text-sm outline-none focus:bg-accent/15 focus:text-accent-foreground data-[state=checked]:bg-accent/15 data-[state=checked]:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
       className
     )}
+    style={{
+      borderRadius: "4px",
+      color: "var(--hsd-ui-color-gray-900)",
+      fontWeight: 400,
+    }}
     {...props}
   >
     <SelectPrimitive.ItemText className="truncate">{children}</SelectPrimitive.ItemText>

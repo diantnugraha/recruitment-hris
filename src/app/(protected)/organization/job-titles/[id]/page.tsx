@@ -4,26 +4,21 @@ import * as React from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
-  ArrowLeft,
+  ChevronLeft,
   Pencil,
   Trash2,
   Loader2,
   Briefcase,
   ClipboardList,
   CheckCircle2,
-  Building2,
   FileText,
-  Layers,
-  GitBranch,
-  Tag,
   Info,
 } from "lucide-react";
 
 import { Header } from "@/components/layout/header";
 import { PageContainer } from "@/components/layout/page-container";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
+import { TuvBadge } from "@/components/shared/tuv-badge";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -41,64 +36,115 @@ import { LexicalRenderer, hasLexicalContent } from "@/components/shared/lexical-
 import { showToast } from "@/lib/utils/toast-messages";
 import { JobTitle, JobLevel } from "@/types";
 
-// --- Reusable sub-components (module level) ---
+// --- TUV button style helpers (from Job Level detail) ---
+
+const btnPrimary = {
+  backgroundColor: "var(--hsd-ui-background-color-primary)",
+  borderColor: "var(--hsd-ui-border-color-primary)",
+  color: "var(--hsd-ui-text-color-primary)",
+  borderRadius: "4px",
+  height: "38px",
+  padding: "0 16px",
+  fontSize: "0.875rem",
+  fontWeight: 500,
+} as const;
+
+const btnSecondary = {
+  borderRadius: "4px",
+  height: "38px",
+  padding: "0 16px",
+  fontSize: "0.875rem",
+  fontWeight: 500,
+  borderColor: "rgba(120,134,127,0.2)",
+} as const;
+
+const btnDanger = {
+  backgroundColor: "rgba(250, 55, 70, 1)",
+  borderColor: "rgba(250, 55, 70, 1)",
+  color: "#fff",
+  borderRadius: "4px",
+  height: "38px",
+  padding: "0 16px",
+  fontSize: "0.875rem",
+  fontWeight: 500,
+} as const;
+
+// --- TUV-styled DetailItem ---
 
 function DetailItem({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+      <p
+        style={{
+          fontSize: "0.6875rem",
+          fontWeight: 500,
+          textTransform: "uppercase",
+          letterSpacing: "0.05em",
+          color: "var(--hsd-ui-color-gray-500)",
+          margin: 0,
+        }}
+      >
         {label}
       </p>
-      <p className={`mt-0.5 text-sm font-medium ${value ? "text-foreground" : "text-muted-foreground"}`}>
+      <p
+        style={{
+          fontSize: "0.875rem",
+          fontWeight: 500,
+          color: value ? "var(--hsd-ui-color-gray-900)" : "var(--hsd-ui-color-gray-400)",
+          margin: "2px 0 0",
+        }}
+      >
         {value || "No Data"}
       </p>
     </div>
   );
 }
 
-function DetailSkeleton() {
+// --- TUV Section card wrapper ---
+
+function SectionCard({
+  title,
+  icon: Icon,
+  children,
+}: {
+  title: string;
+  icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
+  children: React.ReactNode;
+}) {
   return (
-    <div className="space-y-5">
-      {/* Profile header skeleton */}
-      <div className="rounded-2xl border bg-card p-6">
-        <div className="flex items-start gap-5">
-          <Skeleton className="h-20 w-20 rounded-2xl shrink-0" />
-          <div className="flex-1 space-y-3 pt-1">
-            <Skeleton className="h-7 w-56" />
-            <div className="flex gap-2">
-              <Skeleton className="h-5 w-20 rounded-full" />
-              <Skeleton className="h-5 w-20 rounded-full" />
-            </div>
-            <div className="pt-3 grid grid-cols-3 gap-4">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="space-y-1.5">
-                  <Skeleton className="h-3 w-16" />
-                  <Skeleton className="h-4 w-24" />
-                </div>
-              ))}
-            </div>
-          </div>
+    <section
+      className="border"
+      style={{
+        borderRadius: "8px",
+        backgroundColor: "#fff",
+        borderColor: "rgba(120, 134, 127, 0.2)",
+      }}
+    >
+      <div
+        className="flex items-center justify-between px-6 py-4"
+        style={{ borderBottom: "1px solid rgba(120, 134, 127, 0.15)" }}
+      >
+        <h2
+          style={{
+            fontSize: "0.9375rem",
+            fontWeight: 600,
+            color: "var(--hsd-ui-color-gray-900)",
+            margin: 0,
+          }}
+        >
+          {title}
+        </h2>
+        <div
+          className="flex h-8 w-8 items-center justify-center rounded-lg"
+          style={{ backgroundColor: "var(--hsd-ui-color-gray-100)" }}
+        >
+          <Icon
+            style={{ width: "16px", height: "16px", color: "var(--hsd-ui-color-gray-500)" }}
+          />
         </div>
       </div>
-      {/* Content skeletons */}
-      <div className="rounded-2xl border bg-card p-6 space-y-4">
-        <Skeleton className="h-5 w-40" />
-        <div className="grid grid-cols-2 gap-4">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="space-y-1.5">
-              <Skeleton className="h-3 w-20" />
-              <Skeleton className="h-4 w-28" />
-            </div>
-          ))}
-        </div>
-      </div>
-      {Array.from({ length: 3 }).map((_, i) => (
-        <div key={i} className="rounded-2xl border bg-card p-6 space-y-4">
-          <Skeleton className="h-5 w-36" />
-          <Skeleton className="h-20 w-full rounded-lg" />
-        </div>
-      ))}
-    </div>
+      <div className="px-6 py-5">{children}</div>
+    </section>
   );
 }
 
@@ -156,16 +202,18 @@ export default function JobTitleDetailPage() {
     }
   };
 
-  // Loading state
+  // Loading state — simple Loader2 spinner (TUV pattern)
   if (isLoading) {
     return (
       <>
-        <Header title="Job Title Details" />
+        <Header />
         <PageContainer>
-          <div className="mb-5">
-            <Skeleton className="h-8 w-20 rounded-md" />
+          <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "300px" }}>
+            <Loader2
+              className="animate-spin"
+              style={{ width: "24px", height: "24px", color: "var(--hsd-ui-color-navy-500)" }}
+            />
           </div>
-          <DetailSkeleton />
         </PageContainer>
       </>
     );
@@ -175,11 +223,11 @@ export default function JobTitleDetailPage() {
   if (error || !jobTitle) {
     return (
       <>
-        <Header title="Job Title Details" />
+        <Header />
         <PageContainer>
-          <div className="flex h-64 flex-col items-center justify-center gap-3">
-            <p className="text-sm text-muted-foreground">{error || "Job title not found"}</p>
-            <Button variant="outline" onClick={fetchJobTitle}>
+          <div style={{ textAlign: "center", padding: "48px 0", color: "var(--hsd-ui-color-gray-500)" }}>
+            <p style={{ fontSize: "0.875rem", margin: "0 0 12px" }}>{error || "Job title not found"}</p>
+            <Button variant="outline" onClick={fetchJobTitle} style={btnSecondary}>
               Try Again
             </Button>
           </div>
@@ -209,83 +257,82 @@ export default function JobTitleDetailPage() {
 
   return (
     <>
-      <Header title="Job Title Details" />
+      <Header />
       <PageContainer>
         <div className="space-y-5">
-          {/* Top Bar */}
+          {/* Top Bar — back link + actions */}
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <Button
-              variant="ghost"
-              className="gap-1.5 text-muted-foreground w-fit h-auto px-2 py-1.5 text-sm"
-              asChild
+            <Link
+              href="/organization/job-titles"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "4px",
+                fontSize: "0.875rem",
+                fontWeight: 400,
+                color: "var(--hsd-ui-color-gray-500)",
+                textDecoration: "none",
+              }}
             >
-              <Link href="/organization/job-titles">
-                <ArrowLeft className="h-4 w-4" />
-                Job Titles
-              </Link>
-            </Button>
-            <div className="flex items-center gap-2">
-              <Button
-                className="gap-2"
-                onClick={() => router.push(`/organization/job-titles/${id}/edit`)}
-              >
-                <Pencil className="h-3.5 w-3.5" />
-                Edit
-              </Button>
-              <Button
-                variant="outline"
-                className="gap-2 text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                onClick={() => setIsDeleteDialogOpen(true)}
-              >
-                <Trash2 className="h-3.5 w-3.5" />
+              <ChevronLeft style={{ width: "16px", height: "16px" }} />
+              Position: Job Titles
+            </Link>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <Button onClick={() => setIsDeleteDialogOpen(true)} style={btnDanger}>
+                <Trash2 style={{ width: "16px", height: "16px", marginRight: "6px" }} />
                 Delete
+              </Button>
+              <Button onClick={() => router.push(`/organization/job-titles/${id}/edit`)} style={btnPrimary}>
+                <Pencil style={{ width: "16px", height: "16px", marginRight: "6px" }} />
+                Edit
               </Button>
             </div>
           </div>
 
           {/* ===== Profile Header Card ===== */}
-          <div className="rounded-2xl border bg-card">
+          <div
+            className="border"
+            style={{ borderRadius: "8px", backgroundColor: "#fff", borderColor: "rgba(120, 134, 127, 0.2)" }}
+          >
             <div className="p-6">
               <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
                 {/* Icon */}
-                <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-accent/10">
-                  <Briefcase className="h-9 w-9 text-accent" />
+                <div
+                  className="flex h-20 w-20 shrink-0 items-center justify-center"
+                  style={{ borderRadius: "8px", backgroundColor: "var(--hsd-ui-color-navy-50)" }}
+                >
+                  <Briefcase style={{ width: "36px", height: "36px", color: "var(--hsd-ui-color-navy-500)" }} />
                 </div>
 
                 <div className="flex-1 min-w-0 sm:pt-2">
                   {/* Name */}
-                  <h1 className="text-2xl font-bold tracking-tight text-foreground">
+                  <h1 style={{ fontSize: "1.5rem", fontWeight: 600, color: "var(--hsd-ui-color-gray-900)", margin: 0 }}>
                     {jobTitle.name}
                   </h1>
 
                   {/* Badges */}
                   <div className="flex items-center gap-2 mt-2 flex-wrap">
                     {jobLevelName && (
-                      <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100 dark:bg-blue-950 dark:text-blue-400">
-                        {jobLevelName}
-                      </Badge>
+                      <TuvBadge text={jobLevelName} variant="info" size="sm" border />
                     )}
                     {jobTitle.type && (
-                      <Badge
-                        variant="outline"
-                        className={
-                          jobTitle.type === "Technical"
-                            ? "border-purple-200 bg-purple-50 text-purple-700 dark:border-purple-800 dark:bg-purple-950 dark:text-purple-400"
-                            : "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-400"
-                        }
-                      >
-                        {jobTitle.type}
-                      </Badge>
+                      <TuvBadge
+                        text={jobTitle.type}
+                        variant={jobTitle.type === "Technical" ? "brand" : "dark"}
+                        size="sm"
+                        border
+                      />
                     )}
                     {departmentNames.map((name) => (
-                      <Badge key={name} variant="secondary">
-                        {name}
-                      </Badge>
+                      <TuvBadge key={name} text={name} variant="dark" size="sm" border />
                     ))}
                   </div>
 
                   {/* Key facts row */}
-                  <div className="mt-5 pt-4 border-t border-border/60 grid grid-cols-2 gap-x-8 gap-y-3 sm:grid-cols-4">
+                  <div
+                    className="mt-5 pt-4 grid grid-cols-2 gap-x-8 gap-y-3 sm:grid-cols-4"
+                    style={{ borderTop: "1px solid rgba(120, 134, 127, 0.15)" }}
+                  >
                     <DetailItem label="Division" value={divisionName} />
                     <DetailItem label="Job Level" value={jobLevelName} />
                     <DetailItem label="Direct Report" value={directReportName} />
@@ -297,90 +344,104 @@ export default function JobTitleDetailPage() {
           </div>
 
           {/* ===== General Information ===== */}
-          <section className="rounded-2xl border bg-card">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
-              <h2 className="text-base font-semibold text-foreground">General Information</h2>
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
-                <Info className="h-4 w-4 text-muted-foreground" />
-              </div>
+          <SectionCard title="General Information" icon={Info}>
+            <div className="grid grid-cols-2 gap-x-8 gap-y-5">
+              <DetailItem label="Job Title" value={jobTitle.name} />
+              <DetailItem label="Job Level" value={jobLevelName} />
+              <DetailItem label="Type" value={jobTitle.type || ""} />
+              <DetailItem label="Division" value={divisionName} />
+              <DetailItem label="Direct Report Line" value={directReportName} />
             </div>
-            <div className="px-6 py-5">
-              <div className="grid grid-cols-2 gap-x-8 gap-y-5">
-                <DetailItem label="Job Title" value={jobTitle.name} />
-                <DetailItem label="Job Level" value={jobLevelName} />
-                <DetailItem label="Type" value={jobTitle.type || ""} />
-                <DetailItem label="Division" value={divisionName} />
-                <DetailItem label="Direct Report Line" value={directReportName} />
-              </div>
 
-              {/* Departments */}
-              <div className="mt-5 pt-4 border-t border-border/40">
-                <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                  Departments
+            {/* Departments */}
+            <div className="mt-5 pt-4" style={{ borderTop: "1px solid rgba(120, 134, 127, 0.15)" }}>
+              <p
+                style={{
+                  fontSize: "0.6875rem",
+                  fontWeight: 500,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.05em",
+                  color: "var(--hsd-ui-color-gray-500)",
+                  margin: 0,
+                }}
+              >
+                Departments
+              </p>
+              {departmentNames.length > 0 ? (
+                <div className="flex flex-wrap gap-1.5 mt-1.5">
+                  {departmentNames.map((name) => (
+                    <TuvBadge key={name} text={name} variant="dark" size="sm" border />
+                  ))}
+                </div>
+              ) : (
+                <p
+                  style={{
+                    fontSize: "0.875rem",
+                    fontWeight: 500,
+                    color: "var(--hsd-ui-color-gray-400)",
+                    margin: "2px 0 0",
+                  }}
+                >
+                  No Data
                 </p>
-                {departmentNames.length > 0 ? (
-                  <div className="flex flex-wrap gap-1.5 mt-1.5">
-                    {departmentNames.map((name) => (
-                      <Badge key={name} variant="outline" className="text-xs">
-                        {name}
-                      </Badge>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="mt-0.5 text-sm font-medium text-muted-foreground">{"No Data"}</p>
-                )}
-              </div>
+              )}
             </div>
-          </section>
+          </SectionCard>
 
           {/* ===== Rich Text Sections ===== */}
-          <section className="rounded-2xl border bg-card">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
-              <h2 className="text-base font-semibold text-foreground">General Job Purpose</h2>
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
-                <ClipboardList className="h-4 w-4 text-muted-foreground" />
-              </div>
-            </div>
-            <div className="px-6 py-5">
-              {hasLexicalContent(jobTitle.purpose) ? (
-                <LexicalRenderer value={jobTitle.purpose} />
-              ) : (
-                <p className="text-sm text-muted-foreground italic">No Data</p>
-              )}
-            </div>
-          </section>
+          <SectionCard title="General Job Purpose" icon={ClipboardList}>
+            {hasLexicalContent(jobTitle.purpose) ? (
+              <LexicalRenderer value={jobTitle.purpose} />
+            ) : (
+              <p
+                style={{
+                  fontSize: "0.875rem",
+                  fontWeight: 400,
+                  color: "var(--hsd-ui-color-gray-400)",
+                  margin: 0,
+                  fontStyle: "italic",
+                }}
+              >
+                No Data
+              </p>
+            )}
+          </SectionCard>
 
-          <section className="rounded-2xl border bg-card">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
-              <h2 className="text-base font-semibold text-foreground">Job Description</h2>
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
-                <FileText className="h-4 w-4 text-muted-foreground" />
-              </div>
-            </div>
-            <div className="px-6 py-5">
-              {hasLexicalContent(jobTitle.description) ? (
-                <LexicalRenderer value={jobTitle.description} />
-              ) : (
-                <p className="text-sm text-muted-foreground italic">No Data</p>
-              )}
-            </div>
-          </section>
+          <SectionCard title="Job Description" icon={FileText}>
+            {hasLexicalContent(jobTitle.description) ? (
+              <LexicalRenderer value={jobTitle.description} />
+            ) : (
+              <p
+                style={{
+                  fontSize: "0.875rem",
+                  fontWeight: 400,
+                  color: "var(--hsd-ui-color-gray-400)",
+                  margin: 0,
+                  fontStyle: "italic",
+                }}
+              >
+                No Data
+              </p>
+            )}
+          </SectionCard>
 
-          <section className="rounded-2xl border bg-card">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
-              <h2 className="text-base font-semibold text-foreground">Job Requirements</h2>
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
-                <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
-              </div>
-            </div>
-            <div className="px-6 py-5">
-              {hasLexicalContent(jobTitle.requirement) ? (
-                <LexicalRenderer value={jobTitle.requirement} />
-              ) : (
-                <p className="text-sm text-muted-foreground italic">No Data</p>
-              )}
-            </div>
-          </section>
+          <SectionCard title="Job Requirements" icon={CheckCircle2}>
+            {hasLexicalContent(jobTitle.requirement) ? (
+              <LexicalRenderer value={jobTitle.requirement} />
+            ) : (
+              <p
+                style={{
+                  fontSize: "0.875rem",
+                  fontWeight: 400,
+                  color: "var(--hsd-ui-color-gray-400)",
+                  margin: 0,
+                  fontStyle: "italic",
+                }}
+              >
+                No Data
+              </p>
+            )}
+          </SectionCard>
         </div>
       </PageContainer>
 
@@ -390,21 +451,15 @@ export default function JobTitleDetailPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Job Title</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete{" "}
-              <span className="font-medium">{jobTitle.name}</span>? This action cannot be
-              undone.
+              Are you sure you want to delete &quot;{jobTitle.name}&quot;? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              disabled={isDeleting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
+            <AlertDialogCancel disabled={isDeleting} style={btnSecondary}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} disabled={isDeleting} style={btnDanger}>
               {isDeleting ? (
                 <>
-                  <Loader2 className="animate-spin" />
+                  <Loader2 className="animate-spin" style={{ width: "16px", height: "16px", marginRight: "6px" }} />
                   Deleting...
                 </>
               ) : (

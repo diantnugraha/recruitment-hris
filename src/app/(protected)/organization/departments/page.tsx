@@ -1,18 +1,31 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import {
-  Pencil,
-  Trash2,
   Loader2,
+  Search,
 } from "lucide-react";
 
 import { Header } from "@/components/layout/header";
 import { PageContainer } from "@/components/layout/page-container";
-import { DataTable } from "@/components/shared/data-table";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -21,47 +34,25 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-
+import { TuvBadge } from "@/components/shared/tuv-badge";
 import { useOrganizationStore } from "@/stores/organization-store";
-import {
-  departmentService,
-  CreateDepartmentRequest,
-} from "@/services/department.service";
+import { departmentService } from "@/services/department.service";
+import type { CreateDepartmentRequest } from "@/services/department.service";
 import { divisionService } from "@/services/division.service";
+import { obsService } from "@/services/obs.service";
 import { showToast } from "@/lib/utils/toast-messages";
-import { Department } from "@/types";
+import type { Organization, Division } from "@/types";
 
 const DEPARTMENT_CATEGORIES = ["Profit Center", "Non Profit Center"] as const;
 
-// Format category from API (e.g., "Non_Profit_Center" -> "Non Profit Center")
-const formatCategory = (category: string): string => {
-  return category.replace(/_/g, " ");
-};
+const formatCategory = (category: string) => category.replace(/_/g, " ");
 
 interface FormData {
   name: string;
   code: string;
-  category: "Profit Center" | "Non Profit Center";
+  category: "Profit Center" | "Non Profit Center" | "";
   description: string;
   obsId: string;
   divisionId: string;
@@ -70,21 +61,18 @@ interface FormData {
 const initialFormData: FormData = {
   name: "",
   code: "",
-  category: "Profit Center",
+  category: "",
   description: "",
   obsId: "",
   divisionId: "",
 };
 
 export default function DepartmentsPage() {
+  const router = useRouter();
   const {
     departments,
     setDepartments,
     addDepartment,
-    updateDepartment,
-    deleteDepartment,
-    divisions,
-    setDivisions,
     isLoading,
     setLoading,
   } = useOrganizationStore();
@@ -94,30 +82,24 @@ export default function DepartmentsPage() {
   const [totalItems, setTotalItems] = React.useState(0);
   const [searchQuery, setSearchQuery] = React.useState("");
 
-  // Dialog states
-  const [isDetailDialogOpen, setIsDetailDialogOpen] = React.useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false);
-  const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
-  const [selectedDepartment, setSelectedDepartment] =
-    React.useState<Department | null>(null);
   const [formData, setFormData] = React.useState<FormData>(initialFormData);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [divisions, setDivisions] = React.useState<Division[]>([]);
+  const [organizations, setOrganizations] = React.useState<Organization[]>([]);
 
-  // Fetch data on mount and when pagination changes
   React.useEffect(() => {
     fetchDepartments(currentPage, pageSize);
   }, [currentPage, pageSize]);
 
   React.useEffect(() => {
     fetchDivisions();
+    fetchOrganizations();
   }, []);
 
   const fetchDepartments = async (page: number, limit: number) => {
     setLoading(true);
-
     const response = await departmentService.getAll(page, limit);
-
     if (response.success && response.data) {
       const deptData = response.data.data || [];
       setDepartments(deptData);
@@ -126,19 +108,23 @@ export default function DepartmentsPage() {
       showToast.fetchError("departments", response.message);
       setDepartments([]);
     }
-
     setLoading(false);
   };
 
   const fetchDivisions = async () => {
     const response = await divisionService.fetchAll();
     if (response.success && response.data) {
-      const divData = Array.isArray(response.data) ? response.data : [];
-      setDivisions(divData);
+      setDivisions(response.data);
     }
   };
 
-  // Client-side search on current page data
+  const fetchOrganizations = async () => {
+    const response = await obsService.fetchAll();
+    if (response.success && response.data) {
+      setOrganizations(response.data);
+    }
+  };
+
   const filteredData = React.useMemo(() => {
     const deptArray = Array.isArray(departments) ? departments : [];
     if (!searchQuery) return deptArray;
@@ -146,211 +132,436 @@ export default function DepartmentsPage() {
     return deptArray.filter(
       (dept) =>
         dept.name.toLowerCase().includes(query) ||
-        dept.code.toLowerCase().includes(query) ||
-        (dept.description && dept.description.toLowerCase().includes(query)) ||
-        dept.category.toLowerCase().includes(query)
+        (dept.code && dept.code.toLowerCase().includes(query)) ||
+        (dept.category && formatCategory(dept.category).toLowerCase().includes(query)) ||
+        (dept.division && dept.division.name.toLowerCase().includes(query))
     );
   }, [searchQuery, departments]);
 
-  const getDivisionName = (divId?: string) => {
-    if (!divId) return "No Data";
-    return divisions.find((div) => div.id === divId)?.name || "No Data";
-  };
-
-  const handleDetailClick = (dept: Department) => {
-    setSelectedDepartment(dept);
-    setIsDetailDialogOpen(true);
-  };
+  const totalPages = Math.ceil(totalItems / pageSize);
+  const startItem = (currentPage - 1) * pageSize + 1;
+  const endItem = Math.min(currentPage * pageSize, totalItems);
 
   const handleAddClick = () => {
     setFormData(initialFormData);
     setIsAddDialogOpen(true);
   };
 
-  const handleEditClick = (dept: Department) => {
-    setSelectedDepartment(dept);
-    setFormData({
-      name: dept.name,
-      code: dept.code,
-      category: dept.category,
-      description: dept.description || "",
-      obsId: dept.obsId,
-      divisionId: dept.divisionId || "",
-    });
-    setIsEditDialogOpen(true);
-  };
-
-  const handleDeleteClick = (dept: Department) => {
-    setSelectedDepartment(dept);
-    setIsDeleteDialogOpen(true);
-  };
-
   const handleCreate = async () => {
     setIsSubmitting(true);
-
     const data: CreateDepartmentRequest = {
       name: formData.name,
       code: formData.code,
-      category: formData.category,
+      category: formData.category as "Profit Center" | "Non Profit Center",
       description: formData.description || undefined,
       obsId: formData.obsId,
       divisionId: formData.divisionId || undefined,
     };
-
     const response = await departmentService.create(data);
-
     if (response.success && response.data) {
       addDepartment(response.data);
       setIsAddDialogOpen(false);
       setFormData(initialFormData);
       setTotalItems((prev) => prev + 1);
-
       showToast.created("Department");
     } else {
       showToast.createError("department", response.message);
     }
-
     setIsSubmitting(false);
   };
 
-  const handleUpdate = async () => {
-    if (!selectedDepartment) return;
-
-    setIsSubmitting(true);
-
-    const response = await departmentService.update(selectedDepartment.id, {
-      name: formData.name,
-      code: formData.code,
-      category: formData.category,
-      description: formData.description || undefined,
-      obsId: formData.obsId,
-      divisionId: formData.divisionId || undefined,
-    });
-
-    if (response.success && response.data) {
-      updateDepartment(selectedDepartment.id, response.data);
-      setIsEditDialogOpen(false);
-      setSelectedDepartment(null);
-      setFormData(initialFormData);
-      showToast.updated("Department");
-    } else {
-      showToast.updateError("department", response.message);
-    }
-
-    setIsSubmitting(false);
+  const getCategoryBadgeVariant = (category: string): "success" | "dark" => {
+    return formatCategory(category) === "Profit Center" ? "success" : "dark";
   };
 
-  const handleDelete = async () => {
-    if (!selectedDepartment) return;
-
-    setIsSubmitting(true);
-
-    const response = await departmentService.delete(selectedDepartment.id);
-
-    if (response.success) {
-      deleteDepartment(selectedDepartment.id);
-      setIsDeleteDialogOpen(false);
-      setSelectedDepartment(null);
-      setTotalItems((prev) => prev - 1);
-
-      showToast.deleted("Department");
-    } else {
-      showToast.deleteError("department", response.message);
-    }
-
-    setIsSubmitting(false);
-  };
-
-  const columns = [
-    {
-      key: "code",
-      label: "Code",
-      render: (row: Department) => (
-        <Badge variant="secondary">{row.code}</Badge>
-      ),
-    },
-    {
-      key: "name",
-      label: "Department",
-      render: (row: Department) => (
-        <button
-          type="button"
-          className="font-medium text-accent hover:underline text-left"
-          onClick={() => handleDetailClick(row)}
-        >
-          {row.name}
-        </button>
-      ),
-    },
-    {
-      key: "category",
-      label: "Category",
-      render: (row: Department) => {
-        const displayCategory = formatCategory(row.category);
-        return (
-          <Badge
-            variant={
-              displayCategory === "Profit Center" ? "default" : "secondary"
-            }
-          >
-            {displayCategory}
-          </Badge>
-        );
-      },
-    },
-    {
-      key: "division",
-      label: "Division",
-      render: (row: Department) => (
-        <span className="text-sm">{getDivisionName(row.divisionId)}</span>
-      ),
-    },
-  ];
 
   return (
     <>
-      <Header title="Organization" />
+      <Header />
       <PageContainer>
-        <div className="space-y-6">
+        {/* 1. Page Title Row — title + count + action button */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: "24px",
+          }}
+        >
           <div>
-            <h2 className="text-lg font-semibold">Departments</h2>
-            <p className="text-sm text-muted-foreground">Manage departments, categories, and their division assignments.</p>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <h1
+                style={{
+                  fontSize: "1.5rem",
+                  fontWeight: 600,
+                  color: "var(--hsd-ui-color-gray-900)",
+                  margin: 0,
+                }}
+              >
+                Departments
+              </h1>
+              <span
+                style={{
+                  backgroundColor: "var(--hsd-ui-color-blue-50)",
+                  color: "var(--hsd-ui-color-blue-600)",
+                  padding: "2px 10px",
+                  borderRadius: "4px",
+                  fontSize: "0.75rem",
+                  fontWeight: 500,
+                  border: "1px solid var(--hsd-ui-color-blue-200)",
+                }}
+              >
+                {totalItems}
+              </span>
+            </div>
+            <p
+              style={{
+                fontSize: "0.875rem",
+                fontWeight: 300,
+                color: "var(--hsd-ui-color-gray-500)",
+                margin: "4px 0 0",
+              }}
+            >
+              Manage departments, categories, and their division assignments.
+            </p>
+          </div>
+          <Button
+            onClick={handleAddClick}
+            style={{
+              backgroundColor: "var(--hsd-ui-background-color-primary)",
+              borderColor: "var(--hsd-ui-border-color-primary)",
+              color: "var(--hsd-ui-text-color-primary)",
+              borderRadius: "4px",
+              height: "38px",
+              padding: "0 16px",
+              fontSize: "0.875rem",
+              fontWeight: 500,
+            }}
+          >
+            Create Department
+          </Button>
+        </div>
+
+        {/* 2. Outer wrapper — white bg, rounded */}
+        <div
+          style={{
+            backgroundColor: "#fff",
+            borderRadius: "8px",
+            padding: "16px",
+            border: "1px solid rgba(120, 134, 127, 0.2)",
+          }}
+        >
+          {/* Search — right aligned */}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              marginBottom: "16px",
+            }}
+          >
+            <div className="relative" style={{ width: "280px" }}>
+              <Search
+                className="absolute left-3 top-1/2 -translate-y-1/2"
+                style={{ width: "16px", height: "16px", color: "var(--hsd-ui-color-gray-400)" }}
+              />
+              <Input
+                placeholder="Search departments"
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="pl-9"
+                style={{
+                  borderColor: "rgba(120, 134, 127, 0.2)",
+                  borderRadius: "4px",
+                  backgroundColor: "#fff",
+                  fontSize: "0.875rem",
+                }}
+              />
+            </div>
           </div>
 
+          {/* Inner white card — table + pagination */}
+          <div
+            style={{
+              backgroundColor: "#fff",
+              border: "1px solid rgba(120, 134, 127, 0.2)",
+              borderRadius: "8px",
+              overflow: "hidden",
+            }}
+          >
           {/* Table */}
+          <div>
           {isLoading ? (
-            <Card>
-              <CardContent className="flex items-center justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-              </CardContent>
-            </Card>
+            <div style={{ display: "flex", justifyContent: "center", alignItems: "center", padding: "48px 0" }}>
+              <Loader2
+                className="animate-spin"
+                style={{ width: "24px", height: "24px", color: "var(--hsd-ui-color-navy-500)" }}
+              />
+            </div>
+          ) : filteredData.length === 0 ? (
+            <div
+              style={{
+                textAlign: "center",
+                padding: "48px 0",
+                color: "var(--hsd-ui-color-gray-500)",
+                fontSize: "0.875rem",
+              }}
+            >
+              No departments found
+            </div>
           ) : (
-            <DataTable
-              data={filteredData || []}
-              columns={columns}
-              searchable
-              searchPlaceholder="Search by name, code, or category..."
-              onSearch={(value) => {
-                setSearchQuery(value);
-                setCurrentPage(1);
-              }}
-              pagination
-              pageSize={pageSize}
-              totalItems={totalItems}
-              currentPage={currentPage}
-              onPageChange={setCurrentPage}
-              onPageSizeChange={(size) => {
-                setPageSize(size);
-                setCurrentPage(1);
-              }}
-              emptyMessage="No departments found"
-              actions={
-                <Button onClick={handleAddClick}>
-                  New
-                </Button>
-              }
-            />
+            <Table>
+              <TableHeader>
+                <TableRow
+                  onMouseOver={undefined}
+                  onMouseOut={undefined}
+                  style={{ backgroundColor: "transparent", borderBottom: "1px solid rgba(120, 134, 127, 0.2)" }}
+                >
+                  <TableHead style={{ width: "15%" }}>Code</TableHead>
+                  <TableHead style={{ width: "30%" }}>Department</TableHead>
+                  <TableHead style={{ width: "25%" }}>Category</TableHead>
+                  <TableHead style={{ width: "30%" }}>Division</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredData.map((dept) => (
+                  <TableRow key={dept.id}>
+                    <TableCell>
+                      <TuvBadge
+                        text={dept.code || "-"}
+                        variant="info"
+                        size="sm"
+                        border
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <button
+                        type="button"
+                        className="hover:underline text-left"
+                        style={{
+                          color: "var(--hsd-ui-color-navy-500)",
+                          fontWeight: 500,
+                          fontSize: "0.875rem",
+                          background: "none",
+                          border: "none",
+                          cursor: "pointer",
+                          padding: 0,
+                        }}
+                        onClick={() => router.push(`/organization/departments/${dept.id}`)}
+                      >
+                        {dept.name}
+                      </button>
+                    </TableCell>
+                    <TableCell>
+                      <TuvBadge
+                        text={formatCategory(dept.category)}
+                        variant={getCategoryBadgeVariant(dept.category)}
+                        size="sm"
+                        border
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <span
+                        style={{
+                          fontSize: "0.875rem",
+                          fontWeight: 400,
+                          color: "var(--hsd-ui-color-gray-700)",
+                        }}
+                      >
+                        {dept.division?.name || "-"}
+                      </span>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           )}
+          </div>
+
+          {/* Pagination */}
+          {totalItems > 0 && (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              padding: "12px 16px",
+              borderTop: "1px solid rgba(120, 134, 127, 0.2)",
+              borderRadius: "0 0 8px 8px",
+            }}
+          >
+            {/* Left: "X - Y of Z" | divider | "N Per row" */}
+            <div style={{ display: "flex", alignItems: "center", gap: "24px" }}>
+              <span
+                style={{
+                  fontSize: "0.875rem",
+                  fontWeight: 400,
+                  color: "var(--hsd-ui-color-gray-400)",
+                }}
+              >
+                {startItem} - {endItem} of {totalItems}
+              </span>
+              <div style={{ width: "1px", height: "32px", backgroundColor: "rgba(120, 134, 127, 0.15)" }} />
+              <Select
+                value={String(pageSize)}
+                onValueChange={(value) => {
+                  setPageSize(Number(value));
+                  setCurrentPage(1);
+                }}
+              >
+                <SelectTrigger
+                  style={{
+                    width: "auto",
+                    minWidth: "145px",
+                    height: "38px",
+                    border: "1px solid rgba(120, 134, 127, 0.2)",
+                    borderRadius: "4px",
+                    fontSize: "0.875rem",
+                    fontWeight: 400,
+                    color: "var(--hsd-ui-color-gray-700)",
+                    padding: "0 12px",
+                    gap: "8px",
+                    backgroundColor: "#fff",
+                  }}
+                >
+                  <SelectValue placeholder="10 Per row" />
+                </SelectTrigger>
+                <SelectContent
+                  side="top"
+                  style={{
+                    minWidth: "140px",
+                    borderRadius: "8px",
+                    fontSize: "0.875rem",
+                  }}
+                >
+                  {[5, 10, 20, 50, 100].map((size) => (
+                    <SelectItem
+                      key={size}
+                      value={String(size)}
+                      style={{ fontSize: "0.875rem", padding: "8px 12px" }}
+                    >
+                      {size} Per row
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Right: page numbers */}
+            <div style={{ display: "flex", alignItems: "center", gap: "0" }}>
+              {(() => {
+                // Build page items with dots like TUV Pagination
+                const buildPageItems = (): (number | "dots")[] => {
+                  if (totalPages <= 7) {
+                    return Array.from({ length: totalPages }, (_, i) => i + 1);
+                  }
+                  const middle = Array.from(
+                    { length: Math.min(3, totalPages - 2) },
+                    (_, i) => Math.max(2, currentPage - 1) + i
+                  ).filter((n) => n >= 2 && n <= totalPages - 1);
+
+                  return [
+                    1,
+                    ...(middle[0] > 2 ? ["dots" as const] : []),
+                    ...middle,
+                    ...(middle[middle.length - 1] < totalPages - 1 ? ["dots" as const] : []),
+                    totalPages,
+                  ];
+                };
+                const items = buildPageItems();
+
+                const pageBtn = (num: number | "dots", idx: number) => {
+                  if (num === "dots") {
+                    return (
+                      <span
+                        key={`dots-${idx}`}
+                        style={{
+                          width: "36px",
+                          height: "36px",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: "0.875rem",
+                          color: "var(--hsd-ui-color-gray-700)",
+                        }}
+                      >
+                        ...
+                      </span>
+                    );
+                  }
+                  const isActive = currentPage === num;
+                  return (
+                    <button
+                      key={num}
+                      onClick={() => setCurrentPage(num)}
+                      style={{
+                        width: "36px",
+                        height: "36px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        borderRadius: "6px",
+                        border: "none",
+                        cursor: "pointer",
+                        fontSize: "0.875rem",
+                        fontWeight: isActive ? 500 : 400,
+                        backgroundColor: isActive ? "var(--hsd-ui-color-navy-500)" : "transparent",
+                        color: isActive ? "#fff" : "var(--hsd-ui-color-gray-900)",
+                      }}
+                    >
+                      {num}
+                    </button>
+                  );
+                };
+
+                return (
+                  <>
+                    <button
+                      onClick={() => currentPage > 1 && setCurrentPage(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      style={{
+                        width: "36px",
+                        height: "36px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        border: "none",
+                        background: "none",
+                        cursor: currentPage === 1 ? "default" : "pointer",
+                        color: currentPage === 1 ? "var(--hsd-ui-color-gray-300)" : "var(--hsd-ui-color-gray-700)",
+                        fontSize: "1.25rem",
+                      }}
+                    >
+                      &#8249;
+                    </button>
+                    {items.map((item, idx) => pageBtn(item, idx))}
+                    <button
+                      onClick={() => currentPage < totalPages && setCurrentPage(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                      style={{
+                        width: "36px",
+                        height: "36px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        border: "none",
+                        background: "none",
+                        cursor: currentPage === totalPages ? "default" : "pointer",
+                        color: currentPage === totalPages ? "var(--hsd-ui-color-gray-300)" : "var(--hsd-ui-color-gray-700)",
+                        fontSize: "1.25rem",
+                      }}
+                    >
+                      &#8250;
+                    </button>
+                  </>
+                );
+              })()}
+            </div>
+          </div>
+          )}
+          </div>
         </div>
 
         {/* Add Dialog */}
@@ -358,43 +569,22 @@ export default function DepartmentsPage() {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>New Department</DialogTitle>
-              <DialogDescription>
-                Create a new department in your organization.
-              </DialogDescription>
+              <DialogDescription>Create a new department.</DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="space-y-1.5">
                 <Label htmlFor="name">Name *</Label>
-                <Input
-                  id="name"
-                  placeholder="Enter department name"
-                  value={formData.name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
-                  }
-                />
+                <Input id="name" placeholder="Enter department name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="code">Code *</Label>
-                <Input
-                  id="code"
-                  placeholder="Enter department code"
-                  value={formData.code}
-                  onChange={(e) =>
-                    setFormData({ ...formData, code: e.target.value })
-                  }
-                />
+                <Input id="code" placeholder="Enter department code" value={formData.code} onChange={(e) => setFormData({ ...formData, code: e.target.value })} />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="category">Category *</Label>
                 <Select
                   value={formData.category}
-                  onValueChange={(value) =>
-                    setFormData({
-                      ...formData,
-                      category: value as FormData["category"],
-                    })
-                  }
+                  onValueChange={(value) => setFormData({ ...formData, category: value as "Profit Center" | "Non Profit Center" })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select category" />
@@ -409,15 +599,31 @@ export default function DepartmentsPage() {
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="division">Division</Label>
+                <Label htmlFor="obsId">Organization *</Label>
                 <Select
-                  value={formData.divisionId}
-                  onValueChange={(value) =>
-                    setFormData({ ...formData, divisionId: value })
-                  }
+                  value={formData.obsId}
+                  onValueChange={(value) => setFormData({ ...formData, obsId: value })}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select division (optional)" />
+                    <SelectValue placeholder="Select organization" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {organizations.map((org) => (
+                      <SelectItem key={org.id} value={org.id}>
+                        {org.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="divisionId">Division</Label>
+                <Select
+                  value={formData.divisionId}
+                  onValueChange={(value) => setFormData({ ...formData, divisionId: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select division" />
                   </SelectTrigger>
                   <SelectContent>
                     {divisions.map((div) => (
@@ -430,263 +636,18 @@ export default function DepartmentsPage() {
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  placeholder="Enter description"
-                  value={formData.description}
-                  onChange={(e) =>
-                    setFormData({ ...formData, description: e.target.value })
-                  }
-                />
+                <Textarea id="description" placeholder="Enter description" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} />
               </div>
             </div>
             <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => setIsAddDialogOpen(false)}
-                disabled={isSubmitting}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleCreate}
-                disabled={
-                  isSubmitting ||
-                  !formData.name ||
-                  !formData.code ||
-                  !formData.category
-                }
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="animate-spin" />
-                    Creating...
-                  </>
-                ) : (
-                  "Create Department"
-                )}
+              <Button variant="outline" onClick={() => setIsAddDialogOpen(false)} disabled={isSubmitting} style={{ borderRadius: "4px", height: "38px", padding: "0 16px", fontSize: "0.875rem", fontWeight: 500, borderColor: "rgba(120,134,127,0.2)" }}>Cancel</Button>
+              <Button onClick={handleCreate} disabled={isSubmitting || !formData.name || !formData.code || !formData.category || !formData.obsId} style={{ backgroundColor: "var(--hsd-ui-background-color-primary)", borderColor: "var(--hsd-ui-border-color-primary)", color: "var(--hsd-ui-text-color-primary)", borderRadius: "4px", height: "38px", padding: "0 16px", fontSize: "0.875rem", fontWeight: 500 }}>
+                {isSubmitting ? (<><Loader2 className="animate-spin" />Creating...</>) : "Create Department"}
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
-        {/* Edit Dialog */}
-        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Edit Department</DialogTitle>
-              <DialogDescription>
-                Update the department details.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="edit-name">Name *</Label>
-                <Input
-                  id="edit-name"
-                  placeholder="Enter department name"
-                  value={formData.name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
-                  }
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="edit-code">Code *</Label>
-                <Input
-                  id="edit-code"
-                  placeholder="Enter department code"
-                  value={formData.code}
-                  onChange={(e) =>
-                    setFormData({ ...formData, code: e.target.value })
-                  }
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="edit-category">Category *</Label>
-                <Select
-                  value={formData.category}
-                  onValueChange={(value) =>
-                    setFormData({
-                      ...formData,
-                      category: value as FormData["category"],
-                    })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {DEPARTMENT_CATEGORIES.map((cat) => (
-                      <SelectItem key={cat} value={cat}>
-                        {cat}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="edit-division">Division</Label>
-                <Select
-                  value={formData.divisionId}
-                  onValueChange={(value) =>
-                    setFormData({ ...formData, divisionId: value })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select division (optional)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {divisions.map((div) => (
-                      <SelectItem key={div.id} value={div.id}>
-                        {div.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="edit-description">Description</Label>
-                <Textarea
-                  id="edit-description"
-                  placeholder="Enter description"
-                  value={formData.description}
-                  onChange={(e) =>
-                    setFormData({ ...formData, description: e.target.value })
-                  }
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => setIsEditDialogOpen(false)}
-                disabled={isSubmitting}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleUpdate}
-                disabled={
-                  isSubmitting ||
-                  !formData.name ||
-                  !formData.code ||
-                  !formData.category
-                }
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  "Save Changes"
-                )}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Detail Dialog */}
-        <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Department Detail</DialogTitle>
-              <DialogDescription>
-                Viewing department information.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-1">
-                <p className="text-xs text-muted-foreground">Name</p>
-                <p className="text-sm font-medium">{selectedDepartment?.name || "No Data"}</p>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">Code</p>
-                  <p className="text-sm font-medium">{selectedDepartment?.code || "No Data"}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">Category</p>
-                  <p className="text-sm font-medium">{selectedDepartment ? formatCategory(selectedDepartment.category) : "No Data"}</p>
-                </div>
-              </div>
-              <div className="space-y-1">
-                <p className="text-xs text-muted-foreground">Division</p>
-                <p className="text-sm font-medium">{getDivisionName(selectedDepartment?.divisionId)}</p>
-              </div>
-              {selectedDepartment?.description && (
-                <div className="space-y-1 border-t pt-3">
-                  <p className="text-xs text-muted-foreground">Description</p>
-                  <p className="text-sm text-muted-foreground">{selectedDepartment.description}</p>
-                </div>
-              )}
-            </div>
-            <DialogFooter className="flex-row gap-2 sm:justify-end">
-              <Button
-                variant="ghost"
-                className="mr-auto text-destructive hover:text-destructive hover:bg-destructive/10"
-                onClick={() => {
-                  setIsDetailDialogOpen(false);
-                  if (selectedDepartment) handleDeleteClick(selectedDepartment);
-                }}
-              >
-                <Trash2 className="h-4 w-4" />
-                Delete
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => setIsDetailDialogOpen(false)}
-              >
-                Close
-              </Button>
-              <Button
-                onClick={() => {
-                  setIsDetailDialogOpen(false);
-                  if (selectedDepartment) handleEditClick(selectedDepartment);
-                }}
-              >
-                <Pencil className="h-4 w-4" />
-                Edit
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Delete Confirmation Dialog */}
-        <AlertDialog
-          open={isDeleteDialogOpen}
-          onOpenChange={setIsDeleteDialogOpen}
-        >
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Delete Department</AlertDialogTitle>
-              <AlertDialogDescription>
-                Are you sure you want to delete &quot;
-                {selectedDepartment?.name}&quot;? This action cannot be undone.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel disabled={isSubmitting}>
-                Cancel
-              </AlertDialogCancel>
-              <AlertDialogAction
-                onClick={handleDelete}
-                disabled={isSubmitting}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="animate-spin" />
-                    Deleting...
-                  </>
-                ) : (
-                  "Delete"
-                )}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
       </PageContainer>
     </>
   );

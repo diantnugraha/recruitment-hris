@@ -2,12 +2,18 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Loader2, Save } from "lucide-react";
+import Link from "next/link";
+import {
+  ChevronLeft,
+  Loader2,
+  User,
+  Briefcase,
+  Users,
+} from "lucide-react";
 
 import { Header } from "@/components/layout/header";
 import { PageContainer } from "@/components/layout/page-container";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -31,8 +37,83 @@ import type { JobTitle, EmployeeWithRelations, EmployeeStatus, MaritalStatus } f
 import { showToast } from "@/lib/utils/toast-messages";
 import { ASIAN_COUNTRIES } from "@/lib/constants/nationalities";
 
-// --- Constants (matching hris-tuv exactly) ---
+// --- TUV button style helpers ---
 
+const btnPrimary = {
+  backgroundColor: "var(--hsd-ui-background-color-primary)",
+  borderColor: "var(--hsd-ui-border-color-primary)",
+  color: "var(--hsd-ui-text-color-primary)",
+  borderRadius: "4px",
+  height: "38px",
+  padding: "0 16px",
+  fontSize: "0.875rem",
+  fontWeight: 500,
+} as const;
+
+const btnSecondary = {
+  borderRadius: "4px",
+  height: "38px",
+  padding: "0 16px",
+  fontSize: "0.875rem",
+  fontWeight: 500,
+  borderColor: "rgba(120,134,127,0.2)",
+} as const;
+
+/* Label style helper */
+const labelStyle = {
+  fontSize: "0.875rem",
+  fontWeight: 500,
+  color: "var(--hsd-ui-color-gray-700)",
+} as const;
+
+/* Section card wrapper */
+function SectionCard({
+  title,
+  icon: Icon,
+  children,
+}: {
+  title: string;
+  icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
+  children: React.ReactNode;
+}) {
+  return (
+    <section
+      className="border"
+      style={{
+        borderRadius: "8px",
+        backgroundColor: "#fff",
+        borderColor: "rgba(120, 134, 127, 0.2)",
+      }}
+    >
+      <div
+        className="flex items-center justify-between px-6 py-4"
+        style={{ borderBottom: "1px solid rgba(120, 134, 127, 0.15)" }}
+      >
+        <h2
+          style={{
+            fontSize: "0.9375rem",
+            fontWeight: 600,
+            color: "var(--hsd-ui-color-gray-900)",
+            margin: 0,
+          }}
+        >
+          {title}
+        </h2>
+        <div
+          className="flex h-8 w-8 items-center justify-center rounded-lg"
+          style={{ backgroundColor: "var(--hsd-ui-color-gray-100)" }}
+        >
+          <Icon
+            style={{ width: "16px", height: "16px", color: "var(--hsd-ui-color-gray-500)" }}
+          />
+        </div>
+      </div>
+      <div className="px-6 py-5">{children}</div>
+    </section>
+  );
+}
+
+// --- Constants ---
 
 const RELIGIONS = [
   { value: "Islam", label: "Islam" },
@@ -248,15 +329,12 @@ export default function EmployeeNewPage() {
     setIsSubmitting(true);
 
     // Re-generate NIK right before submission to avoid race conditions
-    // This ensures we get a fresh, unique NIK even if another employee was created
     let finalNik = form.nik;
     if (form.joinDate) {
       try {
         finalNik = await generateUniqueNik(form.joinDate);
-        // Update form state with final NIK
         setForm((prev) => ({ ...prev, nik: finalNik }));
       } catch {
-        // Use existing NIK if generation fails
         finalNik = form.nik;
       }
     }
@@ -343,10 +421,13 @@ export default function EmployeeNewPage() {
   if (isLoading) {
     return (
       <>
-        <Header title="New Employee" />
+        <Header />
         <PageContainer>
-          <div className="flex h-64 items-center justify-center">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "300px" }}>
+            <Loader2
+              className="animate-spin"
+              style={{ width: "24px", height: "24px", color: "var(--hsd-ui-color-navy-500)" }}
+            />
           </div>
         </PageContainer>
       </>
@@ -355,464 +436,478 @@ export default function EmployeeNewPage() {
 
   return (
     <>
-      <Header title="New Employee" />
+      <Header />
       <PageContainer>
-        <div className="space-y-4">
-          {/* Top Bar */}
-          <div className="flex items-center">
-            <button
-              onClick={() => router.push("/employees")}
-              className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Back to Employees
-            </button>
+        <div className="space-y-5">
+          {/* Top Bar — back link + title */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <Link
+                href="/employees"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "4px",
+                  fontSize: "0.875rem",
+                  fontWeight: 400,
+                  color: "var(--hsd-ui-color-gray-500)",
+                  textDecoration: "none",
+                }}
+              >
+                <ChevronLeft style={{ width: "16px", height: "16px" }} />
+                Employees
+              </Link>
+              <h1
+                style={{
+                  fontSize: "1.5rem",
+                  fontWeight: 600,
+                  color: "var(--hsd-ui-color-gray-900)",
+                  margin: "8px 0 0",
+                }}
+              >
+                Create New Employee
+              </h1>
+            </div>
           </div>
 
-          {/* Form Card */}
-          <Card>
-            <CardContent className="p-6 space-y-8">
-              {/* ========== SECTION: BIODATA ========== */}
-              <div>
-                <h2 className="text-base font-semibold uppercase tracking-wide mb-4">
-                  Biodata
-                </h2>
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <Label>NIK</Label>
-                      <Input
-                        placeholder="Auto-generated from Join Date"
-                        value={form.nik}
-                        disabled
-                        className="bg-muted"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label htmlFor="fullName">Full Name *</Label>
-                    <Input
-                      id="fullName"
-                      placeholder="Full Name"
-                      value={form.fullName}
-                      onChange={(e) => handleChange("fullName", e.target.value)}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <Label htmlFor="birthDate">Birth Date *</Label>
-                      <Input
-                        id="birthDate"
-                        type="date"
-                        value={form.birthDate}
-                        onChange={(e) => handleChange("birthDate", e.target.value)}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <Label>Religion</Label>
-                      <Select
-                        value={form.religion}
-                        onValueChange={(v) => handleChange("religion", v)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {RELIGIONS.map((r) => (
-                            <SelectItem key={r.value} value={r.value}>
-                              {r.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label>Ethnic</Label>
-                      <Select
-                        value={form.ethnic}
-                        onValueChange={(v) => handleChange("ethnic", v)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {ETHNICITIES.map((e) => (
-                            <SelectItem key={e.value} value={e.value}>
-                              {e.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <Label>Nationality</Label>
-                      <SearchableSelect
-                        options={ASIAN_COUNTRIES.map((c) => ({
-                          value: c.value,
-                          label: c.label,
-                        }))}
-                        value={form.nationality}
-                        onValueChange={(v) => handleChange("nationality", v)}
-                        placeholder="Select nationality"
-                        searchPlaceholder="Search country..."
-                        emptyText="No country found."
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label htmlFor="address">Address</Label>
-                    <Textarea
-                      id="address"
-                      placeholder="Address"
-                      value={form.address}
-                      onChange={(e) => handleChange("address", e.target.value)}
-                      rows={3}
-                    />
-                  </div>
-
-                </div>
+          {/* ========== SECTION: BIODATA ========== */}
+          <SectionCard title="Personal Information" icon={User}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
+              {/* NIK */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                <Label style={labelStyle}>NIK</Label>
+                <Input
+                  placeholder="Auto-generated from Join Date"
+                  value={form.nik}
+                  disabled
+                  className="bg-muted"
+                />
               </div>
 
-              <div className="border-t border-dashed" />
-
-              {/* ========== SECTION: WORK DETAILS ========== */}
-              <div>
-                <h2 className="text-base font-semibold uppercase tracking-wide mb-4">
-                  Work Details
-                </h2>
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <Label>Employee Type</Label>
-                      <Input
-                        placeholder="Employee Type"
-                        value={selectedJobTitle?.type || ""}
-                        disabled
-                        className="bg-muted"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label>Job Level</Label>
-                      <Input
-                        placeholder="Job Level"
-                        value={selectedJobTitle?.jobLevel?.name || ""}
-                        disabled
-                        className="bg-muted"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <Label>Department</Label>
-                      <Input
-                        placeholder="Department"
-                        value={
-                          selectedJobTitle?.departments
-                            ?.map((d) => d.department?.name)
-                            .filter(Boolean)
-                            .join(", ") || ""
-                        }
-                        disabled
-                        className="bg-muted"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label>OBS</Label>
-                      <Input
-                        placeholder="OBS"
-                        value={
-                          selectedJobTitle?.departments
-                            ?.map((d) => d.department?.obs?.name)
-                            .filter(Boolean)
-                            .join(", ") || ""
-                        }
-                        disabled
-                        className="bg-muted"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-[1fr_120px] gap-4">
-                    <div className="space-y-1.5">
-                      <Label>Job Title *</Label>
-                      <SearchableSelect
-                        options={jobTitles.map((t) => ({
-                          value: t.id,
-                          label: t.name,
-                        }))}
-                        value={form.jobTitleId}
-                        onValueChange={(v) => handleChange("jobTitleId", v)}
-                        placeholder="Job Title"
-                        searchPlaceholder="Search job title..."
-                        emptyText="No job title found."
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="fte">FTE</Label>
-                      <Input
-                        id="fte"
-                        type="number"
-                        step="0.1"
-                        min="0.1"
-                        max="1"
-                        value={form.fte}
-                        onChange={(e) => handleChange("fte", e.target.value)}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <Label htmlFor="joinDate">Join Date *</Label>
-                      <Input
-                        id="joinDate"
-                        type="date"
-                        value={form.joinDate}
-                        onChange={(e) => handleChange("joinDate", e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="phone">Mobile Phone No.</Label>
-                      <Input
-                        id="phone"
-                        placeholder="Phone"
-                        value={form.phone}
-                        onChange={(e) => handleChange("phone", e.target.value)}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <Label htmlFor="email">Email Address *</Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        placeholder="Email"
-                        value={form.email}
-                        onChange={(e) => handleChange("email", e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label>Location</Label>
-                      <Select
-                        value={form.location}
-                        onValueChange={(v) => handleChange("location", v)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select location" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {LOCATIONS.map((l) => (
-                            <SelectItem key={l.value} value={l.value}>
-                              {l.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <Label>Status</Label>
-                      <Select
-                        value={form.status}
-                        onValueChange={(v) => handleChange("status", v)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {EMPLOYEE_STATUSES.map((s) => (
-                            <SelectItem key={s.value} value={s.value}>
-                              {s.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {form.status === "Permanent" && (
-                      <div className="space-y-1.5">
-                        <Label htmlFor="permanentDate">Permanent Date</Label>
-                        <Input
-                          id="permanentDate"
-                          type="date"
-                          value={form.permanentDate}
-                          onChange={(e) => handleChange("permanentDate", e.target.value)}
-                        />
-                      </div>
-                    )}
-
-                    {form.status === "Contract" && (
-                      <div className="space-y-1.5">
-                        <Label>Contract Period</Label>
-                        <Select
-                          value={form.contractPeriod}
-                          onValueChange={(v) => handleChange("contractPeriod", v)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select period" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {CONTRACT_PERIODS.map((p) => (
-                              <SelectItem key={p.value} value={p.value}>
-                                {p.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    )}
-
-                    {form.status === "Probation" && (
-                      <div className="space-y-1.5">
-                        <Label>Probation Period</Label>
-                        <Select
-                          value={form.probationPeriod}
-                          onValueChange={(v) => handleChange("probationPeriod", v)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select period" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {PROBATION_PERIODS.map((p) => (
-                              <SelectItem key={p.value} value={p.value}>
-                                {p.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    )}
-
-                    {form.status === "Resigned" && (
-                      <div className="space-y-1.5">
-                        <Label htmlFor="exitDate">Resigned Date</Label>
-                        <Input
-                          id="exitDate"
-                          type="date"
-                          value={form.exitDate}
-                          onChange={(e) => handleChange("exitDate", e.target.value)}
-                        />
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label>Superior</Label>
-                    <SearchableSelect
-                      value={form.superior || "0"}
-                      onValueChange={(v) => handleChange("superior", v)}
-                      placeholder="Select superior"
-                      searchPlaceholder="Search employee..."
-                      emptyText="No employee found."
-                      options={[
-                        { value: "0", label: "— No Superior —" },
-                        ...employees.map((emp) => ({
-                          value: emp.id,
-                          label: `${emp.firstName} ${emp.lastName}`.trim(),
-                        })),
-                      ]}
-                    />
-                  </div>
-                </div>
+              {/* Full Name */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                <Label style={labelStyle}>Full Name *</Label>
+                <Input
+                  id="fullName"
+                  placeholder="Full Name"
+                  value={form.fullName}
+                  onChange={(e) => handleChange("fullName", e.target.value)}
+                />
               </div>
 
-              <div className="border-t border-dashed" />
-
-              {/* ========== SECTION: FAMILY ========== */}
-              <div>
-                <h2 className="text-base font-semibold uppercase tracking-wide mb-4">
-                  Family
-                </h2>
-                <div className="space-y-4">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="motherName">Mothers Name</Label>
-                    <Input
-                      id="motherName"
-                      placeholder="Mother Name"
-                      value={form.motherName}
-                      onChange={(e) => handleChange("motherName", e.target.value)}
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label htmlFor="fatherName">Fathers Name</Label>
-                    <Input
-                      id="fatherName"
-                      placeholder="Father Name"
-                      value={form.fatherName}
-                      onChange={(e) => handleChange("fatherName", e.target.value)}
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label>Marital Status</Label>
-                    <Select
-                      value={form.maritalStatus}
-                      onValueChange={(v) => handleChange("maritalStatus", v)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select marital status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {MARITAL_STATUSES.map((m) => (
-                          <SelectItem key={m.value} value={m.value}>
-                            {m.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {form.maritalStatus === "Married" && (
-                    <div className="space-y-1.5">
-                      <Label htmlFor="spouseName">Spouse</Label>
-                      <Input
-                        id="spouseName"
-                        placeholder="Your Spouse Name"
-                        value={form.spouseName}
-                        onChange={(e) => handleChange("spouseName", e.target.value)}
-                      />
-                    </div>
-                  )}
-                </div>
+              {/* Birth Date */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                <Label style={labelStyle}>Birth Date *</Label>
+                <Input
+                  id="birthDate"
+                  type="date"
+                  value={form.birthDate}
+                  onChange={(e) => handleChange("birthDate", e.target.value)}
+                />
               </div>
-            </CardContent>
-          </Card>
 
-          {/* Bottom Save Bar */}
-          <div className="flex items-center justify-end gap-2 pb-6">
+              {/* Religion */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                <Label style={labelStyle}>Religion</Label>
+                <Select
+                  value={form.religion}
+                  onValueChange={(v) => handleChange("religion", v)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {RELIGIONS.map((r) => (
+                      <SelectItem key={r.value} value={r.value}>
+                        {r.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Ethnic */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                <Label style={labelStyle}>Ethnic</Label>
+                <Select
+                  value={form.ethnic}
+                  onValueChange={(v) => handleChange("ethnic", v)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ETHNICITIES.map((e) => (
+                      <SelectItem key={e.value} value={e.value}>
+                        {e.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Nationality */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                <Label style={labelStyle}>Nationality</Label>
+                <SearchableSelect
+                  options={ASIAN_COUNTRIES.map((c) => ({
+                    value: c.value,
+                    label: c.label,
+                  }))}
+                  value={form.nationality}
+                  onValueChange={(v) => handleChange("nationality", v)}
+                  placeholder="Select nationality"
+                  searchPlaceholder="Search country..."
+                  emptyText="No country found."
+                />
+              </div>
+            </div>
+
+            {/* Address — full width below the grid */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginTop: "20px" }}>
+              <Label style={labelStyle}>Address</Label>
+              <Textarea
+                id="address"
+                placeholder="Address"
+                value={form.address}
+                onChange={(e) => handleChange("address", e.target.value)}
+                rows={3}
+              />
+            </div>
+          </SectionCard>
+
+          {/* ========== SECTION: WORK DETAILS ========== */}
+          <SectionCard title="Employment Information" icon={Briefcase}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
+              {/* Employee Type (read-only) */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                <Label style={labelStyle}>Employee Type</Label>
+                <Input
+                  placeholder="Employee Type"
+                  value={selectedJobTitle?.type || ""}
+                  disabled
+                  className="bg-muted"
+                />
+              </div>
+
+              {/* Job Level (read-only) */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                <Label style={labelStyle}>Job Level</Label>
+                <Input
+                  placeholder="Job Level"
+                  value={selectedJobTitle?.jobLevel?.name || ""}
+                  disabled
+                  className="bg-muted"
+                />
+              </div>
+
+              {/* Department (read-only) */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                <Label style={labelStyle}>Department</Label>
+                <Input
+                  placeholder="Department"
+                  value={
+                    selectedJobTitle?.departments
+                      ?.map((d) => d.department?.name)
+                      .filter(Boolean)
+                      .join(", ") || ""
+                  }
+                  disabled
+                  className="bg-muted"
+                />
+              </div>
+
+              {/* OBS (read-only) */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                <Label style={labelStyle}>OBS</Label>
+                <Input
+                  placeholder="OBS"
+                  value={
+                    selectedJobTitle?.departments
+                      ?.map((d) => d.department?.obs?.name)
+                      .filter(Boolean)
+                      .join(", ") || ""
+                  }
+                  disabled
+                  className="bg-muted"
+                />
+              </div>
+
+              {/* Job Title */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                <Label style={labelStyle}>Job Title *</Label>
+                <SearchableSelect
+                  options={jobTitles.map((t) => ({
+                    value: t.id,
+                    label: t.name,
+                  }))}
+                  value={form.jobTitleId}
+                  onValueChange={(v) => handleChange("jobTitleId", v)}
+                  placeholder="Job Title"
+                  searchPlaceholder="Search job title..."
+                  emptyText="No job title found."
+                />
+              </div>
+
+              {/* FTE */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                <Label style={labelStyle}>FTE</Label>
+                <Input
+                  id="fte"
+                  type="number"
+                  step="0.1"
+                  min="0.1"
+                  max="1"
+                  value={form.fte}
+                  onChange={(e) => handleChange("fte", e.target.value)}
+                />
+              </div>
+
+              {/* Join Date */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                <Label style={labelStyle}>Join Date *</Label>
+                <Input
+                  id="joinDate"
+                  type="date"
+                  value={form.joinDate}
+                  onChange={(e) => handleChange("joinDate", e.target.value)}
+                />
+              </div>
+
+              {/* Mobile Phone */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                <Label style={labelStyle}>Mobile Phone No.</Label>
+                <Input
+                  id="phone"
+                  placeholder="Phone"
+                  value={form.phone}
+                  onChange={(e) => handleChange("phone", e.target.value)}
+                />
+              </div>
+
+              {/* Email */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                <Label style={labelStyle}>Email Address *</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="Email"
+                  value={form.email}
+                  onChange={(e) => handleChange("email", e.target.value)}
+                />
+              </div>
+
+              {/* Location */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                <Label style={labelStyle}>Location</Label>
+                <Select
+                  value={form.location}
+                  onValueChange={(v) => handleChange("location", v)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select location" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {LOCATIONS.map((l) => (
+                      <SelectItem key={l.value} value={l.value}>
+                        {l.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Status */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                <Label style={labelStyle}>Status</Label>
+                <Select
+                  value={form.status}
+                  onValueChange={(v) => handleChange("status", v)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {EMPLOYEE_STATUSES.map((s) => (
+                      <SelectItem key={s.value} value={s.value}>
+                        {s.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Conditional status fields */}
+              {form.status === "Permanent" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <Label style={labelStyle}>Permanent Date</Label>
+                  <Input
+                    id="permanentDate"
+                    type="date"
+                    value={form.permanentDate}
+                    onChange={(e) => handleChange("permanentDate", e.target.value)}
+                  />
+                </div>
+              )}
+
+              {form.status === "Contract" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <Label style={labelStyle}>Contract Period</Label>
+                  <Select
+                    value={form.contractPeriod}
+                    onValueChange={(v) => handleChange("contractPeriod", v)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select period" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CONTRACT_PERIODS.map((p) => (
+                        <SelectItem key={p.value} value={p.value}>
+                          {p.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {form.status === "Probation" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <Label style={labelStyle}>Probation Period</Label>
+                  <Select
+                    value={form.probationPeriod}
+                    onValueChange={(v) => handleChange("probationPeriod", v)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select period" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PROBATION_PERIODS.map((p) => (
+                        <SelectItem key={p.value} value={p.value}>
+                          {p.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {form.status === "Resigned" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <Label style={labelStyle}>Resigned Date</Label>
+                  <Input
+                    id="exitDate"
+                    type="date"
+                    value={form.exitDate}
+                    onChange={(e) => handleChange("exitDate", e.target.value)}
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Superior — full width below the grid */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginTop: "20px" }}>
+              <Label style={labelStyle}>Superior</Label>
+              <SearchableSelect
+                value={form.superior || "0"}
+                onValueChange={(v) => handleChange("superior", v)}
+                placeholder="Select superior"
+                searchPlaceholder="Search employee..."
+                emptyText="No employee found."
+                options={[
+                  { value: "0", label: "-- No Superior --" },
+                  ...employees.map((emp) => ({
+                    value: emp.id,
+                    label: `${emp.firstName} ${emp.lastName}`.trim(),
+                  })),
+                ]}
+              />
+            </div>
+          </SectionCard>
+
+          {/* ========== SECTION: FAMILY ========== */}
+          <SectionCard title="Family Information" icon={Users}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
+              {/* Mother's Name */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                <Label style={labelStyle}>Mothers Name</Label>
+                <Input
+                  id="motherName"
+                  placeholder="Mother Name"
+                  value={form.motherName}
+                  onChange={(e) => handleChange("motherName", e.target.value)}
+                />
+              </div>
+
+              {/* Father's Name */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                <Label style={labelStyle}>Fathers Name</Label>
+                <Input
+                  id="fatherName"
+                  placeholder="Father Name"
+                  value={form.fatherName}
+                  onChange={(e) => handleChange("fatherName", e.target.value)}
+                />
+              </div>
+
+              {/* Marital Status */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                <Label style={labelStyle}>Marital Status</Label>
+                <Select
+                  value={form.maritalStatus}
+                  onValueChange={(v) => handleChange("maritalStatus", v)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select marital status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MARITAL_STATUSES.map((m) => (
+                      <SelectItem key={m.value} value={m.value}>
+                        {m.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Spouse Name (conditional) */}
+              {form.maritalStatus === "Married" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <Label style={labelStyle}>Spouse</Label>
+                  <Input
+                    id="spouseName"
+                    placeholder="Your Spouse Name"
+                    value={form.spouseName}
+                    onChange={(e) => handleChange("spouseName", e.target.value)}
+                  />
+                </div>
+              )}
+            </div>
+          </SectionCard>
+
+          {/* Action Buttons */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "8px" }}>
             <Button
               variant="outline"
               onClick={() => router.push("/employees")}
               disabled={isSubmitting}
+              style={btnSecondary}
             >
               Cancel
             </Button>
             <Button
-              className="gap-2"
               onClick={handleSubmit}
               disabled={isSubmitting || !isFormValid}
+              style={btnPrimary}
             >
               {isSubmitting ? (
-                <Loader2 className="animate-spin" />
+                <>
+                  <Loader2 className="animate-spin" style={{ width: "16px", height: "16px", marginRight: "6px" }} />
+                  Creating...
+                </>
               ) : (
-                <Save />
+                "Create Employee"
               )}
-              Save
             </Button>
           </div>
         </div>
