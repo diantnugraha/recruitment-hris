@@ -35,6 +35,7 @@ import jobTitleService from "@/services/job-title.service";
 import { useEmployeeStore } from "@/stores/employee-store";
 import type { JobTitle, EmployeeWithRelations, EmployeeStatus, MaritalStatus } from "@/types";
 import { showToast } from "@/lib/utils/toast-messages";
+import { RequireHr } from "@/components/shared/RequireHr";
 import { ASIAN_COUNTRIES } from "@/lib/constants/nationalities";
 
 // --- TUV button style helpers ---
@@ -435,7 +436,7 @@ export default function EmployeeNewPage() {
   }
 
   return (
-    <>
+    <RequireHr>
       <Header />
       <PageContainer>
         <div className="space-y-5">
@@ -912,6 +913,6 @@ export default function EmployeeNewPage() {
           </div>
         </div>
       </PageContainer>
-    </>
+    </RequireHr>
   );
 }

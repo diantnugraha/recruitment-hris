@@ -58,6 +58,7 @@ import type {
 } from "@/types";
 import { DIVISION_HEAD_CODES, DEPARTMENT_MANAGER_CODES } from "@/types";
 import { showToast } from "@/lib/utils/toast-messages";
+import { RequireHr } from "@/components/shared/RequireHr";
 import { ASIAN_COUNTRIES } from "@/lib/constants/nationalities";
 
 // --- TUV button style helpers ---
@@ -615,7 +616,7 @@ export default function EmployeeEditPage() {
   }
 
   return (
-    <>
+    <RequireHr>
       <Header />
       <PageContainer>
         <div className="space-y-5">
@@ -1245,6 +1246,6 @@ export default function EmployeeEditPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
+    </RequireHr>
   );
 }

@@ -31,6 +31,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { LexicalEditor } from "@/components/shared/lexical-editor";
 import { showToast } from "@/lib/utils/toast-messages";
+import { RequireHr } from "@/components/shared/RequireHr";
 import { jobTitleService, UpdateJobTitleRequest } from "@/services/job-title.service";
 import { jobLevelService } from "@/services/job-level.service";
 import { departmentService } from "@/services/department.service";
@@ -310,7 +311,7 @@ export default function JobTitleEditPage() {
   const isFormValid = formData.name && formData.jobLevelId && formData.type && formData.departmentIds.length > 0;
 
   return (
-    <>
+    <RequireHr>
       <Header />
       <PageContainer>
         <div className="space-y-5">
@@ -652,6 +653,6 @@ export default function JobTitleEditPage() {
           </div>
         </div>
       </PageContainer>
-    </>
+    </RequireHr>
   );
 }
