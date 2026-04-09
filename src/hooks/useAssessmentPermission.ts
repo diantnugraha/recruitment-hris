@@ -16,7 +16,7 @@ export interface AssessmentPermission {
   refetch: () => void;
 }
 
-const HR_ROLES = [ROLES.HUMAN_RESOURCES, ROLES.HR_MANAGER, ROLES.SUPER_ADMIN] as const;
+const HR_ROLES = [ROLES.HR_MANAGER, ROLES.SUPER_ADMIN] as const;
 
 export function isHROrAdmin(roleId: number): boolean {
   return HR_ROLES.includes(roleId as typeof HR_ROLES[number]);

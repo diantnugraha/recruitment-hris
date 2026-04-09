@@ -2,7 +2,7 @@ import { ROLES, RoleId } from './roles';
 
 const ALL_ACTIVE_ROLES: RoleId[] = [
   ROLES.SUPER_ADMIN,
-  ROLES.HUMAN_RESOURCES,
+  ROLES.HR_MANAGER,
   ROLES.MANAGER,
   ROLES.HOD,
   ROLES.MANAGEMENT,
@@ -10,24 +10,24 @@ const ALL_ACTIVE_ROLES: RoleId[] = [
 ];
 
 export const ROUTE_ACCESS: Record<string, RoleId[]> = {
-  // All active roles
-  '/dashboard':                ALL_ACTIVE_ROLES,
-  '/organization/obs':         ALL_ACTIVE_ROLES,
-  '/organization/divisions':   ALL_ACTIVE_ROLES,
-  '/organization/departments': ALL_ACTIVE_ROLES,
-  '/organization/job-levels':  ALL_ACTIVE_ROLES,
-  '/organization/job-titles':  ALL_ACTIVE_ROLES,
-  '/employees':                ALL_ACTIVE_ROLES,
+  // Master data - accessible to HUMAN_RESOURCES + all active roles
+  '/dashboard':                [...ALL_ACTIVE_ROLES, ROLES.HUMAN_RESOURCES],
+  '/organization/obs':         [...ALL_ACTIVE_ROLES, ROLES.HUMAN_RESOURCES],
+  '/organization/divisions':   [...ALL_ACTIVE_ROLES, ROLES.HUMAN_RESOURCES],
+  '/organization/departments': [...ALL_ACTIVE_ROLES, ROLES.HUMAN_RESOURCES],
+  '/organization/job-levels':  [...ALL_ACTIVE_ROLES, ROLES.HUMAN_RESOURCES],
+  '/organization/job-titles':  [...ALL_ACTIVE_ROLES, ROLES.HUMAN_RESOURCES],
+  '/employees':                [...ALL_ACTIVE_ROLES, ROLES.HUMAN_RESOURCES],
 
-  // Not Employee
-  '/employee-budget':  [ROLES.SUPER_ADMIN, ROLES.HUMAN_RESOURCES, ROLES.MANAGER, ROLES.HOD, ROLES.MANAGEMENT],
-  '/employee-request': [ROLES.SUPER_ADMIN, ROLES.HUMAN_RESOURCES, ROLES.MANAGER, ROLES.HOD, ROLES.MANAGEMENT],
-  '/recruitment':      [ROLES.SUPER_ADMIN, ROLES.HUMAN_RESOURCES, ROLES.HR_MANAGER, ROLES.MANAGER, ROLES.HOD, ROLES.MANAGEMENT],
-  '/onboarding':       [ROLES.SUPER_ADMIN, ROLES.HUMAN_RESOURCES, ROLES.HR_MANAGER, ROLES.MANAGER, ROLES.HOD, ROLES.MANAGEMENT],
+  // Approval & recruitment - HR_MANAGER only (exclude HUMAN_RESOURCES)
+  '/employee-budget':  [ROLES.SUPER_ADMIN, ROLES.HR_MANAGER, ROLES.MANAGER, ROLES.HOD, ROLES.MANAGEMENT],
+  '/employee-request': [ROLES.SUPER_ADMIN, ROLES.HR_MANAGER, ROLES.MANAGER, ROLES.HOD, ROLES.MANAGEMENT],
+  '/recruitment':      [ROLES.SUPER_ADMIN, ROLES.HR_MANAGER, ROLES.MANAGER, ROLES.HOD, ROLES.MANAGEMENT],
+  '/onboarding':       [ROLES.SUPER_ADMIN, ROLES.HR_MANAGER, ROLES.MANAGER, ROLES.HOD, ROLES.MANAGEMENT],
 
-  // Admin + HR only
-  '/users':        [ROLES.SUPER_ADMIN, ROLES.HUMAN_RESOURCES],
-  '/roles-access': [ROLES.SUPER_ADMIN, ROLES.HUMAN_RESOURCES],
+  // Admin + HR Manager only
+  '/users':        [ROLES.SUPER_ADMIN, ROLES.HR_MANAGER],
+  '/roles-access': [ROLES.SUPER_ADMIN, ROLES.HR_MANAGER],
 };
 
 /**

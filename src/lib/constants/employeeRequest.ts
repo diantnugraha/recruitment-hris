@@ -221,11 +221,11 @@ export const WORKFLOW_TRANSITIONS: Record<EmployeeRequestStatus, {
 }> = {
   draft:          { nextStatuses: ['created'],                         allowedRoles: [ROLES.MANAGER, ROLES.SUPER_ADMIN] },
   created:        { nextStatuses: ['hod_reviewed', 'revise'],          allowedRoles: [ROLES.HOD, ROLES.SUPER_ADMIN] },
-  hod_reviewed:   { nextStatuses: ['reviewed', 'revise'],              allowedRoles: [ROLES.HUMAN_RESOURCES, ROLES.SUPER_ADMIN] },
+  hod_reviewed:   { nextStatuses: ['reviewed', 'revise'],              allowedRoles: [ROLES.HR_MANAGER, ROLES.SUPER_ADMIN] },
   reviewed:       { nextStatuses: ['approved', 'rejected', 'revise'],  allowedRoles: [ROLES.MANAGEMENT, ROLES.SUPER_ADMIN] },
-  approved:       { nextStatuses: ['in_recruitment'],                  allowedRoles: [ROLES.HUMAN_RESOURCES, ROLES.SUPER_ADMIN] },
+  approved:       { nextStatuses: ['in_recruitment'],                  allowedRoles: [ROLES.HR_MANAGER, ROLES.SUPER_ADMIN] },
   rejected:       { nextStatuses: [],                                  allowedRoles: [] },
   revise:         { nextStatuses: ['created'],                         allowedRoles: [ROLES.MANAGER, ROLES.SUPER_ADMIN] },
-  in_recruitment: { nextStatuses: ['completed'],                       allowedRoles: [ROLES.HUMAN_RESOURCES, ROLES.SUPER_ADMIN] },
+  in_recruitment: { nextStatuses: ['completed'],                       allowedRoles: [ROLES.HR_MANAGER, ROLES.SUPER_ADMIN] },
   completed:      { nextStatuses: [],                                  allowedRoles: [] },
 };

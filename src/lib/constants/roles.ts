@@ -92,7 +92,6 @@ export const ROLE_CONFIG: Record<
  * Must match backend HR_ROLE_IDS in recruitment-hris-api/src/middlewares/roleMiddleware.ts.
  */
 export const HR_ROLES: RoleId[] = [
-  ROLES.HUMAN_RESOURCES,
   ROLES.HR_MANAGER,
   ROLES.SUPER_ADMIN,
 ];
