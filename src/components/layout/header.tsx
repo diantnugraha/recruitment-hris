@@ -121,90 +121,106 @@ export function Header(_props: HeaderProps) {
           }}
         />
 
-        {/* User Section — avatar + name + dropdown */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button className="flex cursor-pointer items-center border-0 bg-transparent outline-none" style={{ gap: "8px" }}>
-              {/* Avatar — blue-200 bg, 40px */}
-              <div
-                className="flex items-center justify-center shrink-0"
+        {/* User Section — avatar+name as Link, chevron as dropdown trigger */}
+        <div className="flex items-center" style={{ gap: "0px" }}>
+          {/* Avatar + Name/Email → Link to /profile */}
+          <Link
+            href="/profile"
+            className="flex items-center transition-opacity hover:opacity-80"
+            style={{ gap: "8px" }}
+          >
+            {/* Avatar — blue-200 bg, 40px */}
+            <div
+              className="flex items-center justify-center shrink-0"
+              style={{
+                width: "40px",
+                height: "40px",
+                borderRadius: "50%",
+                backgroundColor: "var(--hsd-ui-color-blue-200)",
+              }}
+            >
+              <span
                 style={{
-                  width: "40px",
-                  height: "40px",
-                  borderRadius: "50%",
-                  backgroundColor: "var(--hsd-ui-color-blue-200)",
+                  color: "rgba(35, 41, 51, 1)",
+                  fontSize: "1rem",
+                  fontWeight: 600,
+                  fontFamily: "Poppins, sans-serif",
                 }}
               >
-                <span
-                  style={{
-                    color: "rgba(35, 41, 51, 1)",
-                    fontSize: "1rem",
-                    fontWeight: 600,
-                    fontFamily: "Poppins, sans-serif",
-                  }}
-                >
-                  {getUserInitials()}
-                </span>
-              </div>
-              {/* Name + Email */}
-              <div className="hidden md:flex md:flex-col md:items-start">
-                <span
-                  style={{
-                    fontSize: "1rem",
-                    fontWeight: 400,
-                    color: "rgba(35, 41, 51, 1)",
-                    lineHeight: 1.4,
-                  }}
-                >
-                  {user?.displayName || user?.name || "User"}
-                </span>
-                <span
-                  style={{
-                    fontSize: "0.875rem",
-                    fontWeight: 300,
-                    color: "rgba(147, 158, 153, 1)",
-                    lineHeight: 1.4,
-                  }}
-                >
-                  {user?.email || ""}
-                </span>
-              </div>
-              {/* Chevron */}
-              <ChevronDown
-                className="hidden md:block"
+                {getUserInitials()}
+              </span>
+            </div>
+            {/* Name + Email */}
+            <div className="hidden md:flex md:flex-col md:items-start">
+              <span
                 style={{
-                  width: "20px",
-                  height: "20px",
-                  color: "rgba(120, 134, 127, 1)",
+                  fontSize: "1rem",
+                  fontWeight: 400,
+                  color: "rgba(35, 41, 51, 1)",
+                  lineHeight: 1.4,
                 }}
-              />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" sideOffset={8} className="min-w-[160px]">
-            <DropdownMenuItem
-              onClick={() => setShowLogoutDialog(true)}
-              className="cursor-pointer"
-            >
-              <LogOut
-                className="mr-2"
-                style={{
-                  width: "16px",
-                  height: "16px",
-                  color: "var(--hsd-ui-color-red-600)",
-                }}
-              />
+              >
+                {user?.displayName || user?.name || "User"}
+              </span>
               <span
                 style={{
                   fontSize: "0.875rem",
-                  fontWeight: 600,
-                  color: "var(--hsd-ui-color-red-600)",
+                  fontWeight: 300,
+                  color: "rgba(147, 158, 153, 1)",
+                  lineHeight: 1.4,
                 }}
               >
-                Logout
+                {user?.email || ""}
               </span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+            </div>
+          </Link>
+
+          {/* Chevron → Dropdown with Logout */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className="flex cursor-pointer items-center justify-center border-0 bg-transparent outline-none transition-opacity hover:opacity-70"
+                style={{
+                  width: "32px",
+                  height: "32px",
+                  marginLeft: "4px",
+                }}
+              >
+                <ChevronDown
+                  style={{
+                    width: "20px",
+                    height: "20px",
+                    color: "rgba(120, 134, 127, 1)",
+                  }}
+                />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" sideOffset={8} className="min-w-[160px]">
+              <DropdownMenuItem
+                onClick={() => setShowLogoutDialog(true)}
+                className="cursor-pointer"
+              >
+                <LogOut
+                  className="mr-2"
+                  style={{
+                    width: "16px",
+                    height: "16px",
+                    color: "var(--hsd-ui-color-red-600)",
+                  }}
+                />
+                <span
+                  style={{
+                    fontSize: "0.875rem",
+                    fontWeight: 600,
+                    color: "var(--hsd-ui-color-red-600)",
+                  }}
+                >
+                  Logout
+                </span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
 
         {/* Logout Confirmation Dialog */}
         <Dialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
@@ -220,6 +236,15 @@ export function Header(_props: HeaderProps) {
                 variant="outline"
                 onClick={() => setShowLogoutDialog(false)}
                 disabled={isLoading}
+                style={{
+                  fontFamily: "'Poppins', sans-serif",
+                  fontWeight: 400,
+                  fontSize: "var(--hsd-ui-fontSizes-md)",
+                  borderRadius: "var(--hsd-ui-radii-xs)",
+                  backgroundColor: "var(--hsd-ui-color-gray-50)",
+                  color: "var(--hsd-ui-color-gray-900)",
+                  borderColor: "rgba(120, 134, 127, 0.2)",
+                }}
               >
                 Cancel
               </Button>
@@ -227,7 +252,12 @@ export function Header(_props: HeaderProps) {
                 onClick={handleSignOut}
                 disabled={isLoading}
                 style={{
+                  fontFamily: "'Poppins', sans-serif",
+                  fontWeight: 400,
+                  fontSize: "var(--hsd-ui-fontSizes-md)",
+                  borderRadius: "var(--hsd-ui-radii-xs)",
                   backgroundColor: "var(--hsd-ui-color-navy-500)",
+                  color: "var(--hsd-ui-color-gray-50)",
                   borderColor: "var(--hsd-ui-color-navy-500)",
                 }}
               >
