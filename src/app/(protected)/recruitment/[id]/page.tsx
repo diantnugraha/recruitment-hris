@@ -4,9 +4,9 @@ import * as React from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
-  ArrowLeft,
   Building2,
   Calendar,
+  ChevronLeft,
   Loader2,
   XCircle,
   Clock,
@@ -24,11 +24,11 @@ import {
 import { Header } from "@/components/layout/header";
 import { PageContainer } from "@/components/layout/page-container";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { TuvBadge } from "@/components/shared/tuv-badge";
 import {
   Dialog,
   DialogContent,
@@ -44,7 +44,7 @@ import {
   type AssessmentProgress,
   type CandidateBiodata,
 } from "@/services/candidate.service";
-import { formatShortDate, cn } from "@/lib/utils";
+import { formatShortDate } from "@/lib/utils";
 import { showToast } from "@/lib/utils/toast-messages";
 import { hasBiodataSubmitted } from "@/lib/utils/recruitmentHelpers";
 
@@ -56,6 +56,163 @@ import { OnboardingTab } from "@/components/recruitment/tabs/OnboardingTab";
 import { useAssessmentPermission, isHROrAdmin, type TabMode } from "@/hooks/useAssessmentPermission";
 import { SlaBanner } from "@/components/shared/SlaBanner";
 import { useAuthStore } from "@/stores/auth-store";
+
+// --- TUV button style helpers ---
+
+const btnPrimary = {
+  backgroundColor: "var(--hsd-ui-background-color-primary)",
+  borderColor: "var(--hsd-ui-border-color-primary)",
+  color: "var(--hsd-ui-text-color-primary)",
+  borderRadius: "4px",
+  height: "38px",
+  padding: "0 16px",
+  fontSize: "0.875rem",
+  fontWeight: 500,
+} as const;
+
+const btnSecondary = {
+  borderRadius: "4px",
+  height: "38px",
+  padding: "0 16px",
+  fontSize: "0.875rem",
+  fontWeight: 500,
+  borderColor: "rgba(120,134,127,0.2)",
+} as const;
+
+const btnDanger = {
+  backgroundColor: "rgba(250, 55, 70, 1)",
+  borderColor: "rgba(250, 55, 70, 1)",
+  color: "#fff",
+  borderRadius: "4px",
+  height: "38px",
+  padding: "0 16px",
+  fontSize: "0.875rem",
+  fontWeight: 500,
+} as const;
+
+// --- TUV reusable sub-components (module level) ---
+
+function DetailItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p
+        style={{
+          fontSize: "0.6875rem",
+          fontWeight: 500,
+          textTransform: "uppercase",
+          letterSpacing: "0.05em",
+          color: "var(--hsd-ui-color-gray-500)",
+          margin: 0,
+        }}
+      >
+        {label}
+      </p>
+      <p
+        style={{
+          fontSize: "0.875rem",
+          fontWeight: 500,
+          color: value ? "var(--hsd-ui-color-gray-900)" : "var(--hsd-ui-color-gray-400)",
+          margin: "2px 0 0",
+        }}
+      >
+        {value || "No Data"}
+      </p>
+    </div>
+  );
+}
+
+function SectionCard({
+  title,
+  icon: Icon,
+  children,
+}: {
+  title: string;
+  icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
+  children: React.ReactNode;
+}) {
+  return (
+    <section
+      className="border"
+      style={{
+        borderRadius: "8px",
+        backgroundColor: "#fff",
+        borderColor: "rgba(120, 134, 127, 0.2)",
+      }}
+    >
+      <div
+        className="flex items-center justify-between px-6 py-4"
+        style={{ borderBottom: "1px solid rgba(120, 134, 127, 0.15)" }}
+      >
+        <h2
+          style={{
+            fontSize: "0.9375rem",
+            fontWeight: 600,
+            color: "var(--hsd-ui-color-gray-900)",
+            margin: 0,
+          }}
+        >
+          {title}
+        </h2>
+        <div
+          className="flex h-8 w-8 items-center justify-center rounded-lg"
+          style={{ backgroundColor: "var(--hsd-ui-color-gray-100)" }}
+        >
+          <Icon
+            style={{ width: "16px", height: "16px", color: "var(--hsd-ui-color-gray-500)" }}
+          />
+        </div>
+      </div>
+      <div className="px-6 py-5">{children}</div>
+    </section>
+  );
+}
+
+function DetailSkeleton() {
+  return (
+    <div className="space-y-5">
+      <div
+        className="border p-6"
+        style={{ borderRadius: "8px", backgroundColor: "#fff", borderColor: "rgba(120, 134, 127, 0.2)" }}
+      >
+        <div className="flex items-start gap-5">
+          <Skeleton className="h-20 w-20 shrink-0" style={{ borderRadius: "8px" }} />
+          <div className="flex-1 space-y-3 pt-1">
+            <Skeleton className="h-7 w-56" />
+            <div className="flex gap-2">
+              <Skeleton className="h-5 w-20" style={{ borderRadius: "4px" }} />
+              <Skeleton className="h-5 w-20" style={{ borderRadius: "4px" }} />
+            </div>
+            <div className="pt-3 grid grid-cols-4 gap-4">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="space-y-1.5">
+                  <Skeleton className="h-3 w-16" />
+                  <Skeleton className="h-4 w-24" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+      {Array.from({ length: 4 }).map((_, i) => (
+        <div
+          key={i}
+          className="border p-6 space-y-4"
+          style={{ borderRadius: "8px", backgroundColor: "#fff", borderColor: "rgba(120, 134, 127, 0.2)" }}
+        >
+          <Skeleton className="h-5 w-40" />
+          <div className="grid grid-cols-2 gap-4">
+            {Array.from({ length: 4 }).map((_, j) => (
+              <div key={j} className="space-y-1.5">
+                <Skeleton className="h-3 w-20" />
+                <Skeleton className="h-4 w-28" />
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 // Workflow progress steps for visual stepper
 const RECRUITMENT_WORKFLOW_STEPS = [
@@ -71,6 +228,8 @@ function getTabMode(canEdit: boolean, isUnlocked: boolean): TabMode {
   if (!canEdit) return "view";
   return "edit";
 }
+
+// --- Page component ---
 
 export default function CandidateDetailPage() {
   const params = useParams();
@@ -237,46 +396,12 @@ export default function CandidateDetailPage() {
   if (isLoading || permissions.isLoading) {
     return (
       <>
-        <Header title="Candidate Details" />
+        <Header />
         <PageContainer>
           <div className="mb-5">
-            <Skeleton className="h-8 w-20 rounded-md" />
+            <Skeleton className="h-5 w-40" style={{ borderRadius: "4px" }} />
           </div>
-          <div className="space-y-5">
-            <div className="rounded-2xl border bg-card p-6">
-              <div className="flex items-start gap-5">
-                <Skeleton className="h-20 w-20 rounded-2xl shrink-0" />
-                <div className="flex-1 space-y-3 pt-1">
-                  <Skeleton className="h-7 w-56" />
-                  <div className="flex gap-2">
-                    <Skeleton className="h-5 w-20 rounded-full" />
-                    <Skeleton className="h-5 w-20 rounded-full" />
-                  </div>
-                  <div className="pt-3 grid grid-cols-3 gap-4">
-                    {Array.from({ length: 3 }).map((_, i) => (
-                      <div key={i} className="space-y-1.5">
-                        <Skeleton className="h-3 w-16" />
-                        <Skeleton className="h-4 w-24" />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="rounded-2xl border bg-card p-6 space-y-4">
-                <Skeleton className="h-5 w-40" />
-                <div className="grid grid-cols-2 gap-4">
-                  {Array.from({ length: 4 }).map((_, j) => (
-                    <div key={j} className="space-y-1.5">
-                      <Skeleton className="h-3 w-20" />
-                      <Skeleton className="h-4 w-28" />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
+          <DetailSkeleton />
         </PageContainer>
       </>
     );
@@ -286,11 +411,13 @@ export default function CandidateDetailPage() {
   if (permissions.isError) {
     return (
       <>
-        <Header title="Candidate Details" />
+        <Header />
         <PageContainer>
-          <div className="flex h-64 flex-col items-center justify-center gap-3">
-            <p className="text-sm text-muted-foreground">Failed to load permissions</p>
-            <Button variant="outline" onClick={permissions.refetch}>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "300px", gap: "12px" }}>
+            <p style={{ fontSize: "0.875rem", color: "var(--hsd-ui-color-gray-500)", margin: 0 }}>
+              Failed to load permissions
+            </p>
+            <Button variant="outline" onClick={permissions.refetch} style={btnSecondary}>
               Try Again
             </Button>
           </div>
@@ -303,11 +430,13 @@ export default function CandidateDetailPage() {
   if (error || !candidate) {
     return (
       <>
-        <Header title="Candidate Details" />
+        <Header />
         <PageContainer>
-          <div className="flex h-64 flex-col items-center justify-center gap-3">
-            <p className="text-sm text-muted-foreground">{error || "Candidate not found"}</p>
-            <Button variant="outline" onClick={() => router.back()}>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "300px", gap: "12px" }}>
+            <p style={{ fontSize: "0.875rem", color: "var(--hsd-ui-color-gray-500)", margin: 0 }}>
+              {error || "Candidate not found"}
+            </p>
+            <Button variant="outline" onClick={() => router.back()} style={btnSecondary}>
               Try Again
             </Button>
           </div>
@@ -318,85 +447,94 @@ export default function CandidateDetailPage() {
 
   return (
     <>
-      <Header title="Candidate Details" />
+      <Header />
       <PageContainer>
         <div className="space-y-5">
-          {/* Top Bar */}
+          {/* Top Bar -- back link + actions */}
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <Button
-              variant="ghost"
-              className="gap-1.5 text-muted-foreground w-fit h-auto px-2 py-1.5 text-sm"
-              asChild
+            <Link
+              href="/recruitment"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "4px",
+                fontSize: "0.875rem",
+                fontWeight: 400,
+                color: "var(--hsd-ui-color-gray-500)",
+                textDecoration: "none",
+              }}
             >
-              <Link href="/recruitment">
-                <ArrowLeft className="h-4 w-4" />
-                Recruitment
-              </Link>
-            </Button>
+              <ChevronLeft style={{ width: "16px", height: "16px" }} />
+              Recruitment
+            </Link>
           </div>
 
-          {/* Profile Header Card */}
-          <div className="rounded-2xl border bg-card">
+          {/* ===== Profile Header Card ===== */}
+          <div
+            className="border"
+            style={{ borderRadius: "8px", backgroundColor: "#fff", borderColor: "rgba(120, 134, 127, 0.2)" }}
+          >
             <div className="p-6">
               <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
-                <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-accent/10">
-                  <User className="h-9 w-9 text-accent" />
+                {/* Icon */}
+                <div
+                  className="flex h-20 w-20 shrink-0 items-center justify-center"
+                  style={{ borderRadius: "8px", backgroundColor: "var(--hsd-ui-color-navy-50)" }}
+                >
+                  <User style={{ width: "36px", height: "36px", color: "var(--hsd-ui-color-navy-500)" }} />
                 </div>
+
                 <div className="flex-1 min-w-0 sm:pt-2">
-                  <h1 className="text-2xl font-bold tracking-tight text-foreground">
+                  {/* Name */}
+                  <h1
+                    style={{
+                      fontSize: "1.5rem",
+                      fontWeight: 600,
+                      color: "var(--hsd-ui-color-gray-900)",
+                      margin: 0,
+                    }}
+                  >
                     {candidate.fullname}
                   </h1>
+
+                  {/* Badges */}
                   <div className="flex items-center gap-2 mt-2 flex-wrap">
                     {candidate.jobTitle && (
-                      <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100 dark:bg-blue-950 dark:text-blue-400">
-                        {candidate.jobTitle.name}
-                      </Badge>
+                      <TuvBadge
+                        text={candidate.jobTitle.name}
+                        variant="info"
+                        size="sm"
+                        border
+                      />
                     )}
                     {candidate.verify && (
-                      <Badge
-                        variant="outline"
-                        className={
-                          candidate.verify === "VERIFIED"
-                            ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-400"
-                            : "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-400"
-                        }
-                      >
-                        {candidate.verify}
-                      </Badge>
+                      <TuvBadge
+                        text={candidate.verify}
+                        variant={candidate.verify === "VERIFIED" ? "success" : "warning"}
+                        size="sm"
+                        border
+                      />
                     )}
                     {progress && (
                       <>
                         {progress.anyFailed ? (
-                          <Badge variant="destructive" className="text-xs">Assessment Failed</Badge>
+                          <TuvBadge text="Assessment Failed" variant="danger" size="sm" border />
                         ) : progress.allPassed ? (
-                          <Badge className="text-xs bg-emerald-600">All Passed</Badge>
+                          <TuvBadge text="All Passed" variant="success" size="sm" border />
                         ) : null}
                       </>
                     )}
                   </div>
-                  <div className="mt-5 pt-4 border-t border-border/60 grid grid-cols-2 gap-x-8 gap-y-3 sm:grid-cols-4">
-                    <div>
-                      <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Email</p>
-                      <p className="mt-0.5 text-sm font-medium text-foreground">{candidate.email}</p>
-                    </div>
-                    <div>
-                      <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Phone</p>
-                      <p className={`mt-0.5 text-sm font-medium ${candidate.mobilePhone ? "text-foreground" : "text-muted-foreground"}`}>
-                        {candidate.mobilePhone || "No Data"}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Request Code</p>
-                      <p className={`mt-0.5 text-sm font-medium ${candidate.employeeRequest?.code ? "text-foreground" : "text-muted-foreground"}`}>
-                        {candidate.employeeRequest?.code || "No Data"}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Applied Date</p>
-                      <p className={`mt-0.5 text-sm font-medium ${candidate.createdAt ? "text-foreground" : "text-muted-foreground"}`}>
-                        {candidate.createdAt ? formatShortDate(candidate.createdAt) : "No Data"}
-                      </p>
-                    </div>
+
+                  {/* Key facts row */}
+                  <div
+                    className="mt-5 pt-4 grid grid-cols-2 gap-x-8 gap-y-3 sm:grid-cols-4"
+                    style={{ borderTop: "1px solid rgba(120, 134, 127, 0.15)" }}
+                  >
+                    <DetailItem label="Email" value={candidate.email} />
+                    <DetailItem label="Phone" value={candidate.mobilePhone || ""} />
+                    <DetailItem label="Request Code" value={candidate.employeeRequest?.code || ""} />
+                    <DetailItem label="Applied Date" value={candidate.createdAt ? formatShortDate(candidate.createdAt) : ""} />
                   </div>
                 </div>
               </div>
@@ -408,50 +546,98 @@ export default function CandidateDetailPage() {
             <SlaBanner sla={candidate.employeeRequest.sla} showOnTrack={false} />
           )}
 
-          {/* Workflow Progress Stepper */}
+          {/* ===== Workflow Progress Stepper ===== */}
           {!progress?.anyFailed && (
-            <div className="rounded-2xl border border-accent/10 bg-gradient-to-br from-accent/5 to-transparent overflow-hidden">
-              <div className="p-4">
-                <div className="flex items-center justify-between">
+            <div
+              className="border"
+              style={{ borderRadius: "8px", backgroundColor: "#fff", borderColor: "rgba(120, 134, 127, 0.2)" }}
+            >
+              <div style={{ padding: "24px 32px 20px" }}>
+                <div style={{ display: "grid", gridTemplateColumns: `repeat(${RECRUITMENT_WORKFLOW_STEPS.length}, 1fr)`, position: "relative" }}>
+                  {/* Connector line — sits behind circles */}
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: "16px",
+                      left: "calc(50% / " + RECRUITMENT_WORKFLOW_STEPS.length + ")",
+                      right: "calc(50% / " + RECRUITMENT_WORKFLOW_STEPS.length + ")",
+                      height: "2px",
+                      backgroundColor: "var(--hsd-ui-color-gray-200)",
+                    }}
+                  />
+                  {/* Completed connector overlay */}
+                  {currentStepIndex > 0 && (
+                    <div
+                      style={{
+                        position: "absolute",
+                        top: "16px",
+                        left: "calc(50% / " + RECRUITMENT_WORKFLOW_STEPS.length + ")",
+                        width: `calc(${((currentStepIndex) / (RECRUITMENT_WORKFLOW_STEPS.length - 1)) * 100}% - 50% / ${RECRUITMENT_WORKFLOW_STEPS.length} * 2)`,
+                        height: "2px",
+                        backgroundColor: "var(--hsd-ui-color-navy-500)",
+                        transition: "width 0.5s ease",
+                      }}
+                    />
+                  )}
+                  {/* Steps */}
                   {RECRUITMENT_WORKFLOW_STEPS.map((step, index) => {
                     const StepIcon = step.icon;
                     const isActive = index === currentStepIndex;
                     const isCompleted = index < currentStepIndex;
-                    const isPending = index > currentStepIndex;
 
                     return (
-                      <React.Fragment key={step.key}>
-                        <div className="flex flex-col items-center gap-2">
-                          <div
-                            className={cn(
-                              "h-9 w-9 rounded-full flex items-center justify-center transition-all duration-500",
-                              isActive && "bg-accent text-accent-foreground ring-4 ring-accent/20",
-                              isCompleted && "bg-accent/20 text-accent",
-                              isPending && "bg-secondary text-muted-foreground"
-                            )}
-                          >
-                            {isCompleted ? <Check className="h-4 w-4" /> : <StepIcon className="h-4 w-4" />}
-                          </div>
-                          <span
-                            className={cn(
-                              "text-xs font-medium text-center transition-colors",
-                              isActive && "text-accent",
-                              isCompleted && "text-accent/80",
-                              isPending && "text-muted-foreground"
-                            )}
-                          >
-                            {step.label}
-                          </span>
+                      <div key={step.key} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "8px", position: "relative" }}>
+                        <div
+                          style={{
+                            width: "32px",
+                            height: "32px",
+                            borderRadius: "50%",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            backgroundColor: isActive
+                              ? "var(--hsd-ui-color-navy-500)"
+                              : isCompleted
+                              ? "var(--hsd-ui-color-navy-50)"
+                              : "var(--hsd-ui-color-gray-100)",
+                            color: isActive
+                              ? "#fff"
+                              : isCompleted
+                              ? "var(--hsd-ui-color-navy-500)"
+                              : "var(--hsd-ui-color-gray-400)",
+                            border: isCompleted
+                              ? "1.5px solid var(--hsd-ui-color-navy-200)"
+                              : isActive
+                              ? "none"
+                              : "1.5px solid var(--hsd-ui-color-gray-200)",
+                            boxShadow: isActive ? "0 0 0 3px var(--hsd-ui-color-navy-100)" : "none",
+                            transition: "all 0.3s ease",
+                          }}
+                        >
+                          {isCompleted ? (
+                            <Check style={{ width: "16px", height: "16px", strokeWidth: 2.5 }} />
+                          ) : (
+                            <StepIcon style={{ width: "15px", height: "15px" }} />
+                          )}
                         </div>
-                        {index < RECRUITMENT_WORKFLOW_STEPS.length - 1 && (
-                          <div
-                            className={cn(
-                              "flex-1 h-0.5 mx-2 transition-colors duration-500",
-                              index < currentStepIndex ? "bg-accent" : "bg-secondary"
-                            )}
-                          />
-                        )}
-                      </React.Fragment>
+                        <span
+                          style={{
+                            fontSize: "var(--hsd-ui-fontSizes-sm)",
+                            fontWeight: isActive ? 500 : 400,
+                            color: isActive
+                              ? "var(--hsd-ui-color-navy-500)"
+                              : isCompleted
+                              ? "var(--hsd-ui-color-gray-900)"
+                              : "var(--hsd-ui-color-gray-400)",
+                            textAlign: "center",
+                            lineHeight: "1.25",
+                            transition: "color 0.3s ease",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {step.label}
+                        </span>
+                      </div>
                     );
                   })}
                 </div>
@@ -461,96 +647,146 @@ export default function CandidateDetailPage() {
 
           {/* Start Interview Banner */}
           {hasBiodataSubmitted(candidate) && !interviewStarted && !progress?.anyFailed && (
-            <div className="rounded-2xl border border-accent/30 bg-accent/5">
-              <div className="p-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="h-12 w-12 rounded-full bg-accent/10 flex items-center justify-center">
-                      <ClipboardCheck className="h-6 w-6 text-accent" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-accent">Ready for Interview</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Candidate biodata has been submitted. Schedule the interview to proceed.
-                      </p>
-                    </div>
+            <div
+              className="border"
+              style={{
+                borderRadius: "8px",
+                backgroundColor: "rgba(0, 168, 120, 0.04)",
+                borderColor: "rgba(0, 168, 120, 0.3)",
+                padding: "24px",
+              }}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div
+                    className="flex items-center justify-center shrink-0"
+                    style={{
+                      width: "48px",
+                      height: "48px",
+                      borderRadius: "50%",
+                      backgroundColor: "rgba(0, 168, 120, 0.1)",
+                    }}
+                  >
+                    <ClipboardCheck style={{ width: "24px", height: "24px", color: "var(--hsd-ui-background-color-primary)" }} />
                   </div>
-                  <Button onClick={() => setShowStartInterviewDialog(true)}>
-                    <ClipboardCheck />
-                    Schedule Interview
-                  </Button>
+                  <div>
+                    <h3
+                      style={{
+                        fontSize: "0.9375rem",
+                        fontWeight: 600,
+                        color: "var(--hsd-ui-background-color-primary)",
+                        margin: 0,
+                      }}
+                    >
+                      Ready for Interview
+                    </h3>
+                    <p
+                      style={{
+                        fontSize: "0.875rem",
+                        color: "var(--hsd-ui-color-gray-500)",
+                        margin: "4px 0 0",
+                      }}
+                    >
+                      Candidate biodata has been submitted. Schedule the interview to proceed.
+                    </p>
+                  </div>
                 </div>
+                <Button onClick={() => setShowStartInterviewDialog(true)} style={btnPrimary}>
+                  <ClipboardCheck style={{ width: "16px", height: "16px", marginRight: "6px" }} />
+                  Schedule Interview
+                </Button>
               </div>
             </div>
           )}
 
           {/* Failed Banner */}
           {progress?.anyFailed && (
-            <div className="rounded-2xl border border-destructive/50 bg-destructive/5">
-              <div className="p-6">
-                <div className="flex items-center gap-4">
-                  <div className="h-9 w-9 rounded-full bg-destructive/10 flex items-center justify-center">
-                    <XCircle className="h-4 w-4 text-destructive" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-destructive">Assessment Failed</h3>
-                    <p className="text-sm text-muted-foreground">
-                      This candidate has failed one of the assessment stages and cannot proceed further.
-                    </p>
-                  </div>
+            <div
+              className="border"
+              style={{
+                borderRadius: "8px",
+                backgroundColor: "rgba(250, 55, 70, 0.04)",
+                borderColor: "rgba(250, 55, 70, 0.3)",
+                padding: "24px",
+              }}
+            >
+              <div className="flex items-center gap-4">
+                <div
+                  className="flex items-center justify-center shrink-0"
+                  style={{
+                    width: "36px",
+                    height: "36px",
+                    borderRadius: "50%",
+                    backgroundColor: "rgba(250, 55, 70, 0.1)",
+                  }}
+                >
+                  <XCircle style={{ width: "16px", height: "16px", color: "rgba(250, 55, 70, 1)" }} />
+                </div>
+                <div>
+                  <h3
+                    style={{
+                      fontSize: "0.9375rem",
+                      fontWeight: 600,
+                      color: "rgba(250, 55, 70, 1)",
+                      margin: 0,
+                    }}
+                  >
+                    Assessment Failed
+                  </h3>
+                  <p
+                    style={{
+                      fontSize: "0.875rem",
+                      color: "var(--hsd-ui-color-gray-500)",
+                      margin: "4px 0 0",
+                    }}
+                  >
+                    This candidate has failed one of the assessment stages and cannot proceed further.
+                  </p>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Tabs */}
+          {/* ===== Tabs ===== */}
           <Tabs value={activeTab} onValueChange={handleTabChange}>
-            <TabsList className="grid w-full grid-cols-5">
-              <TabsTrigger value="profile">Profile</TabsTrigger>
-              <TabsTrigger value="assessment-hr" disabled={!interviewStarted}>
-                {interviewStarted ? (
-                  "Assessment HR"
-                ) : (
-                  <>
-                    <Lock className="mr-2 h-4 w-4" />
-                    Assessment HR
-                  </>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="assessment-user" disabled={!interviewStarted || getStageStatus("interview2").locked}>
-                {interviewStarted && !getStageStatus("interview2").locked ? (
-                  "Assessment User"
-                ) : (
-                  <>
-                    <Lock className="mr-2 h-4 w-4" />
-                    Assessment User
-                  </>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="mcu" disabled={!interviewStarted || getStageStatus("mcu").locked}>
-                {interviewStarted && !getStageStatus("mcu").locked ? (
-                  "MCU"
-                ) : (
-                  <>
-                    <Lock className="mr-2 h-4 w-4" />
-                    MCU
-                  </>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="onboarding" disabled={!canStartOnboarding}>
-                {canStartOnboarding ? (
-                  <>
-                    <PartyPopper className="mr-2 h-4 w-4" />
-                    Onboarding
-                  </>
-                ) : (
-                  <>
-                    <Lock className="mr-2 h-4 w-4" />
-                    Onboarding
-                  </>
-                )}
-              </TabsTrigger>
-            </TabsList>
+            <div
+              className="border overflow-hidden"
+              style={{ borderRadius: "8px", backgroundColor: "#fff", borderColor: "rgba(120, 134, 127, 0.2)" }}
+            >
+              <TabsList className="grid w-full grid-cols-5 bg-transparent h-auto p-0">
+                {[
+                  { value: "profile", label: "Profile", disabled: false, locked: false },
+                  { value: "assessment-hr", label: "Assessment HR", disabled: !interviewStarted, locked: !interviewStarted },
+                  { value: "assessment-user", label: "Assessment User", disabled: !interviewStarted || getStageStatus("interview2").locked, locked: !interviewStarted || getStageStatus("interview2").locked },
+                  { value: "mcu", label: "MCU", disabled: !interviewStarted || getStageStatus("mcu").locked, locked: !interviewStarted || getStageStatus("mcu").locked },
+                  { value: "onboarding", label: "Onboarding", disabled: !canStartOnboarding, locked: !canStartOnboarding },
+                ].map((tab, index) => (
+                  <TabsTrigger
+                    key={tab.value}
+                    value={tab.value}
+                    disabled={tab.disabled}
+                    className="data-[state=active]:shadow-none rounded-none py-3 text-sm font-medium"
+                    style={{
+                      borderBottom: activeTab === tab.value
+                        ? "2px solid var(--hsd-ui-background-color-primary)"
+                        : "2px solid transparent",
+                      color: activeTab === tab.value
+                        ? "var(--hsd-ui-background-color-primary)"
+                        : tab.disabled
+                        ? "var(--hsd-ui-color-gray-300)"
+                        : "var(--hsd-ui-color-gray-500)",
+                      fontSize: "0.875rem",
+                      fontWeight: activeTab === tab.value ? 600 : 500,
+                      backgroundColor: "transparent",
+                    }}
+                  >
+                    {tab.locked && <Lock style={{ width: "14px", height: "14px", marginRight: "6px" }} />}
+                    {tab.value === "onboarding" && canStartOnboarding && <PartyPopper style={{ width: "14px", height: "14px", marginRight: "6px" }} />}
+                    {tab.label}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </div>
 
             <TabsContent value="profile" className="mt-6">
               <ProfileTab candidate={candidate} biodata={biodata} isBiodataLoading={false} />
@@ -582,23 +818,59 @@ export default function CandidateDetailPage() {
       }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-lg bg-accent/10 flex items-center justify-center">
-                <ClipboardCheck className="h-4 w-4 text-accent" />
+            <DialogTitle
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                fontSize: "1rem",
+                fontWeight: 600,
+                color: "var(--hsd-ui-color-gray-900)",
+              }}
+            >
+              <div
+                className="flex items-center justify-center"
+                style={{
+                  width: "32px",
+                  height: "32px",
+                  borderRadius: "8px",
+                  backgroundColor: "rgba(0, 168, 120, 0.1)",
+                }}
+              >
+                <ClipboardCheck style={{ width: "16px", height: "16px", color: "var(--hsd-ui-background-color-primary)" }} />
               </div>
               Schedule Interview
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription
+              style={{
+                fontSize: "0.875rem",
+                color: "var(--hsd-ui-color-gray-500)",
+              }}
+            >
               Set the interview date, time, and type for this candidate.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-3">
-              <Label className="text-sm font-medium">Interview Date & Time</Label>
+              <Label
+                style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--hsd-ui-color-gray-700)" }}
+              >
+                Interview Date & Time
+              </Label>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label htmlFor="interview-date" className="text-xs text-muted-foreground font-normal flex items-center gap-1.5">
-                    <Calendar className="h-3 w-3" />
+                  <Label
+                    htmlFor="interview-date"
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      fontSize: "0.75rem",
+                      fontWeight: 400,
+                      color: "var(--hsd-ui-color-gray-500)",
+                    }}
+                  >
+                    <Calendar style={{ width: "12px", height: "12px" }} />
                     Date
                   </Label>
                   <Input
@@ -608,11 +880,30 @@ export default function CandidateDetailPage() {
                     onChange={(e) => setInterviewDate(e.target.value)}
                     min={new Date().toISOString().slice(0, 10)}
                     className="h-11 text-sm font-medium tabular-nums"
+                    style={{
+                      height: "38px",
+                      borderRadius: "4px",
+                      border: "1px solid rgba(120, 134, 127, 0.2)",
+                      fontFamily: "'Poppins', sans-serif",
+                      fontWeight: 400,
+                      color: "#232933",
+                      padding: "0 12px",
+                    }}
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="interview-time" className="text-xs text-muted-foreground font-normal flex items-center gap-1.5">
-                    <Clock className="h-3 w-3" />
+                  <Label
+                    htmlFor="interview-time"
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      fontSize: "0.75rem",
+                      fontWeight: 400,
+                      color: "var(--hsd-ui-color-gray-500)",
+                    }}
+                  >
+                    <Clock style={{ width: "12px", height: "12px" }} />
                     Time
                   </Label>
                   <Input
@@ -621,40 +912,67 @@ export default function CandidateDetailPage() {
                     value={interviewTime}
                     onChange={(e) => setInterviewTime(e.target.value)}
                     className="h-11 text-sm font-medium tabular-nums"
+                    style={{
+                      height: "38px",
+                      borderRadius: "4px",
+                      border: "1px solid rgba(120, 134, 127, 0.2)",
+                      fontFamily: "'Poppins', sans-serif",
+                      fontWeight: 400,
+                      color: "#232933",
+                      padding: "0 12px",
+                    }}
                   />
                 </div>
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Interview Type</Label>
+              <Label
+                style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--hsd-ui-color-gray-700)" }}
+              >
+                Interview Type
+              </Label>
               <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
                   onClick={() => setInterviewType("onsite")}
-                  className={cn(
-                    "flex flex-col items-center gap-2 rounded-lg border-2 p-4 transition-all hover:border-accent/50",
-                    interviewType === "onsite"
-                      ? "border-accent bg-accent/5 text-accent"
-                      : "border-border"
-                  )}
+                  className="flex flex-col items-center gap-2 p-4 transition-all"
+                  style={{
+                    borderRadius: "8px",
+                    border: interviewType === "onsite"
+                      ? "2px solid var(--hsd-ui-background-color-primary)"
+                      : "2px solid rgba(120, 134, 127, 0.2)",
+                    backgroundColor: interviewType === "onsite"
+                      ? "rgba(0, 168, 120, 0.04)"
+                      : "#fff",
+                    color: interviewType === "onsite"
+                      ? "var(--hsd-ui-background-color-primary)"
+                      : "var(--hsd-ui-color-gray-700)",
+                  }}
                 >
-                  <Building2 className="h-6 w-6" />
-                  <span className="text-sm font-medium">Onsite</span>
-                  <span className="text-xs text-muted-foreground">In-person interview</span>
+                  <Building2 style={{ width: "24px", height: "24px" }} />
+                  <span style={{ fontSize: "0.875rem", fontWeight: 500 }}>Onsite</span>
+                  <span style={{ fontSize: "0.75rem", color: "var(--hsd-ui-color-gray-500)" }}>In-person interview</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setInterviewType("online")}
-                  className={cn(
-                    "flex flex-col items-center gap-2 rounded-lg border-2 p-4 transition-all hover:border-accent/50",
-                    interviewType === "online"
-                      ? "border-accent bg-accent/5 text-accent"
-                      : "border-border"
-                  )}
+                  className="flex flex-col items-center gap-2 p-4 transition-all"
+                  style={{
+                    borderRadius: "8px",
+                    border: interviewType === "online"
+                      ? "2px solid var(--hsd-ui-background-color-primary)"
+                      : "2px solid rgba(120, 134, 127, 0.2)",
+                    backgroundColor: interviewType === "online"
+                      ? "rgba(0, 168, 120, 0.04)"
+                      : "#fff",
+                    color: interviewType === "online"
+                      ? "var(--hsd-ui-background-color-primary)"
+                      : "var(--hsd-ui-color-gray-700)",
+                  }}
                 >
-                  <Monitor className="h-6 w-6" />
-                  <span className="text-sm font-medium">Online</span>
-                  <span className="text-xs text-muted-foreground">Video call interview</span>
+                  <Monitor style={{ width: "24px", height: "24px" }} />
+                  <span style={{ fontSize: "0.875rem", fontWeight: 500 }}>Online</span>
+                  <span style={{ fontSize: "0.75rem", color: "var(--hsd-ui-color-gray-500)" }}>Video call interview</span>
                 </button>
               </div>
             </div>
@@ -664,17 +982,19 @@ export default function CandidateDetailPage() {
               variant="outline"
               onClick={() => setShowStartInterviewDialog(false)}
               disabled={isStartingInterview}
+              style={btnSecondary}
             >
               Cancel
             </Button>
             <Button
               onClick={handleStartInterview}
               disabled={isStartingInterview || !interviewDate || !interviewTime || !interviewType}
+              style={btnPrimary}
             >
               {isStartingInterview ? (
-                <Loader2 className="animate-spin" />
+                <Loader2 className="animate-spin" style={{ width: "16px", height: "16px", marginRight: "6px" }} />
               ) : (
-                <ClipboardCheck />
+                <ClipboardCheck style={{ width: "16px", height: "16px", marginRight: "6px" }} />
               )}
               {isStartingInterview ? "Scheduling..." : "Start Interview"}
             </Button>

@@ -1,17 +1,12 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Menu, LogOut } from "lucide-react";
+import { Menu as MenuIcon, LogOut, ChevronDown } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   Dialog,
   DialogContent,
@@ -20,20 +15,26 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
 import { useAppStore } from "@/stores/app-store";
 import { useAuthStore } from "@/stores/auth-store";
-import { cn } from "@/lib/utils";
 import { NotificationBell } from "@/components/layout/NotificationBell";
+import { ROLE_LABELS, type RoleId } from "@/lib/constants/roles";
 
 interface HeaderProps {
   title?: string;
   subtitle?: string;
 }
 
-export function Header({ title, subtitle }: HeaderProps) {
+export function Header(_props: HeaderProps) {
   const router = useRouter();
-  const { sidebarCollapsed, toggleSidebar } = useAppStore();
+  const { toggleSidebarCollapse } = useAppStore();
   const { user, logout, isLoading } = useAuthStore();
   const [showLogoutDialog, setShowLogoutDialog] = React.useState(false);
 
@@ -44,103 +45,174 @@ export function Header({ title, subtitle }: HeaderProps) {
   };
 
   const getUserInitials = () => {
-    if (user?.name) {
-      const names = user.name.split(" ");
+    const displayName = user?.displayName || user?.name;
+    if (displayName) {
+      const names = displayName.split(" ");
       if (names.length >= 2) {
         return `${names[0][0]}${names[1][0]}`.toUpperCase();
       }
-      return user.name.substring(0, 2).toUpperCase();
+      return displayName.substring(0, 2).toUpperCase();
     }
     return "U";
   };
 
+  const displayRoleName = user?.roleId
+    ? ROLE_LABELS[user.roleId as RoleId] ?? user.roleName ?? null
+    : null;
+
   return (
     <header
-      className={cn(
-        "sticky top-0 z-30 flex h-16 items-center justify-between bg-background border-b border-border px-6 transition-all duration-300",
-        sidebarCollapsed ? "ml-16" : "ml-64"
-      )}
+      className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between bg-white"
+      style={{
+        height: "75px",
+        padding: "0 24px",
+        borderBottom: "1px solid #d0d6dd",
+      }}
     >
-      <div className="flex items-center gap-4">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="lg:hidden"
-          onClick={toggleSidebar}
+      {/* Left side — hamburger + logo */}
+      <div className="flex items-center" style={{ gap: "16px" }}>
+        <button
+          onClick={toggleSidebarCollapse}
+          className="flex items-center justify-center cursor-pointer transition-colors"
+          style={{ color: "rgba(120, 134, 127, 1)" }}
         >
-          <Menu />
-        </Button>
-        <div>
-          {title && (
-            <h1 className="text-lg font-semibold text-foreground">{title}</h1>
-          )}
-          {subtitle && (
-            <p className="text-sm text-muted-foreground">{subtitle}</p>
-          )}
-        </div>
+          <MenuIcon style={{ width: "24px", height: "24px" }} />
+        </button>
+        <Link href="/dashboard" className="flex items-center">
+          <Image
+            src="/images/tuv-nord-logo.png"
+            alt="TÜV NORD"
+            width={140}
+            height={40}
+            priority
+            style={{ objectPosition: "left center", cursor: "pointer" }}
+          />
+        </Link>
       </div>
 
-      <div className="flex items-center gap-2">
+      {/* Right side — role badge + notification + divider + user */}
+      <div className="flex items-center" style={{ gap: "16px" }}>
+        {/* Role Badge — TUV navy tokens */}
+        {displayRoleName && (
+          <span
+            style={{
+              color: "var(--hsd-ui-color-navy-500)",
+              backgroundColor: "var(--hsd-ui-color-navy-50)",
+              border: "1px solid var(--hsd-ui-color-navy-200)",
+              borderRadius: "6px",
+              padding: "4px 12px",
+              fontSize: "0.75rem",
+              fontWeight: 400,
+            }}
+          >
+            {displayRoleName}
+          </span>
+        )}
+
         {/* Notification Bell */}
         <NotificationBell />
 
-        {/* User */}
+        {/* Divider — gray-300, 1.3px, 56px */}
+        <div
+          style={{
+            width: "1.3px",
+            height: "56px",
+            backgroundColor: "var(--hsd-ui-color-gray-300)",
+          }}
+        />
+
+        {/* User Section — avatar + name + dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-auto gap-2 px-2 py-1.5">
-              <Avatar className="h-8 w-8">
-                <AvatarFallback className="bg-accent text-xs text-accent-foreground">
+            <button className="flex cursor-pointer items-center border-0 bg-transparent outline-none" style={{ gap: "8px" }}>
+              {/* Avatar — blue-200 bg, 40px */}
+              <div
+                className="flex items-center justify-center shrink-0"
+                style={{
+                  width: "40px",
+                  height: "40px",
+                  borderRadius: "50%",
+                  backgroundColor: "var(--hsd-ui-color-blue-200)",
+                }}
+              >
+                <span
+                  style={{
+                    color: "rgba(35, 41, 51, 1)",
+                    fontSize: "1rem",
+                    fontWeight: 600,
+                    fontFamily: "Poppins, sans-serif",
+                  }}
+                >
                   {getUserInitials()}
-                </AvatarFallback>
-              </Avatar>
-              <div className="hidden flex-col items-start md:flex">
-                <span className="text-sm font-medium">
-                  {user?.name || "User"}
                 </span>
-                <span className="text-xs text-muted-foreground">
+              </div>
+              {/* Name + Email */}
+              <div className="hidden md:flex md:flex-col md:items-start">
+                <span
+                  style={{
+                    fontSize: "1rem",
+                    fontWeight: 400,
+                    color: "rgba(35, 41, 51, 1)",
+                    lineHeight: 1.4,
+                  }}
+                >
+                  {user?.displayName || user?.name || "User"}
+                </span>
+                <span
+                  style={{
+                    fontSize: "0.875rem",
+                    fontWeight: 300,
+                    color: "rgba(147, 158, 153, 1)",
+                    lineHeight: 1.4,
+                  }}
+                >
                   {user?.email || ""}
                 </span>
               </div>
-            </Button>
+              {/* Chevron */}
+              <ChevronDown
+                className="hidden md:block"
+                style={{
+                  width: "20px",
+                  height: "20px",
+                  color: "rgba(120, 134, 127, 1)",
+                }}
+              />
+            </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-52">
-            <DropdownMenuLabel>
-              <div className="flex flex-col">
-                <span className="font-medium">{user?.name || "User"}</span>
-                <span className="text-xs text-muted-foreground">{user?.email || ""}</span>
-              </div>
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>Profile Settings</DropdownMenuItem>
-            <DropdownMenuItem>Preferences</DropdownMenuItem>
-            <DropdownMenuSeparator />
+          <DropdownMenuContent align="end" sideOffset={8} className="min-w-[160px]">
             <DropdownMenuItem
               onClick={() => setShowLogoutDialog(true)}
-              className="text-destructive"
+              className="cursor-pointer"
             >
-              <LogOut className="mr-2 h-4 w-4" />
-              Sign out
+              <LogOut
+                className="mr-2"
+                style={{
+                  width: "16px",
+                  height: "16px",
+                  color: "var(--hsd-ui-color-red-600)",
+                }}
+              />
+              <span
+                style={{
+                  fontSize: "0.875rem",
+                  fontWeight: 600,
+                  color: "var(--hsd-ui-color-red-600)",
+                }}
+              >
+                Logout
+              </span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
 
-        {/* Logout Button */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="text-muted-foreground hover:text-destructive"
-          onClick={() => setShowLogoutDialog(true)}
-        >
-          <LogOut />
-        </Button>
-
-        {/* Logout Dialog */}
+        {/* Logout Confirmation Dialog */}
         <Dialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
-          <DialogContent className="sm:max-w-[380px]">
+          <DialogContent className="sm:max-w-[400px]">
             <DialogHeader>
-              <DialogTitle>Sign out</DialogTitle>
+              <DialogTitle>Confirmation Logout</DialogTitle>
               <DialogDescription>
-                Are you sure you want to sign out?
+                Are you sure you want to end the session and exit the page?
               </DialogDescription>
             </DialogHeader>
             <DialogFooter className="gap-2">
@@ -152,11 +224,14 @@ export function Header({ title, subtitle }: HeaderProps) {
                 Cancel
               </Button>
               <Button
-                variant="destructive"
                 onClick={handleSignOut}
                 disabled={isLoading}
+                style={{
+                  backgroundColor: "var(--hsd-ui-color-navy-500)",
+                  borderColor: "var(--hsd-ui-color-navy-500)",
+                }}
               >
-                {isLoading ? "Signing out..." : "Sign out"}
+                {isLoading ? "Logging out..." : "Yes, Sure"}
               </Button>
             </DialogFooter>
           </DialogContent>

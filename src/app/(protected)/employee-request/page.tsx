@@ -1,24 +1,36 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  FileText,
-  CheckCircle,
-  Clock,
-  XCircle,
   Loader2,
+  Search,
   AlertCircle,
-  RefreshCw,
+  FileText,
+  Clock,
+  CheckCircle,
+  XCircle,
 } from "lucide-react";
 
 import { Header } from "@/components/layout/header";
 import { PageContainer } from "@/components/layout/page-container";
-import { DataTable } from "@/components/shared/data-table";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,20 +41,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { TuvBadge } from "@/components/shared/tuv-badge";
 
 import { showToast } from "@/lib/utils/toast-messages";
 import { useDebounce } from "@/hooks/use-debounce";
 import {
-  EMPLOYEE_REQUEST_STATUS_CONFIG,
+  EMPLOYEE_REQUEST_STATUS_LABELS,
   EMPLOYMENT_TYPE_LABELS,
+  type EmployeeRequestStatus,
   type EmploymentType,
 } from "@/lib/constants/employeeRequest";
 import { ROLES } from "@/lib/constants/roles";
@@ -52,76 +58,21 @@ import { useAuthStore } from "@/stores/auth-store";
 import type { Department } from "@/types";
 import type { EmployeeRequestWithRelations } from "@/types/employee-request";
 
+// --- Constants ---
 const PAGE_LIMIT = 10;
 
-// --- Table Columns (module level) ---
-const columns = [
-  {
-    key: "code",
-    label: "Code",
-    className: "w-[140px]",
-    render: (row: EmployeeRequestWithRelations) => (
-      <Link
-        href={`/employee-request/${row.id}`}
-        className="font-medium text-accent hover:underline"
-      >
-        {row.code}
-      </Link>
-    ),
-  },
-  {
-    key: "jobTitle",
-    label: "Position",
-    render: (row: EmployeeRequestWithRelations) => (
-      <span className="text-sm font-medium">{row.jobTitle?.name || "No Data"}</span>
-    ),
-  },
-  {
-    key: "department",
-    label: "Department",
-    render: (row: EmployeeRequestWithRelations) => (
-      <div className="space-y-0.5">
-        <p className="text-sm">{row.department?.name || "No Data"}</p>
-        {row.division?.name && (
-          <p className="text-xs text-muted-foreground">{row.division.name}</p>
-        )}
-      </div>
-    ),
-  },
-  {
-    key: "employmentType",
-    label: "Type",
-    className: "w-[120px]",
-    render: (row: EmployeeRequestWithRelations) => (
-      <span className="text-sm text-muted-foreground">
-        {row.employmentType
-          ? EMPLOYMENT_TYPE_LABELS[row.employmentType as EmploymentType] || row.employmentType
-          : "No Data"}
-      </span>
-    ),
-  },
-  {
-    key: "quantity",
-    label: "Qty",
-    className: "w-[100px] text-center",
-    render: (row: EmployeeRequestWithRelations) => (
-      <span className="font-medium">{row.quantity} Position</span>
-    ),
-  },
-  {
-    key: "status",
-    label: "Status",
-    className: "w-[140px]",
-    render: (row: EmployeeRequestWithRelations) => {
-      const config = EMPLOYEE_REQUEST_STATUS_CONFIG[row.status];
-      return (
-        <Badge variant={config?.variant || "secondary"}>
-          {config?.label || row.status}
-        </Badge>
-      );
-    },
-  },
-];
+// --- Status → TuvBadge variant mapping ---
+const STATUS_BADGE_VARIANT: Record<string, "success" | "danger" | "info" | "warning" | "dark" | "brand" | "purple" | "rose"> = {
+  draft: "dark",
+  created: "info",
+  hod_reviewed: "brand",
+  reviewed: "purple",
+  approved: "success",
+  rejected: "danger",
+  revise: "warning",
+  in_recruitment: "info",
+  completed: "success",
+};
 
 export default function EmployeeRequestPage() {
   const router = useRouter();
@@ -216,6 +167,12 @@ export default function EmployeeRequestPage() {
     };
   }, [requests, pagination.total]);
 
+  // Pagination computed
+  const totalItems = pagination.total;
+  const totalPages = Math.ceil(totalItems / pageSize);
+  const startItem = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+  const endItem = Math.min(currentPage * pageSize, totalItems);
+
   // Handlers
   const handleDelete = async () => {
     if (!deleteRequest) return;
@@ -241,165 +198,573 @@ export default function EmployeeRequestPage() {
     fetchRequests(currentPage, debouncedSearch || undefined, selectedDepartmentId || undefined);
   };
 
-  // Error state (only show full page error on initial load)
-  if (error && requests.length === 0 && !isLoading) {
-    return (
-      <>
-        <Header title="Employee Request" />
-        <PageContainer>
-          <div className="flex flex-col items-center justify-center h-64 gap-4">
-            <AlertCircle className="h-12 w-12 text-destructive" />
-            <p className="text-muted-foreground">{error}</p>
-            <Button onClick={handleRefresh}>
-              <RefreshCw />
-              Try Again
-            </Button>
-          </div>
-        </PageContainer>
-      </>
-    );
-  }
+  // Helper: get status badge variant
+  const getStatusBadgeVariant = (status: string) => {
+    return STATUS_BADGE_VARIANT[status] || "dark";
+  };
+
+  // Helper: get status label
+  const getStatusLabel = (status: string) => {
+    return EMPLOYEE_REQUEST_STATUS_LABELS[status as EmployeeRequestStatus] || status;
+  };
 
   return (
     <>
-      <Header title="Employee Request" />
+      <Header />
       <PageContainer>
-        <div className="space-y-6">
-          {/* Header */}
+        {/* 1. Page Title Row -- title + count + action button */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: "24px",
+          }}
+        >
           <div>
-            <h2 className="text-lg font-semibold text-foreground">Request Overview</h2>
-            <p className="text-sm text-muted-foreground">Manage and track employee requests across departments.</p>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <h1
+                style={{
+                  fontSize: "1.5rem",
+                  fontWeight: 600,
+                  color: "var(--hsd-ui-color-gray-900)",
+                  margin: 0,
+                }}
+              >
+                Employee Request
+              </h1>
+              <span
+                style={{
+                  backgroundColor: "var(--hsd-ui-color-blue-50)",
+                  color: "var(--hsd-ui-color-blue-600)",
+                  padding: "2px 10px",
+                  borderRadius: "4px",
+                  fontSize: "0.75rem",
+                  fontWeight: 500,
+                  border: "1px solid var(--hsd-ui-color-blue-200)",
+                }}
+              >
+                {isLoading ? "\u2014" : totalItems}
+              </span>
+            </div>
+            <p
+              style={{
+                fontSize: "0.875rem",
+                fontWeight: 300,
+                color: "var(--hsd-ui-color-gray-500)",
+                margin: "4px 0 0",
+              }}
+            >
+              Manage and track employee requests across departments.
+            </p>
+          </div>
+          {canCreate && (
+            <Button
+              onClick={() => router.push("/employee-request/new")}
+              style={{
+                backgroundColor: "var(--hsd-ui-background-color-primary)",
+                borderColor: "var(--hsd-ui-border-color-primary)",
+                color: "var(--hsd-ui-text-color-primary)",
+                borderRadius: "4px",
+                height: "38px",
+                padding: "0 16px",
+                fontSize: "0.875rem",
+                fontWeight: 500,
+              }}
+            >
+              Create Request
+            </Button>
+          )}
+        </div>
+
+        {/* 2. Stats Cards -- TUV design */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "16px", marginBottom: "24px" }}>
+          {[
+            {
+              label: "Total Requests",
+              value: isLoading ? "-" : String(stats.total),
+              icon: <FileText style={{ width: "18px", height: "18px" }} />,
+              iconColor: "var(--hsd-ui-color-navy-500)",
+              iconBg: "var(--hsd-ui-color-navy-50)",
+            },
+            {
+              label: "Pending Review",
+              value: isLoading ? "-" : String(stats.pending),
+              icon: <Clock style={{ width: "18px", height: "18px" }} />,
+              iconColor: "var(--hsd-ui-color-gray-700, #48504c)",
+              iconBg: "var(--hsd-ui-color-yellow-50, #fffde6)",
+            },
+            {
+              label: "Approved",
+              value: isLoading ? "-" : String(stats.approved),
+              icon: <CheckCircle style={{ width: "18px", height: "18px" }} />,
+              iconColor: "var(--hsd-ui-color-green-700, #186742)",
+              iconBg: "var(--hsd-ui-color-lime-50, #f4fee6)",
+            },
+            {
+              label: "Rejected",
+              value: isLoading ? "-" : String(stats.rejected),
+              icon: <XCircle style={{ width: "18px", height: "18px" }} />,
+              iconColor: "var(--hsd-ui-color-carmine-600, #bc2935)",
+              iconBg: "var(--hsd-ui-color-carmine-50, #ffebed)",
+            },
+          ].map((stat) => (
+            <div
+              key={stat.label}
+              style={{
+                backgroundColor: "#fff",
+                borderRadius: "8px",
+                border: "1px solid rgba(120, 134, 127, 0.2)",
+                padding: "16px 20px",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
+                <span style={{ fontSize: "0.8125rem", fontWeight: 400, color: "var(--hsd-ui-color-gray-500)" }}>
+                  {stat.label}
+                </span>
+                <div
+                  style={{
+                    width: "32px",
+                    height: "32px",
+                    borderRadius: "6px",
+                    backgroundColor: stat.iconBg,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: stat.iconColor,
+                  }}
+                >
+                  {stat.icon}
+                </div>
+              </div>
+              <p
+                style={{
+                  fontSize: "1.25rem",
+                  fontWeight: 600,
+                  color: "var(--hsd-ui-color-gray-900)",
+                  margin: 0,
+                  fontVariantNumeric: "tabular-nums",
+                }}
+              >
+                {stat.value}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        {/* 3. Outer wrapper -- white bg, rounded */}
+        <div
+          style={{
+            backgroundColor: "#fff",
+            borderRadius: "8px",
+            padding: "16px",
+            border: "1px solid rgba(120, 134, 127, 0.2)",
+          }}
+        >
+          {/* Search -- right aligned */}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              marginBottom: "16px",
+            }}
+          >
+            <div className="relative" style={{ width: "280px" }}>
+              <Search
+                className="absolute left-3 top-1/2 -translate-y-1/2"
+                style={{ width: "16px", height: "16px", color: "var(--hsd-ui-color-gray-400)" }}
+              />
+              <Input
+                placeholder="Search requests..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="pl-9"
+                style={{
+                  borderColor: "rgba(120, 134, 127, 0.2)",
+                  borderRadius: "4px",
+                  backgroundColor: "#fff",
+                  fontSize: "0.875rem",
+                }}
+              />
+            </div>
           </div>
 
-          {/* Stats */}
-          <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
-            <Card className="overflow-hidden">
-              <CardContent className="p-0">
-                <div className="flex items-stretch">
-                  <div className="flex w-12 shrink-0 items-center justify-center bg-accent/10">
-                    <FileText className="h-4 w-4 text-accent" />
-                  </div>
-                  <div className="flex-1 px-3 py-2.5">
-                    <p className="text-[11px] font-medium text-muted-foreground">Total Requests</p>
-                    <p className="text-lg font-bold tabular-nums">
-                      {isLoading ? "-" : stats.total}
-                    </p>
-                  </div>
+          {/* Inner white card -- table + pagination */}
+          <div
+            style={{
+              backgroundColor: "#fff",
+              border: "1px solid rgba(120, 134, 127, 0.2)",
+              borderRadius: "8px",
+              overflow: "hidden",
+            }}
+          >
+            {/* Table */}
+            <div>
+              {isLoading ? (
+                <div style={{ display: "flex", justifyContent: "center", alignItems: "center", padding: "48px 0" }}>
+                  <Loader2
+                    className="animate-spin"
+                    style={{ width: "24px", height: "24px", color: "var(--hsd-ui-color-navy-500)" }}
+                  />
                 </div>
-              </CardContent>
-            </Card>
-
-            <Card className="overflow-hidden">
-              <CardContent className="p-0">
-                <div className="flex items-stretch">
-                  <div className="flex w-12 shrink-0 items-center justify-center bg-amber-500/10">
-                    <Clock className="h-4 w-4 text-amber-600" />
-                  </div>
-                  <div className="flex-1 px-3 py-2.5">
-                    <p className="text-[11px] font-medium text-muted-foreground">Pending Review</p>
-                    <p className="text-lg font-bold tabular-nums">
-                      {isLoading ? "-" : stats.pending}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="overflow-hidden">
-              <CardContent className="p-0">
-                <div className="flex items-stretch">
-                  <div className="flex w-12 shrink-0 items-center justify-center bg-green-500/10">
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                  </div>
-                  <div className="flex-1 px-3 py-2.5">
-                    <p className="text-[11px] font-medium text-muted-foreground">Approved</p>
-                    <p className="text-lg font-bold tabular-nums">
-                      {isLoading ? "-" : stats.approved}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="overflow-hidden">
-              <CardContent className="p-0">
-                <div className="flex items-stretch">
-                  <div className="flex w-12 shrink-0 items-center justify-center bg-red-500/10">
-                    <XCircle className="h-4 w-4 text-red-600" />
-                  </div>
-                  <div className="flex-1 px-3 py-2.5">
-                    <p className="text-[11px] font-medium text-muted-foreground">Rejected</p>
-                    <p className="text-lg font-bold tabular-nums">
-                      {isLoading ? "-" : stats.rejected}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Table */}
-          <div className="space-y-2">
-            <DataTable
-              data={requests}
-              columns={columns}
-              searchable
-              searchPlaceholder="Search requests..."
-              onSearch={(value) => {
-                setSearchQuery(value);
-                setCurrentPage(1);
-              }}
-              loading={isLoading}
-              pagination
-              pageSize={pageSize}
-              totalItems={pagination.total}
-              currentPage={currentPage}
-              onPageChange={setCurrentPage}
-              onPageSizeChange={(size) => {
-                setPageSize(size);
-                setCurrentPage(1);
-              }}
-              filters={
-                isHOD && departments.length > 0 ? (
-                  <div className="flex items-center gap-4">
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-sm font-medium text-muted-foreground">Department</label>
-                      <Select
-                        value={selectedDepartmentId}
-                        onValueChange={(value) => {
-                          setSelectedDepartmentId(value === "all" ? "" : value);
-                          setCurrentPage(1);
-                        }}
-                      >
-                        <SelectTrigger className="w-[240px]">
-                          <SelectValue placeholder="All Departments" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Departments</SelectItem>
-                          {departments.map((dept) => (
-                            <SelectItem key={dept.id} value={String(dept.id)}>
-                              {dept.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                ) : undefined
-              }
-              emptyMessage={
-                searchQuery || selectedDepartmentId
-                  ? "No requests found matching your filters"
-                  : "No employee requests found"
-              }
-              actions={
-                canCreate ? (
-                  <Button onClick={() => router.push("/employee-request/new")}>
-                    New
+              ) : error ? (
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "12px",
+                    padding: "48px 0",
+                  }}
+                >
+                  <AlertCircle
+                    style={{ width: "32px", height: "32px", color: "var(--hsd-ui-color-gray-400)" }}
+                  />
+                  <p
+                    style={{
+                      fontSize: "0.875rem",
+                      color: "var(--hsd-ui-color-gray-500)",
+                      margin: 0,
+                    }}
+                  >
+                    {error}
+                  </p>
+                  <Button
+                    variant="outline"
+                    onClick={handleRefresh}
+                    style={{
+                      borderRadius: "4px",
+                      height: "38px",
+                      padding: "0 16px",
+                      fontSize: "0.875rem",
+                      fontWeight: 500,
+                      borderColor: "rgba(120, 134, 127, 0.2)",
+                    }}
+                  >
+                    Try Again
                   </Button>
-                ) : undefined
-              }
-            />
+                </div>
+              ) : requests.length === 0 ? (
+                <div
+                  style={{
+                    textAlign: "center",
+                    padding: "48px 0",
+                    color: "var(--hsd-ui-color-gray-500)",
+                    fontSize: "0.875rem",
+                  }}
+                >
+                  {searchQuery || selectedDepartmentId
+                    ? "No requests found matching your search"
+                    : "No employee requests found"}
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow
+                      onMouseOver={undefined}
+                      onMouseOut={undefined}
+                      style={{ backgroundColor: "transparent", borderBottom: "1px solid rgba(120, 134, 127, 0.2)" }}
+                    >
+                      <TableHead style={{ width: "12%" }}>Code</TableHead>
+                      <TableHead style={{ width: "18%" }}>Position</TableHead>
+                      <TableHead style={{ width: "20%" }}>Department</TableHead>
+                      <TableHead style={{ width: "12%" }}>Type</TableHead>
+                      <TableHead style={{ width: "10%", textAlign: "center" }}>Qty</TableHead>
+                      <TableHead style={{ width: "14%" }}>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {requests.map((row) => (
+                      <TableRow key={row.id}>
+                        {/* Code -- navy clickable link */}
+                        <TableCell>
+                          <button
+                            type="button"
+                            className="hover:underline text-left"
+                            style={{
+                              color: "var(--hsd-ui-color-navy-500)",
+                              fontWeight: 500,
+                              fontSize: "0.875rem",
+                              background: "none",
+                              border: "none",
+                              cursor: "pointer",
+                              padding: 0,
+                            }}
+                            onClick={() => router.push(`/employee-request/${row.id}`)}
+                          >
+                            {row.code}
+                          </button>
+                        </TableCell>
+
+                        {/* Position */}
+                        <TableCell>
+                          <span
+                            style={{
+                              fontSize: "0.875rem",
+                              fontWeight: 500,
+                              color: "var(--hsd-ui-color-gray-900)",
+                            }}
+                            dangerouslySetInnerHTML={{ __html: row.jobTitle?.name || "No Data" }}
+                          />
+                        </TableCell>
+
+                        {/* Department */}
+                        <TableCell>
+                          <div>
+                            <span
+                              style={{
+                                fontSize: "0.875rem",
+                                fontWeight: 400,
+                                color: "var(--hsd-ui-color-gray-700)",
+                                display: "block",
+                              }}
+                            >
+                              {row.department?.name || "No Data"}
+                            </span>
+                            {row.division?.name && (
+                              <span
+                                style={{
+                                  fontSize: "0.75rem",
+                                  fontWeight: 400,
+                                  color: "var(--hsd-ui-color-gray-400)",
+                                  display: "block",
+                                  marginTop: "2px",
+                                }}
+                              >
+                                {row.division.name}
+                              </span>
+                            )}
+                          </div>
+                        </TableCell>
+
+                        {/* Type */}
+                        <TableCell>
+                          <span
+                            style={{
+                              fontSize: "0.875rem",
+                              fontWeight: 400,
+                              color: "var(--hsd-ui-color-gray-500)",
+                            }}
+                          >
+                            {row.employmentType
+                              ? EMPLOYMENT_TYPE_LABELS[row.employmentType as EmploymentType] || row.employmentType
+                              : "No Data"}
+                          </span>
+                        </TableCell>
+
+                        {/* Qty */}
+                        <TableCell style={{ textAlign: "center" }}>
+                          <span
+                            style={{
+                              fontSize: "0.875rem",
+                              fontWeight: 500,
+                              color: "var(--hsd-ui-color-gray-700)",
+                            }}
+                          >
+                            {row.quantity}
+                          </span>
+                        </TableCell>
+
+                        {/* Status */}
+                        <TableCell>
+                          <TuvBadge
+                            text={getStatusLabel(row.status)}
+                            variant={getStatusBadgeVariant(row.status)}
+                            size="sm"
+                            border
+                          />
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </div>
+
+            {/* Pagination */}
+            {totalItems > 0 && (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "12px 16px",
+                  borderTop: "1px solid rgba(120, 134, 127, 0.2)",
+                  borderRadius: "0 0 8px 8px",
+                }}
+              >
+                {/* Left: "X - Y of Z" | divider | "N Per row" */}
+                <div style={{ display: "flex", alignItems: "center", gap: "24px" }}>
+                  <span
+                    style={{
+                      fontSize: "0.875rem",
+                      fontWeight: 400,
+                      color: "var(--hsd-ui-color-gray-400)",
+                    }}
+                  >
+                    {startItem} - {endItem} of {totalItems}
+                  </span>
+                  <div style={{ width: "1px", height: "32px", backgroundColor: "rgba(120, 134, 127, 0.15)" }} />
+                  <Select
+                    value={String(pageSize)}
+                    onValueChange={(value) => {
+                      setPageSize(Number(value));
+                      setCurrentPage(1);
+                    }}
+                  >
+                    <SelectTrigger
+                      style={{
+                        width: "auto",
+                        minWidth: "145px",
+                        height: "38px",
+                        border: "1px solid rgba(120, 134, 127, 0.2)",
+                        borderRadius: "4px",
+                        fontSize: "0.875rem",
+                        fontWeight: 400,
+                        color: "var(--hsd-ui-color-gray-700)",
+                        padding: "0 12px",
+                        gap: "8px",
+                        backgroundColor: "#fff",
+                      }}
+                    >
+                      <SelectValue placeholder="10 Per row" />
+                    </SelectTrigger>
+                    <SelectContent
+                      side="top"
+                      style={{
+                        minWidth: "140px",
+                        borderRadius: "8px",
+                        fontSize: "0.875rem",
+                      }}
+                    >
+                      {[5, 10, 20, 50, 100].map((size) => (
+                        <SelectItem
+                          key={size}
+                          value={String(size)}
+                          style={{ fontSize: "0.875rem", padding: "8px 12px" }}
+                        >
+                          {size} Per row
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Right: page numbers */}
+                <div style={{ display: "flex", alignItems: "center", gap: "0" }}>
+                  {(() => {
+                    const buildPageItems = (): (number | "dots")[] => {
+                      if (totalPages <= 7) {
+                        return Array.from({ length: totalPages }, (_, i) => i + 1);
+                      }
+                      const middle = Array.from(
+                        { length: Math.min(3, totalPages - 2) },
+                        (_, i) => Math.max(2, currentPage - 1) + i
+                      ).filter((n) => n >= 2 && n <= totalPages - 1);
+
+                      return [
+                        1,
+                        ...(middle[0] > 2 ? ["dots" as const] : []),
+                        ...middle,
+                        ...(middle[middle.length - 1] < totalPages - 1 ? ["dots" as const] : []),
+                        totalPages,
+                      ];
+                    };
+                    const items = buildPageItems();
+
+                    const pageBtn = (num: number | "dots", idx: number) => {
+                      if (num === "dots") {
+                        return (
+                          <span
+                            key={`dots-${idx}`}
+                            style={{
+                              width: "36px",
+                              height: "36px",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              fontSize: "0.875rem",
+                              color: "var(--hsd-ui-color-gray-700)",
+                            }}
+                          >
+                            ...
+                          </span>
+                        );
+                      }
+                      const isActive = currentPage === num;
+                      return (
+                        <button
+                          key={num}
+                          onClick={() => setCurrentPage(num)}
+                          style={{
+                            width: "36px",
+                            height: "36px",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            borderRadius: "6px",
+                            border: "none",
+                            cursor: "pointer",
+                            fontSize: "0.875rem",
+                            fontWeight: isActive ? 500 : 400,
+                            backgroundColor: isActive ? "var(--hsd-ui-color-navy-500)" : "transparent",
+                            color: isActive ? "#fff" : "var(--hsd-ui-color-gray-900)",
+                          }}
+                        >
+                          {num}
+                        </button>
+                      );
+                    };
+
+                    return (
+                      <>
+                        <button
+                          onClick={() => currentPage > 1 && setCurrentPage(currentPage - 1)}
+                          disabled={currentPage === 1}
+                          style={{
+                            width: "36px",
+                            height: "36px",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            border: "none",
+                            background: "none",
+                            cursor: currentPage === 1 ? "default" : "pointer",
+                            color: currentPage === 1 ? "var(--hsd-ui-color-gray-300)" : "var(--hsd-ui-color-gray-700)",
+                            fontSize: "1.25rem",
+                          }}
+                        >
+                          &#8249;
+                        </button>
+                        {items.map((item, idx) => pageBtn(item, idx))}
+                        <button
+                          onClick={() => currentPage < totalPages && setCurrentPage(currentPage + 1)}
+                          disabled={currentPage === totalPages}
+                          style={{
+                            width: "36px",
+                            height: "36px",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            border: "none",
+                            background: "none",
+                            cursor: currentPage === totalPages ? "default" : "pointer",
+                            color: currentPage === totalPages ? "var(--hsd-ui-color-gray-300)" : "var(--hsd-ui-color-gray-700)",
+                            fontSize: "1.25rem",
+                          }}
+                        >
+                          &#8250;
+                        </button>
+                      </>
+                    );
+                  })()}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </PageContainer>
@@ -415,15 +780,36 @@ export default function EmployeeRequestPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel
+              disabled={isDeleting}
+              style={{
+                borderRadius: "4px",
+                height: "38px",
+                padding: "0 16px",
+                fontSize: "0.875rem",
+                fontWeight: 500,
+                borderColor: "rgba(120,134,127,0.2)",
+              }}
+            >
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
               disabled={isDeleting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              style={{
+                backgroundColor: "var(--hsd-ui-color-carmine-600, #bc2935)",
+                borderColor: "var(--hsd-ui-color-carmine-600, #bc2935)",
+                color: "#fff",
+                borderRadius: "4px",
+                height: "38px",
+                padding: "0 16px",
+                fontSize: "0.875rem",
+                fontWeight: 500,
+              }}
             >
               {isDeleting ? (
                 <>
-                  <Loader2 className="animate-spin" />
+                  <Loader2 className="animate-spin" style={{ width: "16px", height: "16px", marginRight: "6px" }} />
                   Deleting...
                 </>
               ) : (

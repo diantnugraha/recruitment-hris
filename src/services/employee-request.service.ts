@@ -454,27 +454,9 @@ export const employeeRequestService = {
   /**
    * Download PDF for employee request
    */
-  async downloadPdf(id: string | number): Promise<void> {
+  downloadPdf(id: string | number): void {
     const baseURL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
-    const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
-
-    const response = await fetch(`${baseURL}/v1/employee-request/${id}/pdf`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    });
-
-    if (!response.ok) {
-      throw new Error("Failed to generate PDF");
-    }
-
-    const blob = await response.blob();
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `Employee-Request-${id}.pdf`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
+    window.open(`${baseURL}/v1/employee-request/${id}/pdf`, "_blank");
   },
 
   async startRecruitment(id: string | number): Promise<ApiResponse<EmployeeRequestWithRelations>> {

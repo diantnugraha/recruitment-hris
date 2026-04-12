@@ -25,9 +25,9 @@ export const ROUTE_ACCESS: Record<string, RoleId[]> = {
   '/recruitment':      [ROLES.SUPER_ADMIN, ROLES.HR_MANAGER, ROLES.MANAGER, ROLES.HOD, ROLES.MANAGEMENT],
   '/onboarding':       [ROLES.SUPER_ADMIN, ROLES.HR_MANAGER, ROLES.MANAGER, ROLES.HOD, ROLES.MANAGEMENT],
 
-  // Admin + HR Manager only
-  '/users':        [ROLES.SUPER_ADMIN, ROLES.HR_MANAGER],
-  '/roles-access': [ROLES.SUPER_ADMIN, ROLES.HR_MANAGER],
+  // Admin + HR roles + Director
+  '/users':        [ROLES.SUPER_ADMIN, ROLES.HR_MANAGER, ROLES.HUMAN_RESOURCES, ROLES.MANAGEMENT],
+  '/roles-access': [ROLES.SUPER_ADMIN, ROLES.HR_MANAGER, ROLES.HUMAN_RESOURCES, ROLES.MANAGEMENT],
 };
 
 /**

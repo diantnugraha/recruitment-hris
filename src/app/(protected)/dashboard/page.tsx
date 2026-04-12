@@ -1,75 +1,147 @@
 "use client";
 
 import * as React from "react";
+import { Users, Building2, Network, UserCheck, BadgeCheck } from "lucide-react";
 import {
-  Users,
-  UserPlus,
-  Briefcase,
-  Clock,
-  TrendingUp,
-  TrendingDown,
-  ArrowRight,
-  Calendar,
-} from "lucide-react";
-import {
-  AreaChart,
-  Area,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  BarChart,
-  Bar,
 } from "recharts";
+import { format } from "date-fns";
 import { Header } from "@/components/layout/header";
 import { PageContainer } from "@/components/layout/page-container";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
+import { useAuthStore } from "@/stores/auth-store";
 import notificationService from "@/services/notification.service";
+import employeeService from "@/services/employee.service";
+import departmentService from "@/services/department.service";
+import divisionService from "@/services/division.service";
+import jobTitleService from "@/services/job-title.service";
 
-const stats = [
-  { title: "Total Employees", value: "1,284", change: "+12.5%", trend: "up", icon: Users },
-  { title: "New Hires", value: "45", change: "+8.2%", trend: "up", icon: UserPlus },
-  { title: "Open Positions", value: "23", change: "-3.1%", trend: "down", icon: Briefcase },
-  { title: "Avg. Tenure", value: "3.2y", change: "+0.4", trend: "up", icon: Clock },
-];
+// ── Org Summary Config ──────────────────────────────────────────────────────
 
-const employeeGrowth = [
-  { month: "Jan", value: 1120 },
-  { month: "Feb", value: 1145 },
-  { month: "Mar", value: 1168 },
-  { month: "Apr", value: 1195 },
-  { month: "May", value: 1228 },
-  { month: "Jun", value: 1256 },
-  { month: "Jul", value: 1284 },
-];
+const ORG_CARDS = [
+  {
+    key: "employees",
+    label: "Active Employees",
+    icon: Users,
+    color: "var(--hsd-ui-color-navy-500)",
+    bgColor: "var(--hsd-ui-color-navy-50)",
+  },
+  {
+    key: "departments",
+    label: "Departments",
+    icon: Building2,
+    color: "rgb(217, 119, 6)",
+    bgColor: "rgba(217, 119, 6, 0.08)",
+  },
+  {
+    key: "divisions",
+    label: "Divisions",
+    icon: Network,
+    color: "rgb(124, 58, 237)",
+    bgColor: "rgba(124, 58, 237, 0.08)",
+  },
+  {
+    key: "jobTitles",
+    label: "Job Titles",
+    icon: BadgeCheck,
+    color: "var(--hsd-ui-color-green-600)",
+    bgColor: "rgba(5, 150, 105, 0.08)",
+  },
+] as const;
 
-const departmentData = [
-  { name: "Engineering", value: 420, fill: "hsl(var(--accent))" },
-  { name: "Sales", value: 280, fill: "hsl(var(--foreground))" },
-  { name: "Product", value: 180, fill: "hsl(var(--foreground) / 0.8)" },
-  { name: "Operations", value: 164, fill: "hsl(var(--foreground) / 0.6)" },
-  { name: "Marketing", value: 145, fill: "hsl(var(--foreground) / 0.4)" },
-  { name: "Design", value: 95, fill: "hsl(var(--foreground) / 0.3)" },
-];
+// ── Chart Helpers ───────────────────────────────────────────────────────────
 
-const recentHires = [
-  { name: "Sarah Johnson", role: "Senior Developer", dept: "Engineering", date: "2d ago" },
-  { name: "Michael Chen", role: "Product Manager", dept: "Product", date: "3d ago" },
-  { name: "Emily Davis", role: "UX Designer", dept: "Design", date: "5d ago" },
-  { name: "James Wilson", role: "Sales Executive", dept: "Sales", date: "1w ago" },
-];
+interface ChartDataPoint {
+  name: string;
+  count: number;
+}
 
-const upcomingInterviews = [
-  { name: "Alex Thompson", role: "Frontend Developer", time: "Today, 10:00 AM", status: "confirmed" },
-  { name: "Maria Garcia", role: "Marketing Manager", time: "Today, 2:30 PM", status: "pending" },
-  { name: "David Kim", role: "Data Analyst", time: "Tomorrow, 11:00 AM", status: "confirmed" },
-];
+const EMPLOYMENT_TYPE_LABELS: Record<string, string> = {
+  permanent: "Permanent",
+  contract: "Contract",
+  probation: "Probation",
+  outsource: "Outsource",
+  internship: "Internship",
+};
+
+const GENDER_LABELS: Record<string, string> = {
+  Male: "Male",
+  Female: "Female",
+  M: "Male",
+  F: "Female",
+  Any: "Other",
+};
+
+function aggregateEmployees(employees: Array<{
+  department?: { name: string } | null;
+  employeeType?: string;
+  gender: string;
+}>) {
+  const byDepartment: Record<string, number> = {};
+  const byType: Record<string, number> = {};
+  const byGender: Record<string, number> = {};
+
+  for (const emp of employees) {
+    const deptName = emp.department?.name || "Unknown";
+    byDepartment[deptName] = (byDepartment[deptName] || 0) + 1;
+
+    const typeKey = emp.employeeType || "permanent";
+    byType[typeKey] = (byType[typeKey] || 0) + 1;
+
+    const genderKey = emp.gender || "Any";
+    byGender[genderKey] = (byGender[genderKey] || 0) + 1;
+  }
+
+  const toSorted = (record: Record<string, number>, labels?: Record<string, string>): ChartDataPoint[] =>
+    Object.entries(record)
+      .map(([key, count]) => ({ name: labels?.[key] || key, count }))
+      .sort((a, b) => b.count - a.count);
+
+  return {
+    byDepartment: toSorted(byDepartment),
+    byType: toSorted(byType, EMPLOYMENT_TYPE_LABELS),
+    byGender: toSorted(byGender, GENDER_LABELS),
+  };
+}
+
+const CHART_TOOLTIP_STYLE = {
+  contentStyle: {
+    background: "hsl(var(--card))",
+    border: "1px solid hsl(var(--border))",
+    borderRadius: "8px",
+    fontSize: 13,
+    boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+  },
+};
+
+const NAVY_500 = "rgb(0, 30, 210)";
+const DEPT_CHART_HEIGHT = 380;
+
+// ── Helpers ─────────────────────────────────────────────────────────────────
+
+function getGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good Morning";
+  if (hour < 18) return "Good Afternoon";
+  return "Good Evening";
+}
+
+// ── Component ───────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
+  const user = useAuthStore((s) => s.user);
+  const displayName = user?.displayName || user?.name || "there";
+
+  // ── SLA Notification (preserved) ──
   React.useEffect(() => {
     let isCancelled = false;
 
@@ -78,15 +150,15 @@ export default function DashboardPage() {
         const res = await notificationService.getNotifications({
           page: 1,
           limit: 5,
-          type: 'sla_approaching,sla_overdue',
+          type: "sla_approaching,sla_overdue",
         });
 
         if (isCancelled) return;
 
         const unread = res.data.filter((n) => !n.isRead);
         if (unread.length > 0) {
-          toast.warning('Recruitment SLA Warning', {
-            description: `You have ${unread.length} recruitment${unread.length > 1 ? 's' : ''} approaching or past SLA deadline.`,
+          toast.warning("Recruitment SLA Warning", {
+            description: `You have ${unread.length} recruitment${unread.length > 1 ? "s" : ""} approaching or past SLA deadline.`,
           });
         }
       } catch {
@@ -95,7 +167,95 @@ export default function DashboardPage() {
     }
 
     checkSlaNotifications();
+    return () => { isCancelled = true; };
+  }, []);
 
+  // ── Org Summary State ──
+  const [summaryLoading, setSummaryLoading] = React.useState(true);
+  const [summaryData, setSummaryData] = React.useState({
+    employees: 0,
+    departments: 0,
+    divisions: 0,
+    jobTitles: 0,
+  });
+
+  React.useEffect(() => {
+    let isCancelled = false;
+
+    async function fetchSummary() {
+      try {
+        const [empRes, deptRes, divRes, jtRes] = await Promise.all([
+          employeeService.getAll(1, 1),
+          departmentService.getAll(1, 1),
+          divisionService.getAll(1, 1),
+          jobTitleService.getAll(1, 1),
+        ]);
+
+        if (isCancelled) return;
+
+        setSummaryData({
+          employees: empRes.success && empRes.data ? empRes.data.pagination.total : 0,
+          departments: deptRes.success && deptRes.data ? deptRes.data.pagination.total : 0,
+          divisions: divRes.success && divRes.data ? divRes.data.pagination.total : 0,
+          jobTitles: jtRes.success && jtRes.data ? jtRes.data.pagination.total : 0,
+        });
+      } catch {
+        toast.error("Failed to load organization summary");
+      } finally {
+        if (!isCancelled) setSummaryLoading(false);
+      }
+    }
+
+    fetchSummary();
+    return () => { isCancelled = true; };
+  }, []);
+
+  // ── Charts State ──
+  const [chartsLoading, setChartsLoading] = React.useState(true);
+  const [chartData, setChartData] = React.useState<{
+    byDepartment: ChartDataPoint[];
+    byType: ChartDataPoint[];
+    byGender: ChartDataPoint[];
+  }>({ byDepartment: [], byType: [], byGender: [] });
+
+  React.useEffect(() => {
+    let isCancelled = false;
+
+    async function fetchChartData() {
+      try {
+        const firstPage = await employeeService.getAll(1, 100);
+        if (!firstPage.success || !firstPage.data || isCancelled) {
+          if (!isCancelled) setChartsLoading(false);
+          return;
+        }
+
+        let allEmployees = [...firstPage.data.data];
+        const { totalPages } = firstPage.data.pagination;
+
+        if (totalPages > 1) {
+          const pagePromises = [];
+          for (let page = 2; page <= totalPages; page++) {
+            pagePromises.push(employeeService.getAll(page, 100));
+          }
+          const results = await Promise.all(pagePromises);
+          if (isCancelled) return;
+
+          for (const res of results) {
+            if (res.success && res.data) {
+              allEmployees = allEmployees.concat(res.data.data);
+            }
+          }
+        }
+
+        setChartData(aggregateEmployees(allEmployees));
+      } catch {
+        toast.error("Failed to load employee distribution data");
+      } finally {
+        if (!isCancelled) setChartsLoading(false);
+      }
+    }
+
+    fetchChartData();
     return () => { isCancelled = true; };
   }, []);
 
@@ -103,289 +263,199 @@ export default function DashboardPage() {
     <>
       <Header title="Dashboard" />
       <PageContainer>
-        <div className="space-y-8">
-          {/* Hero Section with Featured Stat */}
-          <div className="grid gap-6 lg:grid-cols-12">
-            {/* Main welcome card */}
-            <div className="lg:col-span-8 animate-fade-in">
-              <Card className="relative overflow-hidden border-0 bg-foreground text-background">
-                <CardContent className="p-8">
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-4">
-                      <div>
-                        <p className="text-sm uppercase tracking-widest opacity-60">
-                          {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
-                        </p>
-                        <h1 className="mt-2 font-semibold text-4xl font-medium tracking-tight">
-                          Good morning, Admin
-                        </h1>
-                      </div>
-                      <p className="max-w-md text-base opacity-70">
-                        Your workforce is growing steadily. You have{" "}
-                        <span className="font-semibold text-accent-foreground">3 interviews</span> scheduled today
-                        and <span className="font-semibold text-accent-foreground">5 pending applications</span> to review.
+        <div className="space-y-6">
+          {/* Welcome Card */}
+          <Card
+            className="border-0 overflow-hidden"
+            style={{
+              borderRadius: "var(--hsd-ui-radii-md)",
+              background: "linear-gradient(135deg, var(--hsd-ui-color-navy-500) 0%, var(--hsd-ui-color-navy-400) 50%, var(--hsd-ui-color-navy-300) 100%)",
+            }}
+          >
+            <CardContent className="relative p-6 sm:p-8">
+              <div className="relative z-10 flex items-start justify-between gap-4">
+                <div className="space-y-2">
+                  <p className="text-sm tracking-wide" style={{ color: "rgba(255,255,255,0.6)", fontWeight: 300 }}>
+                    {format(new Date(), "EEEE, MMMM d, yyyy")}
+                  </p>
+                  <h1 className="text-2xl sm:text-3xl text-white" style={{ fontWeight: 500 }}>
+                    {getGreeting()}, {displayName}
+                  </h1>
+                  <p className="max-w-lg text-sm leading-relaxed" style={{ color: "rgba(255,255,255,0.7)", fontWeight: 300 }}>
+                    {summaryLoading ? (
+                      "Loading today\u2019s summary..."
+                    ) : (
+                      <>
+                        There are currently <span className="text-white" style={{ fontWeight: 500 }}>{summaryData.employees.toLocaleString()} active employees</span> across <span className="text-white" style={{ fontWeight: 500 }}>{summaryData.departments} departments</span>. Everything looks good today.
+                      </>
+                    )}
+                  </p>
+                </div>
+                <div
+                  className="hidden sm:flex h-14 w-14 shrink-0 items-center justify-center backdrop-blur-sm"
+                  style={{ borderRadius: "var(--hsd-ui-radii-md)", background: "rgba(255,255,255,0.1)" }}
+                >
+                  <Users className="h-7 w-7 text-white/80" />
+                </div>
+              </div>
+              <div className="absolute -bottom-16 -right-16 h-48 w-48 rounded-full" style={{ background: "rgba(255,255,255,0.05)" }} />
+              <div className="absolute -top-8 right-24 h-24 w-24 rounded-full" style={{ background: "rgba(255,255,255,0.05)" }} />
+            </CardContent>
+          </Card>
+
+          {/* Organization Summary */}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {ORG_CARDS.map((card) => (
+              <Card key={card.key} className="hover-lift">
+                <CardContent className="p-5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs uppercase tracking-wider text-muted-foreground">
+                        {card.label}
                       </p>
-                      <Button variant="outline" className="mt-2 border-background/20 bg-transparent text-background hover:bg-background/10 hover:border-background/30">
-                        View Today&apos;s Tasks
-                        <ArrowRight />
-                      </Button>
+                      {summaryLoading ? (
+                        <Skeleton className="mt-2 h-8 w-20" />
+                      ) : (
+                        <p className="mt-2 text-2xl" style={{ fontWeight: 500 }}>
+                          {summaryData[card.key].toLocaleString()}
+                        </p>
+                      )}
                     </div>
-                    <div className="hidden md:block">
-                      <div className="flex h-24 w-24 items-center justify-center rounded-2xl bg-accent">
-                        <Users className="h-12 w-12 text-accent-foreground" />
-                      </div>
+                    <div
+                      className="flex h-10 w-10 items-center justify-center"
+                      style={{ backgroundColor: card.bgColor, borderRadius: "var(--hsd-ui-radii-md)" }}
+                    >
+                      <card.icon className="h-5 w-5" style={{ color: card.color }} />
                     </div>
                   </div>
                 </CardContent>
-                {/* Decorative element */}
-                <div className="absolute -bottom-12 -right-12 h-48 w-48 rounded-full bg-accent/20" />
               </Card>
-            </div>
-
-            {/* Quick stats sidebar */}
-            <div className="lg:col-span-4 space-y-4">
-              <div className="animate-fade-in stagger-1">
-                <Card className="border-accent/20 bg-accent/5">
-                  <CardContent className="p-5">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-xs uppercase tracking-wider text-muted-foreground">Total Employees</p>
-                        <p className="mt-1 font-semibold text-3xl font-medium text-accent">1,284</p>
-                      </div>
-                      <div className="flex items-center gap-1 text-sm text-accent">
-                        <TrendingUp className="h-4 w-4" />
-                        <span className="font-medium">+12.5%</span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-              <div className="animate-fade-in stagger-2">
-                <Card>
-                  <CardContent className="p-5">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-xs uppercase tracking-wider text-muted-foreground">New This Month</p>
-                        <p className="mt-1 font-semibold text-3xl font-medium">45</p>
-                      </div>
-                      <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                        <TrendingUp className="h-4 w-4" />
-                        <span>+8.2%</span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-          </div>
-
-          {/* Stats Row */}
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {stats.slice(2).map((stat, index) => (
-              <div key={stat.title} className="animate-fade-in" style={{ animationDelay: `${(index + 3) * 50}ms` }}>
-                <Card className="hover-lift">
-                  <CardContent className="p-5">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-xs uppercase tracking-wider text-muted-foreground">{stat.title}</p>
-                        <p className="mt-2 font-semibold text-2xl font-medium">{stat.value}</p>
-                        <div className="mt-2 flex items-center gap-1.5 text-sm">
-                          {stat.trend === "up" ? (
-                            <TrendingUp className="h-3.5 w-3.5 text-accent" />
-                          ) : (
-                            <TrendingDown className="h-3.5 w-3.5 text-muted-foreground" />
-                          )}
-                          <span className={stat.trend === "up" ? "text-accent" : "text-muted-foreground"}>
-                            {stat.change}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-secondary">
-                        <stat.icon className="h-5 w-5 text-muted-foreground" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
             ))}
           </div>
 
-          {/* Charts */}
-          <div className="grid gap-6 lg:grid-cols-3">
-            <div className="lg:col-span-2 animate-fade-in stagger-4">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <div>
-                    <p className="text-xs uppercase tracking-wider text-muted-foreground">Analytics</p>
-                    <CardTitle className="mt-1 font-semibold text-xl">Employee Growth</CardTitle>
-                  </div>
-                  <Button variant="ghost" className="text-muted-foreground">
-                    View Report
-                    <ArrowRight />
-                  </Button>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-[300px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={employeeGrowth}>
-                        <defs>
-                          <linearGradient id="fillGradient" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="hsl(var(--accent))" stopOpacity={0.15} />
-                            <stop offset="100%" stopColor="hsl(var(--accent))" stopOpacity={0} />
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                        <XAxis
-                          dataKey="month"
-                          tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
-                          axisLine={false}
-                          tickLine={false}
-                          dy={10}
-                        />
-                        <YAxis
-                          tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
-                          axisLine={false}
-                          tickLine={false}
-                          width={45}
-                          tickFormatter={(value) => value.toLocaleString()}
-                        />
-                        <Tooltip
-                          contentStyle={{
-                            background: "hsl(var(--card))",
-                            border: "1px solid hsl(var(--border))",
-                            borderRadius: "8px",
-                            fontSize: 13,
-                            boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
-                          }}
-                          labelStyle={{ fontWeight: 600, marginBottom: 4 }}
-                        />
-                        <Area
-                          type="monotone"
-                          dataKey="value"
-                          stroke="hsl(var(--accent))"
-                          strokeWidth={2}
-                          fill="url(#fillGradient)"
-                        />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            <div className="animate-fade-in stagger-5">
-              <Card className="h-full">
-                <CardHeader className="pb-2">
-                  <p className="text-xs uppercase tracking-wider text-muted-foreground">Distribution</p>
-                  <CardTitle className="mt-1 font-semibold text-xl">By Department</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-[300px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={departmentData} layout="vertical" margin={{ left: 0, right: 20 }}>
-                        <XAxis
-                          type="number"
-                          tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
-                          axisLine={false}
-                          tickLine={false}
-                        />
-                        <YAxis
-                          dataKey="name"
-                          type="category"
-                          tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
-                          axisLine={false}
-                          tickLine={false}
-                          width={85}
-                        />
-                        <Tooltip
-                          contentStyle={{
-                            background: "hsl(var(--card))",
-                            border: "1px solid hsl(var(--border))",
-                            borderRadius: "8px",
-                            fontSize: 13,
-                          }}
-                        />
-                        <Bar dataKey="value" radius={[0, 4, 4, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-
-          {/* Lists */}
-          <div className="grid gap-6 lg:grid-cols-2">
-            <div className="animate-fade-in stagger-4">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between pb-4">
-                  <div>
-                    <p className="text-xs uppercase tracking-wider text-muted-foreground">Team</p>
-                    <CardTitle className="mt-1 font-semibold text-xl">Recent Hires</CardTitle>
-                  </div>
-                  <Button variant="ghost" className="text-muted-foreground">
-                    View All
-                    <ArrowRight />
-                  </Button>
-                </CardHeader>
-                <CardContent className="space-y-1">
-                  {recentHires.map((hire, i) => (
-                    <div
-                      key={i}
-                      className="group flex items-center gap-4 rounded-lg p-3 transition-colors hover:bg-secondary/50"
-                    >
-                      <Avatar className="h-10 w-10 border border-border">
-                        <AvatarFallback className="bg-secondary font-semibold text-sm">
-                          {hire.name.split(" ").map(n => n[0]).join("")}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">{hire.name}</p>
-                        <p className="text-sm text-muted-foreground truncate">
-                          {hire.role} <span className="opacity-50">·</span> {hire.dept}
-                        </p>
-                      </div>
-                      <span className="text-xs text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100">
-                        {hire.date}
-                      </span>
-                    </div>
+          {/* Employee Distribution */}
+          <Card>
+            <CardHeader className="pb-0">
+              <div>
+                <p className="text-xs uppercase tracking-wider text-muted-foreground">Composition</p>
+                <CardTitle className="mt-1 text-xl" style={{ fontWeight: 500 }}>Employee Distribution</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-4">
+              {chartsLoading ? (
+                <div className="space-y-3 py-2">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Skeleton key={i} className="h-5 w-full" />
                   ))}
-                </CardContent>
-              </Card>
-            </div>
+                </div>
+              ) : (
+                <Tabs defaultValue="department">
+                  <TabsList>
+                    <TabsTrigger value="department" className="gap-1.5">
+                      <Building2 className="h-3.5 w-3.5" />
+                      Department
+                    </TabsTrigger>
+                    <TabsTrigger value="type" className="gap-1.5">
+                      <UserCheck className="h-3.5 w-3.5" />
+                      Employment Type
+                    </TabsTrigger>
+                    <TabsTrigger value="gender" className="gap-1.5">
+                      <Users className="h-3.5 w-3.5" />
+                      Gender
+                    </TabsTrigger>
+                  </TabsList>
 
-            <div className="animate-fade-in stagger-5">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between pb-4">
-                  <div>
-                    <p className="text-xs uppercase tracking-wider text-muted-foreground">Schedule</p>
-                    <CardTitle className="mt-1 font-semibold text-xl">Upcoming Interviews</CardTitle>
-                  </div>
-                  <Button variant="ghost" className="text-muted-foreground">
-                    <Calendar />
-                    Calendar
-                  </Button>
-                </CardHeader>
-                <CardContent className="space-y-1">
-                  {upcomingInterviews.map((interview, i) => (
-                    <div
-                      key={i}
-                      className="group flex items-center justify-between rounded-lg p-3 transition-colors hover:bg-secondary/50"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className={`h-2 w-2 rounded-full ${interview.status === "confirmed" ? "bg-accent" : "bg-muted-foreground/40"}`} />
-                        <div>
-                          <p className="font-medium">{interview.name}</p>
-                          <p className="text-sm text-muted-foreground">{interview.role}</p>
-                        </div>
+                  <TabsContent value="department">
+                    {chartData.byDepartment.length === 0 ? (
+                      <p className="flex h-[200px] items-center justify-center text-sm text-muted-foreground">No data available</p>
+                    ) : (
+                      <div style={{ height: DEPT_CHART_HEIGHT }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={chartData.byDepartment} margin={{ bottom: 4, left: 4, right: 4 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                            <XAxis
+                              dataKey="name"
+                              tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }}
+                              axisLine={false}
+                              tickLine={false}
+                              interval={0}
+                              angle={-40}
+                              textAnchor="end"
+                              height={100}
+                            />
+                            <YAxis
+                              tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }}
+                              axisLine={false}
+                              tickLine={false}
+                              width={30}
+                            />
+                            <Tooltip {...CHART_TOOLTIP_STYLE} />
+                            <Bar dataKey="count" fill={NAVY_500} radius={[3, 3, 0, 0]} maxBarSize={40} />
+                          </BarChart>
+                        </ResponsiveContainer>
                       </div>
-                      <span className="text-sm text-muted-foreground">{interview.time}</span>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            </div>
-          </div>
+                    )}
+                  </TabsContent>
+
+                  <TabsContent value="type">
+                    {chartData.byType.length === 0 ? (
+                      <p className="flex h-[200px] items-center justify-center text-sm text-muted-foreground">No data available</p>
+                    ) : (
+                      <div className="h-[280px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={chartData.byType}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                            <XAxis
+                              dataKey="name"
+                              tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
+                              axisLine={false}
+                              tickLine={false}
+                            />
+                            <YAxis
+                              tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }}
+                              axisLine={false}
+                              tickLine={false}
+                              width={30}
+                            />
+                            <Tooltip {...CHART_TOOLTIP_STYLE} />
+                            <Bar dataKey="count" fill={NAVY_500} radius={[3, 3, 0, 0]} maxBarSize={48} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    )}
+                  </TabsContent>
+
+                  <TabsContent value="gender">
+                    {chartData.byGender.length === 0 ? (
+                      <p className="flex h-[200px] items-center justify-center text-sm text-muted-foreground">No data available</p>
+                    ) : (
+                      <div className="h-[280px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={chartData.byGender}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                            <XAxis
+                              dataKey="name"
+                              tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
+                              axisLine={false}
+                              tickLine={false}
+                            />
+                            <YAxis
+                              tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }}
+                              axisLine={false}
+                              tickLine={false}
+                              width={30}
+                            />
+                            <Tooltip {...CHART_TOOLTIP_STYLE} />
+                            <Bar dataKey="count" fill={NAVY_500} radius={[3, 3, 0, 0]} maxBarSize={64} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    )}
+                  </TabsContent>
+                </Tabs>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </PageContainer>
     </>

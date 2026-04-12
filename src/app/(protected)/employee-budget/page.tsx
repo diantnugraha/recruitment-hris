@@ -1,10 +1,11 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Loader2,
+  Search,
+  AlertCircle,
   Users,
   Wallet,
   TrendingUp,
@@ -13,18 +14,17 @@ import {
 
 import { Header } from "@/components/layout/header";
 import { PageContainer } from "@/components/layout/page-container";
-import { DataTable } from "@/components/shared/data-table";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   Select,
   SelectContent,
@@ -32,7 +32,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { TuvBadge } from "@/components/shared/tuv-badge";
 
 import { employeeBudgetService } from "@/services/employee-budget.service";
 import { departmentService } from "@/services/department.service";
@@ -57,49 +65,6 @@ interface DepartmentBudgetRow {
   category: string;
   budgetYears: number;
 }
-
-// --- Table Columns (module level) ---
-const columns = [
-  {
-    key: "departmentName",
-    label: "Department Name",
-    render: (row: DepartmentBudgetRow) => (
-      <Link
-        href={`/employee-budget/${row.departmentId}`}
-        className="font-medium text-accent hover:underline"
-      >
-        {row.departmentName}
-      </Link>
-    ),
-  },
-  {
-    key: "divisionName",
-    label: "Division",
-    render: (row: DepartmentBudgetRow) => (
-      <span className="text-sm">{row.divisionName}</span>
-    ),
-  },
-  {
-    key: "category",
-    label: "Category",
-    className: "w-[180px]",
-    render: (row: DepartmentBudgetRow) => (
-      <Badge variant={row.category === "Profit Center" ? "default" : "secondary"}>
-        {row.category}
-      </Badge>
-    ),
-  },
-  {
-    key: "budgetYears",
-    label: "Period",
-    className: "w-[120px] text-center",
-    render: (row: DepartmentBudgetRow) => (
-      <span className="tabular-nums">
-        {row.budgetYears} {row.budgetYears === 1 ? "year" : "years"}
-      </span>
-    ),
-  },
-];
 
 // --- Add Department Dialog ---
 interface AddDepartmentDialogProps {
@@ -166,10 +131,31 @@ function AddDepartmentDialog({
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
+              style={{
+                borderRadius: "4px",
+                height: "38px",
+                padding: "0 16px",
+                fontSize: "0.875rem",
+                fontWeight: 500,
+                borderColor: "rgba(120,134,127,0.2)",
+              }}
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={!selectedDepartmentId}>
+            <Button
+              type="submit"
+              disabled={!selectedDepartmentId}
+              style={{
+                backgroundColor: "var(--hsd-ui-background-color-primary)",
+                borderColor: "var(--hsd-ui-border-color-primary)",
+                color: "var(--hsd-ui-text-color-primary)",
+                borderRadius: "4px",
+                height: "38px",
+                padding: "0 16px",
+                fontSize: "0.875rem",
+                fontWeight: 500,
+              }}
+            >
               Continue
             </Button>
           </div>
@@ -193,6 +179,9 @@ export default function EmployeeBudgetPage() {
   // Pagination
   const [currentPage, setCurrentPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(10);
+
+  // Search
+  const [searchQuery, setSearchQuery] = React.useState("");
 
   // Dialog state
   const [isDepartmentDialogOpen, setIsDepartmentDialogOpen] = React.useState(false);
@@ -265,16 +254,9 @@ export default function EmployeeBudgetPage() {
     });
   }, [budgets, departments, divisions]);
 
-  // Search & filter
-  const [searchQuery, setSearchQuery] = React.useState("");
-  const [categoryFilter, setCategoryFilter] = React.useState<string>("all");
-
+  // Search filter (no category filter)
   const filteredData = React.useMemo(() => {
     let result = departmentRows;
-
-    if (categoryFilter && categoryFilter !== "all") {
-      result = result.filter((row) => row.category === categoryFilter);
-    }
 
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
@@ -286,7 +268,7 @@ export default function EmployeeBudgetPage() {
     }
 
     return result;
-  }, [departmentRows, searchQuery, categoryFilter]);
+  }, [departmentRows, searchQuery]);
 
   // Paginate
   const paginatedData = React.useMemo(() => {
@@ -307,6 +289,12 @@ export default function EmployeeBudgetPage() {
     return { totalDepartments, currentYearTotal, nextYearTotal, growth };
   }, [budgets]);
 
+  // Pagination computed values
+  const totalItems = filteredData.length;
+  const totalPages = Math.ceil(totalItems / pageSize);
+  const startItem = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+  const endItem = Math.min(currentPage * pageSize, totalItems);
+
   // Handlers
   const handleAddDepartmentClick = () => {
     setIsDepartmentDialogOpen(true);
@@ -316,171 +304,522 @@ export default function EmployeeBudgetPage() {
     router.push(`/employee-budget/${departmentId}`);
   };
 
+  // Category badge variant
+  const getCategoryBadgeVariant = (category: string): "success" | "dark" => {
+    return category === "Profit Center" ? "success" : "dark";
+  };
+
   return (
     <>
-      <Header title="Employee Budget" />
+      <Header />
       <PageContainer>
-        <div className="space-y-6">
-          {/* Header & Stats */}
+        {/* 1. Page Title Row -- title + count + action button */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: "24px",
+          }}
+        >
           <div>
-            <h2 className="text-lg font-semibold text-foreground">Budget Overview</h2>
-            <p className="text-sm text-muted-foreground">Manage and monitor employee budget allocation across departments.</p>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <h1
+                style={{
+                  fontSize: "1.5rem",
+                  fontWeight: 600,
+                  color: "var(--hsd-ui-color-gray-900)",
+                  margin: 0,
+                }}
+              >
+                Employee Budget
+              </h1>
+              <span
+                style={{
+                  backgroundColor: "var(--hsd-ui-color-blue-50)",
+                  color: "var(--hsd-ui-color-blue-600)",
+                  padding: "2px 10px",
+                  borderRadius: "4px",
+                  fontSize: "0.75rem",
+                  fontWeight: 500,
+                  border: "1px solid var(--hsd-ui-color-blue-200)",
+                }}
+              >
+                {isLoading ? "\u2014" : totalItems}
+              </span>
+            </div>
+            <p
+              style={{
+                fontSize: "0.875rem",
+                fontWeight: 300,
+                color: "var(--hsd-ui-color-gray-500)",
+                margin: "4px 0 0",
+              }}
+            >
+              Manage and monitor employee budget allocation across departments.
+            </p>
+          </div>
+          <Button
+            onClick={handleAddDepartmentClick}
+            style={{
+              backgroundColor: "var(--hsd-ui-background-color-primary)",
+              borderColor: "var(--hsd-ui-border-color-primary)",
+              color: "var(--hsd-ui-text-color-primary)",
+              borderRadius: "4px",
+              height: "38px",
+              padding: "0 16px",
+              fontSize: "0.875rem",
+              fontWeight: 500,
+            }}
+          >
+            Create Budget
+          </Button>
+        </div>
+
+        {/* 2. Stats Cards — clean TUV design */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "16px", marginBottom: "24px" }}>
+          {[
+            {
+              label: "Departments",
+              value: isLoading ? "-" : String(stats.totalDepartments),
+              icon: <Users style={{ width: "18px", height: "18px" }} />,
+              iconColor: "var(--hsd-ui-color-navy-500)",
+              iconBg: "var(--hsd-ui-color-navy-50)",
+            },
+            {
+              label: `${CURRENT_YEAR} Budget`,
+              value: isLoading ? "-" : `${stats.currentYearTotal} positions`,
+              icon: <Wallet style={{ width: "18px", height: "18px" }} />,
+              iconColor: "var(--hsd-ui-color-blue-600)",
+              iconBg: "var(--hsd-ui-color-blue-50)",
+            },
+            {
+              label: `${CURRENT_YEAR + 1} Budget`,
+              value: isLoading ? "-" : `${stats.nextYearTotal} positions`,
+              icon: <Wallet style={{ width: "18px", height: "18px" }} />,
+              iconColor: "var(--hsd-ui-color-green-700, #186742)",
+              iconBg: "var(--hsd-ui-color-lime-50, #f4fee6)",
+            },
+            {
+              label: "YoY Growth",
+              value: isLoading ? "-" : `${stats.growth > 0 ? "+" : ""}${stats.growth}%`,
+              icon: stats.growth >= 0
+                ? <TrendingUp style={{ width: "18px", height: "18px" }} />
+                : <TrendingDown style={{ width: "18px", height: "18px" }} />,
+              iconColor: stats.growth >= 0 ? "var(--hsd-ui-color-green-700, #186742)" : "var(--hsd-ui-color-carmine-600, #bc2935)",
+              iconBg: stats.growth >= 0 ? "var(--hsd-ui-color-lime-50, #f4fee6)" : "var(--hsd-ui-color-carmine-50, #ffebed)",
+              valueColor: stats.growth >= 0 ? "var(--hsd-ui-color-green-700, #186742)" : "var(--hsd-ui-color-carmine-600, #bc2935)",
+            },
+          ].map((stat) => (
+            <div
+              key={stat.label}
+              style={{
+                backgroundColor: "#fff",
+                borderRadius: "8px",
+                border: "1px solid rgba(120, 134, 127, 0.2)",
+                padding: "16px 20px",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
+                <span style={{ fontSize: "0.8125rem", fontWeight: 400, color: "var(--hsd-ui-color-gray-500)" }}>
+                  {stat.label}
+                </span>
+                <div
+                  style={{
+                    width: "32px",
+                    height: "32px",
+                    borderRadius: "6px",
+                    backgroundColor: stat.iconBg,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: stat.iconColor,
+                  }}
+                >
+                  {stat.icon}
+                </div>
+              </div>
+              <p
+                style={{
+                  fontSize: "1.25rem",
+                  fontWeight: 600,
+                  color: (stat as { valueColor?: string }).valueColor || "var(--hsd-ui-color-gray-900)",
+                  margin: 0,
+                  fontVariantNumeric: "tabular-nums",
+                }}
+              >
+                {stat.value}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        {/* 3. Outer wrapper -- white bg, rounded */}
+        <div
+          style={{
+            backgroundColor: "#fff",
+            borderRadius: "8px",
+            padding: "16px",
+            border: "1px solid rgba(120, 134, 127, 0.2)",
+          }}
+        >
+          {/* Search -- right aligned */}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              marginBottom: "16px",
+            }}
+          >
+            <div className="relative" style={{ width: "280px" }}>
+              <Search
+                className="absolute left-3 top-1/2 -translate-y-1/2"
+                style={{ width: "16px", height: "16px", color: "var(--hsd-ui-color-gray-400)" }}
+              />
+              <Input
+                placeholder="Search by department or division..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="pl-9"
+                style={{
+                  borderColor: "rgba(120, 134, 127, 0.2)",
+                  borderRadius: "4px",
+                  backgroundColor: "#fff",
+                  fontSize: "0.875rem",
+                }}
+              />
+            </div>
           </div>
 
-          <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
-            <Card className="overflow-hidden">
-              <CardContent className="p-0">
-                <div className="flex items-stretch">
-                  <div className="flex w-12 shrink-0 items-center justify-center bg-accent/10">
-                    <Users className="h-4 w-4 text-accent" />
-                  </div>
-                  <div className="flex-1 px-3 py-2.5">
-                    <p className="text-[11px] font-medium text-muted-foreground">Departments</p>
-                    <p className="text-lg font-bold tabular-nums">
-                      {isLoading ? "-" : stats.totalDepartments}
-                    </p>
-                  </div>
+          {/* Inner white card -- table + pagination */}
+          <div
+            style={{
+              backgroundColor: "#fff",
+              border: "1px solid rgba(120, 134, 127, 0.2)",
+              borderRadius: "8px",
+              overflow: "hidden",
+            }}
+          >
+            {/* Table */}
+            <div>
+              {isLoading ? (
+                <div style={{ display: "flex", justifyContent: "center", alignItems: "center", padding: "48px 0" }}>
+                  <Loader2
+                    className="animate-spin"
+                    style={{ width: "24px", height: "24px", color: "var(--hsd-ui-color-navy-500)" }}
+                  />
                 </div>
-              </CardContent>
-            </Card>
-
-            <Card className="overflow-hidden">
-              <CardContent className="p-0">
-                <div className="flex items-stretch">
-                  <div className="flex w-12 shrink-0 items-center justify-center bg-blue-500/10">
-                    <Wallet className="h-4 w-4 text-blue-600" />
-                  </div>
-                  <div className="flex-1 px-3 py-2.5">
-                    <p className="text-[11px] font-medium text-muted-foreground">{CURRENT_YEAR} Budget</p>
-                    <p className="text-lg font-bold tabular-nums">
-                      {isLoading ? "-" : stats.currentYearTotal}
-                      {!isLoading && <span className="ml-1 text-xs font-medium text-muted-foreground">positions</span>}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="overflow-hidden">
-              <CardContent className="p-0">
-                <div className="flex items-stretch">
-                  <div className="flex w-12 shrink-0 items-center justify-center bg-emerald-500/10">
-                    <Wallet className="h-4 w-4 text-emerald-600" />
-                  </div>
-                  <div className="flex-1 px-3 py-2.5">
-                    <p className="text-[11px] font-medium text-muted-foreground">{CURRENT_YEAR + 1} Budget</p>
-                    <p className="text-lg font-bold tabular-nums">
-                      {isLoading ? "-" : stats.nextYearTotal}
-                      {!isLoading && <span className="ml-1 text-xs font-medium text-muted-foreground">positions</span>}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="overflow-hidden">
-              <CardContent className="p-0">
-                <div className="flex items-stretch">
-                  <div className={`flex w-12 shrink-0 items-center justify-center ${
-                    stats.growth >= 0 ? "bg-green-500/10" : "bg-red-500/10"
-                  }`}>
-                    {stats.growth >= 0 ? (
-                      <TrendingUp className="h-4 w-4 text-green-600" />
-                    ) : (
-                      <TrendingDown className="h-4 w-4 text-red-600" />
-                    )}
-                  </div>
-                  <div className="flex-1 px-3 py-2.5">
-                    <p className="text-[11px] font-medium text-muted-foreground">YoY Growth</p>
-                    <p className={`text-lg font-bold tabular-nums ${
-                      stats.growth >= 0 ? "text-green-600" : "text-red-600"
-                    }`}>
-                      {isLoading ? "-" : `${stats.growth > 0 ? "+" : ""}${stats.growth}%`}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Table */}
-          <div>
-            {error ? (
-              <Card>
-                <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-                  <p className="text-muted-foreground">{error}</p>
-                  <Button variant="outline" onClick={fetchData} className="mt-4">
+              ) : error ? (
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "12px",
+                    padding: "48px 0",
+                  }}
+                >
+                  <AlertCircle
+                    style={{ width: "32px", height: "32px", color: "var(--hsd-ui-color-gray-400)" }}
+                  />
+                  <p
+                    style={{
+                      fontSize: "0.875rem",
+                      color: "var(--hsd-ui-color-gray-500)",
+                      margin: 0,
+                    }}
+                  >
+                    {error}
+                  </p>
+                  <Button
+                    variant="outline"
+                    onClick={fetchData}
+                    style={{
+                      borderRadius: "4px",
+                      height: "38px",
+                      padding: "0 16px",
+                      fontSize: "0.875rem",
+                      fontWeight: 500,
+                      borderColor: "rgba(120, 134, 127, 0.2)",
+                    }}
+                  >
                     Try Again
                   </Button>
-                </CardContent>
-              </Card>
-            ) : isLoading ? (
-              <Card>
-                <CardContent className="flex items-center justify-center py-12">
-                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                </CardContent>
-              </Card>
-            ) : (
-              <DataTable
-                data={paginatedData}
-                columns={columns}
-                searchable
-                searchPlaceholder="Search by department or division..."
-                onSearch={(value) => {
-                  setSearchQuery(value);
-                  setCurrentPage(1);
+                </div>
+              ) : paginatedData.length === 0 ? (
+                <div
+                  style={{
+                    textAlign: "center",
+                    padding: "48px 0",
+                    color: "var(--hsd-ui-color-gray-500)",
+                    fontSize: "0.875rem",
+                  }}
+                >
+                  No department budgets found
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow
+                      onMouseOver={undefined}
+                      onMouseOut={undefined}
+                      style={{ backgroundColor: "transparent", borderBottom: "1px solid rgba(120, 134, 127, 0.2)" }}
+                    >
+                      <TableHead style={{ width: "30%" }}>Department Name</TableHead>
+                      <TableHead style={{ width: "25%" }}>Division</TableHead>
+                      <TableHead style={{ width: "25%" }}>Category</TableHead>
+                      <TableHead style={{ width: "20%" }}>Period</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedData.map((row) => (
+                      <TableRow key={row.departmentId}>
+                        {/* Department Name -- navy clickable link */}
+                        <TableCell>
+                          <button
+                            type="button"
+                            className="hover:underline text-left"
+                            style={{
+                              color: "var(--hsd-ui-color-navy-500)",
+                              fontWeight: 500,
+                              fontSize: "0.875rem",
+                              background: "none",
+                              border: "none",
+                              cursor: "pointer",
+                              padding: 0,
+                            }}
+                            onClick={() => router.push(`/employee-budget/${row.departmentId}`)}
+                          >
+                            {row.departmentName}
+                          </button>
+                        </TableCell>
+
+                        {/* Division */}
+                        <TableCell>
+                          <span
+                            style={{
+                              fontSize: "0.875rem",
+                              fontWeight: 400,
+                              color: "var(--hsd-ui-color-gray-700)",
+                            }}
+                          >
+                            {row.divisionName}
+                          </span>
+                        </TableCell>
+
+                        {/* Category */}
+                        <TableCell>
+                          <TuvBadge
+                            text={row.category}
+                            variant={getCategoryBadgeVariant(row.category)}
+                            size="sm"
+                            border
+                          />
+                        </TableCell>
+
+                        {/* Period */}
+                        <TableCell>
+                          <span
+                            style={{
+                              fontSize: "0.875rem",
+                              fontWeight: 400,
+                              color: "var(--hsd-ui-color-gray-700)",
+                              fontVariantNumeric: "tabular-nums",
+                            }}
+                          >
+                            {row.budgetYears} {row.budgetYears === 1 ? "year" : "years"}
+                          </span>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </div>
+
+            {/* Pagination */}
+            {totalItems > 0 && (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "12px 16px",
+                  borderTop: "1px solid rgba(120, 134, 127, 0.2)",
+                  borderRadius: "0 0 8px 8px",
                 }}
-                pagination
-                pageSize={pageSize}
-                totalItems={filteredData.length}
-                currentPage={currentPage}
-                onPageChange={setCurrentPage}
-                onPageSizeChange={(size) => {
-                  setPageSize(size);
-                  setCurrentPage(1);
-                }}
-                emptyMessage="No department budgets found"
-                filters={
-                  <div className="flex flex-wrap items-end gap-3">
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">Category</Label>
-                      <Select
-                        value={categoryFilter}
-                        onValueChange={(value) => {
-                          setCategoryFilter(value);
-                          setCurrentPage(1);
-                        }}
-                      >
-                        <SelectTrigger className="h-9 w-[180px]">
-                          <SelectValue placeholder="All Categories" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Categories</SelectItem>
-                          <SelectItem value="Profit Center">Profit Center</SelectItem>
-                          <SelectItem value="Cost Center">Cost Center</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    {categoryFilter !== "all" && (
-                      <Button
-                        variant="ghost"
-                        className="h-9"
-                        onClick={() => {
-                          setCategoryFilter("all");
-                          setCurrentPage(1);
-                        }}
-                      >
-                        Clear Filters
-                      </Button>
-                    )}
-                  </div>
-                }
-                actions={
-                  <Button onClick={handleAddDepartmentClick}>
-                    New
-                  </Button>
-                }
-              />
+              >
+                {/* Left: "X - Y of Z" | divider | "N Per row" */}
+                <div style={{ display: "flex", alignItems: "center", gap: "24px" }}>
+                  <span
+                    style={{
+                      fontSize: "0.875rem",
+                      fontWeight: 400,
+                      color: "var(--hsd-ui-color-gray-400)",
+                    }}
+                  >
+                    {startItem} - {endItem} of {totalItems}
+                  </span>
+                  <div style={{ width: "1px", height: "32px", backgroundColor: "rgba(120, 134, 127, 0.15)" }} />
+                  <Select
+                    value={String(pageSize)}
+                    onValueChange={(value) => {
+                      setPageSize(Number(value));
+                      setCurrentPage(1);
+                    }}
+                  >
+                    <SelectTrigger
+                      style={{
+                        width: "auto",
+                        minWidth: "145px",
+                        height: "38px",
+                        border: "1px solid rgba(120, 134, 127, 0.2)",
+                        borderRadius: "4px",
+                        fontSize: "0.875rem",
+                        fontWeight: 400,
+                        color: "var(--hsd-ui-color-gray-700)",
+                        padding: "0 12px",
+                        gap: "8px",
+                        backgroundColor: "#fff",
+                      }}
+                    >
+                      <SelectValue placeholder="10 Per row" />
+                    </SelectTrigger>
+                    <SelectContent
+                      side="top"
+                      style={{
+                        minWidth: "140px",
+                        borderRadius: "8px",
+                        fontSize: "0.875rem",
+                      }}
+                    >
+                      {[5, 10, 20, 50, 100].map((size) => (
+                        <SelectItem
+                          key={size}
+                          value={String(size)}
+                          style={{ fontSize: "0.875rem", padding: "8px 12px" }}
+                        >
+                          {size} Per row
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Right: page numbers */}
+                <div style={{ display: "flex", alignItems: "center", gap: "0" }}>
+                  {(() => {
+                    const buildPageItems = (): (number | "dots")[] => {
+                      if (totalPages <= 7) {
+                        return Array.from({ length: totalPages }, (_, i) => i + 1);
+                      }
+                      const middle = Array.from(
+                        { length: Math.min(3, totalPages - 2) },
+                        (_, i) => Math.max(2, currentPage - 1) + i
+                      ).filter((n) => n >= 2 && n <= totalPages - 1);
+
+                      return [
+                        1,
+                        ...(middle[0] > 2 ? ["dots" as const] : []),
+                        ...middle,
+                        ...(middle[middle.length - 1] < totalPages - 1 ? ["dots" as const] : []),
+                        totalPages,
+                      ];
+                    };
+                    const items = buildPageItems();
+
+                    const pageBtn = (num: number | "dots", idx: number) => {
+                      if (num === "dots") {
+                        return (
+                          <span
+                            key={`dots-${idx}`}
+                            style={{
+                              width: "36px",
+                              height: "36px",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              fontSize: "0.875rem",
+                              color: "var(--hsd-ui-color-gray-700)",
+                            }}
+                          >
+                            ...
+                          </span>
+                        );
+                      }
+                      const isActive = currentPage === num;
+                      return (
+                        <button
+                          key={num}
+                          onClick={() => setCurrentPage(num)}
+                          style={{
+                            width: "36px",
+                            height: "36px",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            borderRadius: "6px",
+                            border: "none",
+                            cursor: "pointer",
+                            fontSize: "0.875rem",
+                            fontWeight: isActive ? 500 : 400,
+                            backgroundColor: isActive ? "var(--hsd-ui-color-navy-500)" : "transparent",
+                            color: isActive ? "#fff" : "var(--hsd-ui-color-gray-900)",
+                          }}
+                        >
+                          {num}
+                        </button>
+                      );
+                    };
+
+                    return (
+                      <>
+                        <button
+                          onClick={() => currentPage > 1 && setCurrentPage(currentPage - 1)}
+                          disabled={currentPage === 1}
+                          style={{
+                            width: "36px",
+                            height: "36px",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            border: "none",
+                            background: "none",
+                            cursor: currentPage === 1 ? "default" : "pointer",
+                            color: currentPage === 1 ? "var(--hsd-ui-color-gray-300)" : "var(--hsd-ui-color-gray-700)",
+                            fontSize: "1.25rem",
+                          }}
+                        >
+                          &#8249;
+                        </button>
+                        {items.map((item, idx) => pageBtn(item, idx))}
+                        <button
+                          onClick={() => currentPage < totalPages && setCurrentPage(currentPage + 1)}
+                          disabled={currentPage === totalPages}
+                          style={{
+                            width: "36px",
+                            height: "36px",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            border: "none",
+                            background: "none",
+                            cursor: currentPage === totalPages ? "default" : "pointer",
+                            color: currentPage === totalPages ? "var(--hsd-ui-color-gray-300)" : "var(--hsd-ui-color-gray-700)",
+                            fontSize: "1.25rem",
+                          }}
+                        >
+                          &#8250;
+                        </button>
+                      </>
+                    );
+                  })()}
+                </div>
+              </div>
             )}
           </div>
         </div>

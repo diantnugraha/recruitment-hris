@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
-  ArrowLeft,
+  ChevronLeft,
   Loader2,
   Users,
   TrendingUp,
@@ -22,8 +22,7 @@ import {
 import { Header } from "@/components/layout/header";
 import { PageContainer } from "@/components/layout/page-container";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { TuvBadge } from "@/components/shared/tuv-badge";
 import {
   Table,
   TableBody,
@@ -61,6 +60,34 @@ import { employeeService } from "@/services/employee.service";
 import { jobTitleService } from "@/services/job-title.service";
 import { EmployeeBudget, Department, EmployeeWithRelations, JobTitle, RestBudgetData } from "@/types";
 import { showToast } from "@/lib/utils/toast-messages";
+
+// --- TUV button style helpers ---
+const btnPrimary = {
+  backgroundColor: "var(--hsd-ui-background-color-primary)",
+  borderColor: "var(--hsd-ui-border-color-primary)",
+  color: "var(--hsd-ui-text-color-primary)",
+  borderRadius: "4px",
+  height: "38px",
+  padding: "0 16px",
+  fontSize: "0.875rem",
+  fontWeight: 500,
+} as const;
+
+const btnSecondary = {
+  borderRadius: "4px",
+  height: "38px",
+  padding: "0 16px",
+  fontSize: "0.875rem",
+  fontWeight: 500,
+  borderColor: "rgba(120,134,127,0.2)",
+} as const;
+
+// --- TUV card style ---
+const tuvCard = {
+  borderRadius: "8px",
+  backgroundColor: "#fff",
+  borderColor: "rgba(120, 134, 127, 0.2)",
+} as const;
 
 // --- Constants ---
 const CURRENT_YEAR = new Date().getFullYear();
@@ -186,8 +213,10 @@ function BudgetFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg overflow-hidden">
         <DialogHeader>
-          <DialogTitle>{isEdit ? "Edit Budget" : "New Budget"}</DialogTitle>
-          <DialogDescription>
+          <DialogTitle style={{ fontSize: "1.125rem", fontWeight: 600, color: "var(--hsd-ui-color-gray-900)" }}>
+            {isEdit ? "Edit Budget" : "New Budget"}
+          </DialogTitle>
+          <DialogDescription style={{ fontSize: "0.8125rem", color: "var(--hsd-ui-color-gray-500)" }}>
             {isEdit
               ? "Update the budget allocation for this year."
               : "Set the budget allocation for a new year."}
@@ -196,7 +225,9 @@ function BudgetFormDialog({
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
-            <Label htmlFor="year">Budget Year *</Label>
+            <Label htmlFor="year" style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--hsd-ui-color-gray-700)" }}>
+              Budget Year *
+            </Label>
             <Select
               value={String(formData.year)}
               onValueChange={(value) =>
@@ -219,7 +250,9 @@ function BudgetFormDialog({
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="technical">Technical Staff</Label>
+              <Label htmlFor="technical" style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--hsd-ui-color-gray-700)" }}>
+                Technical Staff
+              </Label>
               <Input
                 id="technical"
                 type="number"
@@ -232,12 +265,14 @@ function BudgetFormDialog({
                   }))
                 }
               />
-              <p className="text-xs text-muted-foreground">
+              <p style={{ fontSize: "0.75rem", color: "var(--hsd-ui-color-gray-500)" }}>
                 Number of technical positions
               </p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="admin">Admin Staff</Label>
+              <Label htmlFor="admin" style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--hsd-ui-color-gray-700)" }}>
+                Admin Staff
+              </Label>
               <Input
                 id="admin"
                 type="number"
@@ -250,7 +285,7 @@ function BudgetFormDialog({
                   }))
                 }
               />
-              <p className="text-xs text-muted-foreground">
+              <p style={{ fontSize: "0.75rem", color: "var(--hsd-ui-color-gray-500)" }}>
                 Number of admin positions
               </p>
             </div>
@@ -258,7 +293,9 @@ function BudgetFormDialog({
 
           {/* Document Upload */}
           <div className="space-y-2">
-            <Label>Supporting Document</Label>
+            <Label style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--hsd-ui-color-gray-700)" }}>
+              Supporting Document
+            </Label>
             <input
               ref={fileInputRef}
               type="file"
@@ -270,26 +307,43 @@ function BudgetFormDialog({
             {!selectedFile && !formData.document ? (
               <div
                 onClick={() => fileInputRef.current?.click()}
-                className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center cursor-pointer hover:border-accent/50 hover:bg-accent/5 transition-colors"
+                className="cursor-pointer transition-colors"
+                style={{
+                  border: "2px dashed rgba(120, 134, 127, 0.3)",
+                  borderRadius: "8px",
+                  padding: "24px",
+                  textAlign: "center",
+                }}
               >
-                <Upload className="h-8 w-8 mx-auto text-muted-foreground/50 mb-2" />
-                <p className="text-sm text-muted-foreground">
+                <Upload style={{ width: "32px", height: "32px", margin: "0 auto 8px", color: "var(--hsd-ui-color-gray-400)" }} />
+                <p style={{ fontSize: "0.875rem", color: "var(--hsd-ui-color-gray-500)" }}>
                   Click to upload document
                 </p>
-                <p className="text-xs text-muted-foreground/70 mt-1">
+                <p style={{ fontSize: "0.75rem", color: "var(--hsd-ui-color-gray-400)", marginTop: "4px" }}>
                   PDF, Excel, or Word (max 10MB)
                 </p>
               </div>
             ) : (
-              <div className="flex items-center gap-3 p-3 border rounded-lg bg-muted/30">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/10">
-                  <File className="h-5 w-5 text-accent" />
+              <div
+                className="flex items-center gap-3"
+                style={{
+                  padding: "12px",
+                  border: "1px solid rgba(120, 134, 127, 0.2)",
+                  borderRadius: "8px",
+                  backgroundColor: "var(--hsd-ui-color-gray-50)",
+                }}
+              >
+                <div
+                  className="flex h-10 w-10 items-center justify-center"
+                  style={{ borderRadius: "8px", backgroundColor: "var(--hsd-ui-color-navy-50)" }}
+                >
+                  <File style={{ width: "20px", height: "20px", color: "var(--hsd-ui-color-navy-500)" }} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">
+                  <p style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--hsd-ui-color-gray-900)", margin: 0 }} className="truncate">
                     {selectedFile?.name || "Uploaded Document"}
                   </p>
-                  <p className="text-xs text-muted-foreground">
+                  <p style={{ fontSize: "0.75rem", color: "var(--hsd-ui-color-gray-500)", margin: 0 }}>
                     {selectedFile
                       ? `${(selectedFile.size / 1024).toFixed(1)} KB`
                       : "Previously uploaded"
@@ -300,7 +354,8 @@ function BudgetFormDialog({
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                  className="h-8 w-8"
+                  style={{ color: "var(--hsd-ui-color-gray-400)" }}
                   onClick={handleRemoveFile}
                 >
                   <X className="h-4 w-4" />
@@ -310,26 +365,38 @@ function BudgetFormDialog({
           </div>
 
           {/* Total Summary */}
-          <div className="rounded-lg border bg-muted/30 p-4">
+          <div
+            style={{
+              borderRadius: "8px",
+              border: "1px solid rgba(120, 134, 127, 0.2)",
+              backgroundColor: "var(--hsd-ui-color-gray-50)",
+              padding: "16px",
+            }}
+          >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium">Total Budget</p>
-                <p className="text-xs text-muted-foreground">
+                <p style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--hsd-ui-color-gray-900)", margin: 0 }}>
+                  Total Budget
+                </p>
+                <p style={{ fontSize: "0.75rem", color: "var(--hsd-ui-color-gray-500)", margin: 0 }}>
                   Headcount for {formData.year}
                 </p>
               </div>
-              <span className="text-4xl font-bold tabular-nums text-accent">
+              <span style={{ fontSize: "2.25rem", fontWeight: 700, color: "var(--hsd-ui-color-navy-500)" }} className="tabular-nums">
                 {totalBudget}
               </span>
             </div>
-            <div className="mt-3 flex gap-4 border-t pt-3 text-sm">
+            <div
+              className="flex gap-4"
+              style={{ marginTop: "12px", paddingTop: "12px", borderTop: "1px solid rgba(120, 134, 127, 0.15)", fontSize: "0.875rem" }}
+            >
               <div className="flex items-center gap-2">
-                <span className="text-muted-foreground">Technical</span>
-                <span className="font-semibold">{formData.technical}</span>
+                <span style={{ color: "var(--hsd-ui-color-gray-500)" }}>Technical</span>
+                <span style={{ fontWeight: 600, color: "var(--hsd-ui-color-gray-900)" }}>{formData.technical}</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-muted-foreground">Admin</span>
-                <span className="font-semibold">{formData.admin}</span>
+                <span style={{ color: "var(--hsd-ui-color-gray-500)" }}>Admin</span>
+                <span style={{ fontWeight: 600, color: "var(--hsd-ui-color-gray-900)" }}>{formData.admin}</span>
               </div>
             </div>
           </div>
@@ -340,13 +407,14 @@ function BudgetFormDialog({
               variant="outline"
               onClick={() => onOpenChange(false)}
               disabled={isSubmitting}
+              style={btnSecondary}
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button type="submit" disabled={isSubmitting} style={btnPrimary}>
               {isSubmitting ? (
                 <>
-                  <Loader2 className="animate-spin" />
+                  <Loader2 className="animate-spin" style={{ width: "16px", height: "16px", marginRight: "6px" }} />
                   {isEdit ? "Updating..." : "Creating..."}
                 </>
               ) : (
@@ -432,7 +500,7 @@ export default function EmployeeBudgetDetailPage() {
     fetchData();
   }, [fetchData]);
 
-  // Build job title name → type lookup from department job titles
+  // Build job title name -> type lookup from department job titles
   // Use startsWith matching to handle name variants like "Administration Staff" vs "Administration Staff (Agri Food)"
   const getJobTitleType = React.useCallback((jtName?: string): string | undefined => {
     if (!jtName) return undefined;
@@ -511,10 +579,13 @@ export default function EmployeeBudgetDetailPage() {
   if (isLoading) {
     return (
       <>
-        <Header title="Employee Budget" />
+        <Header />
         <PageContainer>
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "300px" }}>
+            <Loader2
+              className="animate-spin"
+              style={{ width: "24px", height: "24px", color: "var(--hsd-ui-color-navy-500)" }}
+            />
           </div>
         </PageContainer>
       </>
@@ -524,16 +595,27 @@ export default function EmployeeBudgetDetailPage() {
   if (error || !department) {
     return (
       <>
-        <Header title="Employee Budget" />
+        <Header />
         <PageContainer>
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-              <p className="text-muted-foreground">{error || "Department not found"}</p>
-              <Button variant="outline" onClick={() => router.back()} className="mt-4">
-                Go Back
-              </Button>
-            </CardContent>
-          </Card>
+          <div
+            className="border"
+            style={{
+              ...tuvCard,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "48px 24px",
+              textAlign: "center",
+            }}
+          >
+            <p style={{ fontSize: "0.875rem", color: "var(--hsd-ui-color-gray-500)", margin: 0 }}>
+              {error || "Department not found"}
+            </p>
+            <Button variant="outline" onClick={() => router.back()} className="mt-4" style={btnSecondary}>
+              Go Back
+            </Button>
+          </div>
         </PageContainer>
       </>
     );
@@ -541,124 +623,164 @@ export default function EmployeeBudgetDetailPage() {
 
   return (
     <>
-      <Header title={`Budget - ${department.name}`} />
+      <Header />
       <PageContainer>
-        <div className="space-y-6">
-          {/* Back Button & Actions */}
-          <div className="flex items-center justify-between">
-            <Button variant="ghost" asChild>
-              <Link href="/employee-budget">
-                <ArrowLeft />
-                Back to Budget List
-              </Link>
-            </Button>
+        <div className="space-y-5">
+          {/* Back Link & Title */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <Link
+              href="/employee-budget"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "4px",
+                fontSize: "0.875rem",
+                fontWeight: 400,
+                color: "var(--hsd-ui-color-gray-500)",
+                textDecoration: "none",
+              }}
+            >
+              <ChevronLeft style={{ width: "16px", height: "16px" }} />
+              Back to Budget List
+            </Link>
           </div>
 
-          {/* Department Info */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-accent/10">
-                  <Briefcase className="h-6 w-6 text-accent" />
+          {/* Department Info Header Card */}
+          <div
+            className="border"
+            style={tuvCard}
+          >
+            <div className="p-6">
+              <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
+                <div
+                  className="flex h-14 w-14 shrink-0 items-center justify-center"
+                  style={{ borderRadius: "8px", backgroundColor: "var(--hsd-ui-color-navy-50)" }}
+                >
+                  <Briefcase style={{ width: "28px", height: "28px", color: "var(--hsd-ui-color-navy-500)" }} />
                 </div>
-                <div>
-                  <CardTitle>{department.name}</CardTitle>
-                  <CardDescription>
-                    Code: {department.code} | Category: {department.category}
-                  </CardDescription>
+                <div className="flex-1 min-w-0">
+                  <h1 style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--hsd-ui-color-gray-900)", margin: 0 }}>
+                    {department.name}
+                  </h1>
+                  <div className="flex items-center gap-2 mt-2 flex-wrap">
+                    {department.code && <TuvBadge text={`Code: ${department.code}`} variant="info" size="sm" border />}
+                    {department.category && <TuvBadge text={department.category} variant="brand" size="sm" border />}
+                  </div>
                 </div>
               </div>
-            </CardHeader>
-          </Card>
+            </div>
+          </div>
 
-          {/* Current Employee Stats */}
-          <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
-            <Card className="overflow-hidden">
-              <CardContent className="p-0">
-                <div className="flex items-stretch">
-                  <div className="flex w-12 shrink-0 items-center justify-center bg-accent/10">
-                    <Users className="h-4 w-4 text-accent" />
-                  </div>
-                  <div className="flex-1 px-3 py-2.5">
-                    <p className="text-[11px] font-medium text-muted-foreground">Total Employees</p>
-                    <p className="text-lg font-bold tabular-nums">{restBudgetData ? restBudgetData.activeEmployees.total : employeeStats.total}</p>
+          {/* Current Employee Stats — clean TUV design */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "16px" }}>
+            {[
+              {
+                label: "Total Employees",
+                value: String(restBudgetData ? restBudgetData.activeEmployees.total : employeeStats.total),
+                icon: <Users style={{ width: "18px", height: "18px" }} />,
+                iconColor: "var(--hsd-ui-color-navy-500)",
+                iconBg: "var(--hsd-ui-color-navy-50)",
+              },
+              {
+                label: "Technical Staff",
+                value: String(restBudgetData ? restBudgetData.activeEmployees.technical : employeeStats.technical.total),
+                icon: <UserCheck style={{ width: "18px", height: "18px" }} />,
+                iconColor: "var(--hsd-ui-color-blue-600)",
+                iconBg: "var(--hsd-ui-color-blue-50)",
+              },
+              {
+                label: "Admin Staff",
+                value: String(restBudgetData ? restBudgetData.activeEmployees.admin : employeeStats.admin.total),
+                icon: <Briefcase style={{ width: "18px", height: "18px" }} />,
+                iconColor: "var(--hsd-ui-color-purple-500, #7f39c5)",
+                iconBg: "var(--hsd-ui-color-purple-50, #e9def5)",
+              },
+              {
+                label: "Rest Budget",
+                value: `${restBudget.total >= 0 ? "+" : ""}${restBudget.total}`,
+                icon: restBudget.total >= 0
+                  ? <TrendingUp style={{ width: "18px", height: "18px" }} />
+                  : <TrendingDown style={{ width: "18px", height: "18px" }} />,
+                iconColor: restBudget.total >= 0 ? "var(--hsd-ui-color-green-700, #186742)" : "var(--hsd-ui-color-carmine-600, #bc2935)",
+                iconBg: restBudget.total >= 0 ? "var(--hsd-ui-color-lime-50, #f4fee6)" : "var(--hsd-ui-color-carmine-50, #ffebed)",
+                valueColor: restBudget.total >= 0 ? "var(--hsd-ui-color-green-700, #186742)" : "var(--hsd-ui-color-carmine-600, #bc2935)",
+              },
+            ].map((stat) => (
+              <div
+                key={stat.label}
+                style={{
+                  backgroundColor: "#fff",
+                  borderRadius: "8px",
+                  border: "1px solid rgba(120, 134, 127, 0.2)",
+                  padding: "16px 20px",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
+                  <span style={{ fontSize: "0.8125rem", fontWeight: 400, color: "var(--hsd-ui-color-gray-500)" }}>
+                    {stat.label}
+                  </span>
+                  <div
+                    style={{
+                      width: "32px",
+                      height: "32px",
+                      borderRadius: "6px",
+                      backgroundColor: stat.iconBg,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: stat.iconColor,
+                    }}
+                  >
+                    {stat.icon}
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-
-            <Card className="overflow-hidden">
-              <CardContent className="p-0">
-                <div className="flex items-stretch">
-                  <div className="flex w-12 shrink-0 items-center justify-center bg-blue-500/10">
-                    <UserCheck className="h-4 w-4 text-blue-600" />
-                  </div>
-                  <div className="flex-1 px-3 py-2.5">
-                    <p className="text-[11px] font-medium text-muted-foreground">Technical Staff</p>
-                    <p className="text-lg font-bold tabular-nums">{restBudgetData ? restBudgetData.activeEmployees.technical : employeeStats.technical.total}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="overflow-hidden">
-              <CardContent className="p-0">
-                <div className="flex items-stretch">
-                  <div className="flex w-12 shrink-0 items-center justify-center bg-purple-500/10">
-                    <Briefcase className="h-4 w-4 text-purple-600" />
-                  </div>
-                  <div className="flex-1 px-3 py-2.5">
-                    <p className="text-[11px] font-medium text-muted-foreground">Admin Staff</p>
-                    <p className="text-lg font-bold tabular-nums">{restBudgetData ? restBudgetData.activeEmployees.admin : employeeStats.admin.total}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="overflow-hidden">
-              <CardContent className="p-0">
-                <div className="flex items-stretch">
-                  <div className={`flex w-12 shrink-0 items-center justify-center ${restBudget.total >= 0 ? "bg-green-500/10" : "bg-red-500/10"}`}>
-                    {restBudget.total >= 0 ? (
-                      <TrendingUp className="h-4 w-4 text-green-600" />
-                    ) : (
-                      <TrendingDown className="h-4 w-4 text-red-600" />
-                    )}
-                  </div>
-                  <div className="flex-1 px-3 py-2.5">
-                    <p className="text-[11px] font-medium text-muted-foreground">Rest Budget</p>
-                    <p className={`text-lg font-bold tabular-nums ${restBudget.total >= 0 ? "text-green-600" : "text-red-600"}`}>
-                      {restBudget.total >= 0 ? "+" : ""}{restBudget.total}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                <p
+                  style={{
+                    fontSize: "1.25rem",
+                    fontWeight: 600,
+                    color: (stat as { valueColor?: string }).valueColor || "var(--hsd-ui-color-gray-900)",
+                    margin: 0,
+                    fontVariantNumeric: "tabular-nums",
+                  }}
+                >
+                  {stat.value}
+                </p>
+              </div>
+            ))}
           </div>
 
           {/* Budget by Year Table */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <CalendarDays className="h-5 w-5" />
-                    Budget History
-                  </CardTitle>
-                  <CardDescription className="mt-1.5">
-                    Year-by-year budget allocation and comparison
-                  </CardDescription>
-                </div>
-                <Button onClick={handleAddClick}>
-                  New
-                </Button>
+          <div
+            className="border"
+            style={tuvCard}
+          >
+            <div
+              className="flex items-center justify-between px-6 py-4"
+              style={{ borderBottom: "1px solid rgba(120, 134, 127, 0.15)" }}
+            >
+              <div>
+                <h2
+                  className="flex items-center gap-2"
+                  style={{ fontSize: "0.9375rem", fontWeight: 600, color: "var(--hsd-ui-color-gray-900)", margin: 0 }}
+                >
+                  <CalendarDays style={{ width: "18px", height: "18px", color: "var(--hsd-ui-color-gray-500)" }} />
+                  Budget History
+                </h2>
+                <p style={{ fontSize: "0.8125rem", color: "var(--hsd-ui-color-gray-500)", margin: "4px 0 0" }}>
+                  Year-by-year budget allocation and comparison
+                </p>
               </div>
-            </CardHeader>
-            <CardContent>
+              <Button onClick={handleAddClick} style={btnPrimary}>
+                New
+              </Button>
+            </div>
+            <div className="px-6 py-5">
               {budgets.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-8 text-center">
-                  <p className="text-muted-foreground">No budget records found for this department.</p>
-                  <Button variant="outline" onClick={handleAddClick} className="mt-4">
+                  <p style={{ fontSize: "0.875rem", color: "var(--hsd-ui-color-gray-500)" }}>
+                    No budget records found for this department.
+                  </p>
+                  <Button variant="outline" onClick={handleAddClick} className="mt-4" style={btnSecondary}>
                     New
                   </Button>
                 </div>
@@ -666,13 +788,13 @@ export default function EmployeeBudgetDetailPage() {
                 <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead>Year</TableHead>
-                      <TableHead className="text-center">Technical</TableHead>
-                      <TableHead className="text-center">Admin</TableHead>
-                      <TableHead className="text-center">Total</TableHead>
-                      <TableHead className="text-center">vs Previous</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+                    <TableRow className="hover:bg-transparent">
+                      <TableHead style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--hsd-ui-color-gray-500)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Year</TableHead>
+                      <TableHead className="text-center" style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--hsd-ui-color-gray-500)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Technical</TableHead>
+                      <TableHead className="text-center" style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--hsd-ui-color-gray-500)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Admin</TableHead>
+                      <TableHead className="text-center" style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--hsd-ui-color-gray-500)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Total</TableHead>
+                      <TableHead className="text-center" style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--hsd-ui-color-gray-500)", textTransform: "uppercase", letterSpacing: "0.05em" }}>vs Previous</TableHead>
+                      <TableHead className="text-right" style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--hsd-ui-color-gray-500)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -689,50 +811,53 @@ export default function EmployeeBudgetDetailPage() {
                         return (
                           <TableRow key={budget.id}>
                             <TableCell>
-                              <Badge variant={budget.year === CURRENT_YEAR ? "default" : "outline"}>
-                                {budget.year}
-                                {budget.year === CURRENT_YEAR && " (Current)"}
-                              </Badge>
+                              <TuvBadge
+                                text={budget.year === CURRENT_YEAR ? `${budget.year} (Current)` : String(budget.year)}
+                                variant={budget.year === CURRENT_YEAR ? "brand" : "dark"}
+                                size="sm"
+                                border
+                              />
                             </TableCell>
                             <TableCell className="text-center">
-                              <span className="font-semibold tabular-nums">{budget.technical}</span>
+                              <span style={{ fontWeight: 600, fontSize: "0.875rem", color: "var(--hsd-ui-color-gray-900)" }} className="tabular-nums">{budget.technical}</span>
                             </TableCell>
                             <TableCell className="text-center">
-                              <span className="font-semibold tabular-nums">{budget.admin}</span>
+                              <span style={{ fontWeight: 600, fontSize: "0.875rem", color: "var(--hsd-ui-color-gray-900)" }} className="tabular-nums">{budget.admin}</span>
                             </TableCell>
                             <TableCell className="text-center">
-                              <span className="inline-flex items-center gap-1.5 rounded-md bg-accent/10 px-2.5 py-1 text-sm font-bold tabular-nums text-accent">
+                              <span
+                                className="tabular-nums"
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: "6px",
+                                  borderRadius: "6px",
+                                  backgroundColor: "var(--hsd-ui-color-navy-50)",
+                                  padding: "4px 10px",
+                                  fontSize: "0.875rem",
+                                  fontWeight: 700,
+                                  color: "var(--hsd-ui-color-navy-500)",
+                                }}
+                              >
                                 {currentTotal}
-                                <span className="text-[10px] font-medium text-accent/70">total</span>
+                                <span style={{ fontSize: "0.625rem", fontWeight: 500, opacity: 0.7 }}>total</span>
                               </span>
                             </TableCell>
                             <TableCell className="text-center">
                               {prevBudget ? (
                                 <div className="inline-flex flex-col items-center gap-0.5">
-                                  <Badge
-                                    variant={
-                                      growth > 0
-                                        ? "success"
-                                        : growth < 0
-                                        ? "destructive"
-                                        : "outline"
-                                    }
-                                    className="gap-1"
-                                  >
-                                    {growth > 0 ? (
-                                      <TrendingUp className="h-3 w-3" />
-                                    ) : growth < 0 ? (
-                                      <TrendingDown className="h-3 w-3" />
-                                    ) : null}
-                                    {growth > 0 ? "+" : ""}
-                                    {growth}%
-                                  </Badge>
-                                  <span className="text-[10px] text-muted-foreground tabular-nums">
+                                  <TuvBadge
+                                    text={`${growth > 0 ? "+" : ""}${growth}%`}
+                                    variant={growth > 0 ? "success" : growth < 0 ? "danger" : "dark"}
+                                    size="sm"
+                                    border
+                                  />
+                                  <span style={{ fontSize: "0.625rem", color: "var(--hsd-ui-color-gray-500)" }} className="tabular-nums">
                                     {currentTotal - prevTotal >= 0 ? "+" : ""}{currentTotal - prevTotal} positions
                                   </span>
                                 </div>
                               ) : (
-                                <span className="text-xs text-muted-foreground">First year</span>
+                                <span style={{ fontSize: "0.75rem", color: "var(--hsd-ui-color-gray-500)" }}>First year</span>
                               )}
                             </TableCell>
                             <TableCell className="text-right">
@@ -748,6 +873,7 @@ export default function EmployeeBudgetDetailPage() {
                                             const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
                                             window.open(`${apiUrl}/${budget.document}`, "_blank");
                                           }}
+                                          style={{ color: "var(--hsd-ui-color-gray-500)" }}
                                         >
                                           <FileText className="h-4 w-4" />
                                         </Button>
@@ -762,6 +888,7 @@ export default function EmployeeBudgetDetailPage() {
                                   variant="ghost"
                                   size="icon"
                                   onClick={() => handleEditClick(budget)}
+                                  style={{ color: "var(--hsd-ui-color-gray-500)" }}
                                 >
                                   <Pencil className="h-4 w-4" />
                                 </Button>
@@ -774,30 +901,38 @@ export default function EmployeeBudgetDetailPage() {
                 </Table>
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
           {/* Current Year Budget vs Actual */}
           {currentYearBudget && (
-            <Card>
-              <CardHeader>
-                <CardTitle>{CURRENT_YEAR} Budget vs Actual</CardTitle>
-                <CardDescription>
+            <div
+              className="border"
+              style={tuvCard}
+            >
+              <div
+                className="px-6 py-4"
+                style={{ borderBottom: "1px solid rgba(120, 134, 127, 0.15)" }}
+              >
+                <h2 style={{ fontSize: "0.9375rem", fontWeight: 600, color: "var(--hsd-ui-color-gray-900)", margin: 0 }}>
+                  {CURRENT_YEAR} Budget vs Actual
+                </h2>
+                <p style={{ fontSize: "0.8125rem", color: "var(--hsd-ui-color-gray-500)", margin: "4px 0 0" }}>
                   Comparison between approved budget and current employee count
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
+                </p>
+              </div>
+              <div className="px-6 py-5">
                 <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead>Type</TableHead>
-                      <TableHead className="text-center">Budget</TableHead>
-                      <TableHead className="text-center">Active</TableHead>
-                      <TableHead className="text-center">Pending</TableHead>
-                      <TableHead>Utilization</TableHead>
-                      <TableHead className="text-center">Rest</TableHead>
-                      <TableHead className="text-center">Status</TableHead>
+                    <TableRow className="hover:bg-transparent">
+                      <TableHead style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--hsd-ui-color-gray-500)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Type</TableHead>
+                      <TableHead className="text-center" style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--hsd-ui-color-gray-500)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Budget</TableHead>
+                      <TableHead className="text-center" style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--hsd-ui-color-gray-500)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Active</TableHead>
+                      <TableHead className="text-center" style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--hsd-ui-color-gray-500)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Pending</TableHead>
+                      <TableHead style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--hsd-ui-color-gray-500)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Utilization</TableHead>
+                      <TableHead className="text-center" style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--hsd-ui-color-gray-500)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Rest</TableHead>
+                      <TableHead className="text-center" style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--hsd-ui-color-gray-500)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Status</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -836,87 +971,130 @@ export default function EmployeeBudgetDetailPage() {
 
                             return (
                               <TableRow key={row.label}>
-                                <TableCell className="font-medium">{row.label}</TableCell>
+                                <TableCell style={{ fontWeight: 500, color: "var(--hsd-ui-color-gray-900)" }}>{row.label}</TableCell>
                                 <TableCell className="text-center">
-                                  <span className="font-semibold tabular-nums">{row.budget}</span>
+                                  <span style={{ fontWeight: 600, color: "var(--hsd-ui-color-gray-900)" }} className="tabular-nums">{row.budget}</span>
                                 </TableCell>
                                 <TableCell className="text-center">
-                                  <span className="font-semibold tabular-nums">{row.active}</span>
+                                  <span style={{ fontWeight: 600, color: "var(--hsd-ui-color-gray-900)" }} className="tabular-nums">{row.active}</span>
                                 </TableCell>
                                 <TableCell className="text-center">
                                   {row.pending > 0 ? (
-                                    <span className="font-semibold tabular-nums text-amber-600">{row.pending}</span>
+                                    <span style={{ fontWeight: 600, color: "rgb(217, 119, 6)" }} className="tabular-nums">{row.pending}</span>
                                   ) : (
-                                    <span className="text-muted-foreground">No Data</span>
+                                    <span style={{ color: "var(--hsd-ui-color-gray-400)" }}>No Data</span>
                                   )}
                                 </TableCell>
                                 <TableCell className="min-w-[140px]">
                                   <div className="flex items-center gap-2">
-                                    <div className="h-2 flex-1 rounded-full bg-muted">
+                                    <div
+                                      className="h-2 flex-1"
+                                      style={{ borderRadius: "9999px", backgroundColor: "var(--hsd-ui-color-gray-100)" }}
+                                    >
                                       <div
-                                        className={`h-full rounded-full transition-all ${
-                                          isOver ? "bg-red-500" : pct >= 80 ? "bg-amber-500" : "bg-green-500"
-                                        }`}
-                                        style={{ width: `${Math.min(pct, 100)}%` }}
+                                        className="h-full transition-all"
+                                        style={{
+                                          width: `${Math.min(pct, 100)}%`,
+                                          borderRadius: "9999px",
+                                          backgroundColor: isOver ? "rgb(239, 68, 68)" : pct >= 80 ? "rgb(245, 158, 11)" : "rgb(34, 197, 94)",
+                                        }}
                                       />
                                     </div>
-                                    <span className={`text-xs font-medium tabular-nums ${
-                                      isOver ? "text-red-600" : pct >= 80 ? "text-amber-600" : "text-green-600"
-                                    }`}>
+                                    <span
+                                      style={{
+                                        fontSize: "0.75rem",
+                                        fontWeight: 500,
+                                        color: isOver ? "rgb(220, 38, 38)" : pct >= 80 ? "rgb(217, 119, 6)" : "rgb(22, 163, 74)",
+                                      }}
+                                      className="tabular-nums"
+                                    >
                                       {pct}%
                                     </span>
                                   </div>
                                 </TableCell>
                                 <TableCell className="text-center">
-                                  <span className={`font-semibold tabular-nums ${isOver ? "text-red-600" : "text-green-600"}`}>
+                                  <span
+                                    style={{
+                                      fontWeight: 600,
+                                      color: isOver ? "rgb(220, 38, 38)" : "rgb(22, 163, 74)",
+                                    }}
+                                    className="tabular-nums"
+                                  >
                                     {row.remaining >= 0 ? "+" : ""}{row.remaining}
                                   </span>
                                 </TableCell>
                                 <TableCell className="text-center">
-                                  <Badge variant={isOver ? "destructive" : "success"}>
-                                    {isOver ? "Over Budget" : "Under Budget"}
-                                  </Badge>
+                                  <TuvBadge
+                                    text={isOver ? "Over Budget" : "Under Budget"}
+                                    variant={isOver ? "danger" : "success"}
+                                    size="sm"
+                                    border
+                                  />
                                 </TableCell>
                               </TableRow>
                             );
                           })}
-                          <TableRow className="bg-muted/50 font-semibold">
-                            <TableCell>Total</TableCell>
-                            <TableCell className="text-center tabular-nums">{totalBudget}</TableCell>
-                            <TableCell className="text-center tabular-nums">{totalActive}</TableCell>
+                          <TableRow
+                            style={{
+                              backgroundColor: "var(--hsd-ui-color-gray-50)",
+                              fontWeight: 600,
+                            }}
+                          >
+                            <TableCell style={{ fontWeight: 600, color: "var(--hsd-ui-color-gray-900)" }}>Total</TableCell>
+                            <TableCell className="text-center tabular-nums" style={{ fontWeight: 600, color: "var(--hsd-ui-color-gray-900)" }}>{totalBudget}</TableCell>
+                            <TableCell className="text-center tabular-nums" style={{ fontWeight: 600, color: "var(--hsd-ui-color-gray-900)" }}>{totalActive}</TableCell>
                             <TableCell className="text-center tabular-nums">
                               {totalPending > 0 ? (
-                                <span className="text-amber-600">{totalPending}</span>
+                                <span style={{ color: "rgb(217, 119, 6)", fontWeight: 600 }}>{totalPending}</span>
                               ) : (
-                                <span className="text-muted-foreground">No Data</span>
+                                <span style={{ color: "var(--hsd-ui-color-gray-400)" }}>No Data</span>
                               )}
                             </TableCell>
                             <TableCell className="min-w-[140px]">
                               <div className="flex items-center gap-2">
-                                <div className="h-2 flex-1 rounded-full bg-muted">
+                                <div
+                                  className="h-2 flex-1"
+                                  style={{ borderRadius: "9999px", backgroundColor: "var(--hsd-ui-color-gray-100)" }}
+                                >
                                   <div
-                                    className={`h-full rounded-full transition-all ${
-                                      totalIsOver ? "bg-red-500" : totalPct >= 80 ? "bg-amber-500" : "bg-green-500"
-                                    }`}
-                                    style={{ width: `${Math.min(totalPct, 100)}%` }}
+                                    className="h-full transition-all"
+                                    style={{
+                                      width: `${Math.min(totalPct, 100)}%`,
+                                      borderRadius: "9999px",
+                                      backgroundColor: totalIsOver ? "rgb(239, 68, 68)" : totalPct >= 80 ? "rgb(245, 158, 11)" : "rgb(34, 197, 94)",
+                                    }}
                                   />
                                 </div>
-                                <span className={`text-xs font-medium tabular-nums ${
-                                  totalIsOver ? "text-red-600" : totalPct >= 80 ? "text-amber-600" : "text-green-600"
-                                }`}>
+                                <span
+                                  style={{
+                                    fontSize: "0.75rem",
+                                    fontWeight: 500,
+                                    color: totalIsOver ? "rgb(220, 38, 38)" : totalPct >= 80 ? "rgb(217, 119, 6)" : "rgb(22, 163, 74)",
+                                  }}
+                                  className="tabular-nums"
+                                >
                                   {totalPct}%
                                 </span>
                               </div>
                             </TableCell>
                             <TableCell className="text-center">
-                              <span className={`tabular-nums ${totalIsOver ? "text-red-600" : "text-green-600"}`}>
+                              <span
+                                style={{
+                                  fontWeight: 600,
+                                  color: totalIsOver ? "rgb(220, 38, 38)" : "rgb(22, 163, 74)",
+                                }}
+                                className="tabular-nums"
+                              >
                                 {totalRemaining >= 0 ? "+" : ""}{totalRemaining}
                               </span>
                             </TableCell>
                             <TableCell className="text-center">
-                              <Badge variant={totalIsOver ? "destructive" : "success"}>
-                                {totalIsOver ? "Over Budget" : "Under Budget"}
-                              </Badge>
+                              <TuvBadge
+                                text={totalIsOver ? "Over Budget" : "Under Budget"}
+                                variant={totalIsOver ? "danger" : "success"}
+                                size="sm"
+                                border
+                              />
                             </TableCell>
                           </TableRow>
                         </>
@@ -925,8 +1103,8 @@ export default function EmployeeBudgetDetailPage() {
                   </TableBody>
                 </Table>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           )}
         </div>
       </PageContainer>

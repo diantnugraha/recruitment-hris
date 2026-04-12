@@ -20,7 +20,6 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -44,6 +43,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { TuvBadge } from "@/components/shared/tuv-badge";
 
 import {
   candidateService,
@@ -66,6 +66,121 @@ import {
 import type { HRScoringKey, HRConclusion } from "@/lib/constants/assessmentScoring";
 import type { TabMode } from "@/hooks/useAssessmentPermission";
 
+// --- TUV button style helpers ---
+
+const btnPrimary = {
+  backgroundColor: "var(--hsd-ui-background-color-primary)",
+  borderColor: "var(--hsd-ui-border-color-primary)",
+  color: "var(--hsd-ui-text-color-primary)",
+  borderRadius: "4px",
+  height: "38px",
+  padding: "0 16px",
+  fontSize: "0.875rem",
+  fontWeight: 500,
+} as const;
+
+const btnSecondary = {
+  borderRadius: "4px",
+  height: "38px",
+  padding: "0 16px",
+  fontSize: "0.875rem",
+  fontWeight: 500,
+  borderColor: "rgba(120,134,127,0.2)",
+} as const;
+
+const btnDanger = {
+  backgroundColor: "rgb(250, 55, 70)",
+  borderColor: "rgb(250, 55, 70)",
+  color: "var(--hsd-ui-color-gray-50, #fff)",
+  borderRadius: "4px",
+  height: "38px",
+  padding: "0 16px",
+  fontSize: "0.875rem",
+  fontWeight: 500,
+} as const;
+
+// --- TUV reusable sub-components (module level) ---
+
+function DetailItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p
+        style={{
+          fontSize: "0.6875rem",
+          fontWeight: 500,
+          textTransform: "uppercase",
+          letterSpacing: "0.05em",
+          color: "var(--hsd-ui-color-gray-500)",
+          margin: 0,
+        }}
+      >
+        {label}
+      </p>
+      <p
+        style={{
+          fontSize: "0.875rem",
+          fontWeight: 500,
+          color: value ? "var(--hsd-ui-color-gray-900)" : "var(--hsd-ui-color-gray-400)",
+          margin: "2px 0 0",
+        }}
+      >
+        {value || "No Data"}
+      </p>
+    </div>
+  );
+}
+
+function SectionCard({
+  title,
+  icon: Icon,
+  children,
+  headerRight,
+}: {
+  title: string;
+  icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
+  children: React.ReactNode;
+  headerRight?: React.ReactNode;
+}) {
+  return (
+    <section
+      className="border"
+      style={{
+        borderRadius: "8px",
+        backgroundColor: "#fff",
+        borderColor: "rgba(120, 134, 127, 0.2)",
+      }}
+    >
+      <div
+        className="flex items-center justify-between px-6 py-4"
+        style={{ borderBottom: "1px solid rgba(120, 134, 127, 0.15)" }}
+      >
+        <h2
+          style={{
+            fontSize: "0.9375rem",
+            fontWeight: 600,
+            color: "var(--hsd-ui-color-gray-900)",
+            margin: 0,
+          }}
+        >
+          {title}
+        </h2>
+        <div className="flex items-center gap-2">
+          {headerRight}
+          <div
+            className="flex h-8 w-8 items-center justify-center rounded-lg"
+            style={{ backgroundColor: "var(--hsd-ui-color-gray-100)" }}
+          >
+            <Icon
+              style={{ width: "16px", height: "16px", color: "var(--hsd-ui-color-gray-500)" }}
+            />
+          </div>
+        </div>
+      </div>
+      <div className="px-6 py-5">{children}</div>
+    </section>
+  );
+}
+
 // LocalStorage key for User assessment form data
 const USER_FORM_STORAGE_KEY = (id: string) => `user-assessment-form-${id}`;
 
@@ -79,26 +194,39 @@ interface InterviewUserTabProps {
   onTabChange?: (tab: string) => void;
 }
 
-// Helper: score color class based on value
-const scoreColor = (val: number) =>
+// Helper: score color based on value (TUV compatible inline styles)
+const scoreColorStyle = (val: number): React.CSSProperties =>
   val >= 4.5
-    ? "text-emerald-600"
+    ? { color: "#059669" }
     : val >= 3.5
-    ? "text-blue-600"
+    ? { color: "#2563eb" }
     : val >= 2.5
-    ? "text-amber-600"
+    ? { color: "#d97706" }
     : val >= 1
-    ? "text-red-500"
-    : "text-muted-foreground";
+    ? { color: "#ef4444" }
+    : { color: "var(--hsd-ui-color-gray-400)" };
 
-// Helper: pill color for score buttons
-const pillColor = (val: number, selected: boolean) => {
-  if (!selected) return "bg-secondary/80 text-muted-foreground hover:bg-secondary";
-  if (val <= 1) return "bg-red-500 text-white shadow-sm shadow-red-500/25";
-  if (val <= 2) return "bg-orange-500 text-white shadow-sm shadow-orange-500/25";
-  if (val <= 3) return "bg-amber-500 text-white shadow-sm shadow-amber-500/25";
-  if (val <= 4) return "bg-blue-500 text-white shadow-sm shadow-blue-500/25";
-  return "bg-emerald-500 text-white shadow-sm shadow-emerald-500/25";
+// Helper: pill style for score buttons
+const pillStyle = (val: number, selected: boolean): React.CSSProperties => {
+  if (!selected)
+    return {
+      backgroundColor: "var(--hsd-ui-color-gray-100)",
+      color: "var(--hsd-ui-color-gray-500)",
+    };
+  if (val <= 1) return { backgroundColor: "#ef4444", color: "#fff" };
+  if (val <= 2) return { backgroundColor: "#f97316", color: "#fff" };
+  if (val <= 3) return { backgroundColor: "#f59e0b", color: "#fff" };
+  if (val <= 4) return { backgroundColor: "#3b82f6", color: "#fff" };
+  return { backgroundColor: "#10b981", color: "#fff" };
+};
+
+// Pill dot color for score legend
+const dotColor = (val: number): string => {
+  if (val === 1) return "#ef4444";
+  if (val === 2) return "#f97316";
+  if (val === 3) return "#f59e0b";
+  if (val === 4) return "#3b82f6";
+  return "#10b981";
 };
 
 // Default empty scoring state
@@ -122,15 +250,51 @@ export function InterviewUserTab({
   onRefresh,
   onTabChange,
 }: InterviewUserTabProps) {
-  // ── Locked mode ──
+  // Locked mode
   if (mode === "locked") {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-center">
-        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted mb-4">
-          <Lock className="h-6 w-6 text-muted-foreground" />
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "64px 0",
+          textAlign: "center",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            height: "56px",
+            width: "56px",
+            alignItems: "center",
+            justifyContent: "center",
+            borderRadius: "50%",
+            backgroundColor: "var(--hsd-ui-color-gray-100)",
+            marginBottom: "16px",
+          }}
+        >
+          <Lock style={{ width: "24px", height: "24px", color: "var(--hsd-ui-color-gray-500)" }} />
         </div>
-        <h3 className="text-base font-semibold text-foreground">Assessment User Locked</h3>
-        <p className="text-sm text-muted-foreground mt-1 max-w-sm">
+        <h3
+          style={{
+            fontSize: "1rem",
+            fontWeight: 600,
+            color: "var(--hsd-ui-color-gray-900)",
+            margin: 0,
+          }}
+        >
+          Assessment User Locked
+        </h3>
+        <p
+          style={{
+            fontSize: "0.875rem",
+            color: "var(--hsd-ui-color-gray-500)",
+            marginTop: "4px",
+            maxWidth: "24rem",
+          }}
+        >
           Complete Interview HR (Assessment HR) first to unlock this stage.
         </p>
       </div>
@@ -163,7 +327,7 @@ function InterviewUserTabInner({
   onRefresh,
   onTabChange,
 }: InterviewUserTabProps) {
-  // ── Form state ──
+  // Form state
   const [userScoring, setUserScoring] = React.useState<Record<HRScoringKey, number | null>>(
     { ...DEFAULT_USER_SCORING }
   );
@@ -173,11 +337,11 @@ function InterviewUserTabInner({
   const [isSubmittingUser, setIsSubmittingUser] = React.useState(false);
   const [showUserPreview, setShowUserPreview] = React.useState(false);
 
-  // ── Assignee state ──
+  // Assignee state
   const [assignedAssessors, setAssignedAssessors] = React.useState<AssessmentAssignee[]>([]);
   const [isLoadingAssignees, setIsLoadingAssignees] = React.useState(false);
 
-  // ── Assignee management state (for canEditAssignees) ──
+  // Assignee management state (for canEditAssignees)
   const [availableEmployees, setAvailableEmployees] = React.useState<EmployeeWithRelations[]>([]);
   const [isLoadingEmployees, setIsLoadingEmployees] = React.useState(false);
   const [assessorSearchOpen, setAssessorSearchOpen] = React.useState(false);
@@ -185,7 +349,7 @@ function InterviewUserTabInner({
   const [isAssigning, setIsAssigning] = React.useState(false);
   const [isRemoving, setIsRemoving] = React.useState<number | null>(null);
 
-  // ── View mode: fetch scoring data ──
+  // View mode: fetch scoring data
   const [viewScoringData, setViewScoringData] = React.useState<AssessmentScoringData | null>(null);
   const [isLoadingScoring, setIsLoadingScoring] = React.useState(false);
 
@@ -203,7 +367,7 @@ function InterviewUserTabInner({
   // Post-submission state: force view mode if already submitted
   const mode: TabMode = isCompleted ? "view" : modeProp;
 
-  // ── Populate form from scoring data ──
+  // Populate form from scoring data
   const populateFromScoring = React.useCallback((scoring: AssessmentScoringData) => {
     setUserScoring({
       relevanceOfExperience: scoring.relevance_of_experience,
@@ -221,7 +385,7 @@ function InterviewUserTabInner({
     if (scoring.interviewer_notes) setUserUserNotes(scoring.interviewer_notes);
   }, []);
 
-  // ── Fetch scoring data for view mode or completed state ──
+  // Fetch scoring data for view mode or completed state
   React.useEffect(() => {
     if (mode !== "view") return;
     let cancelled = false;
@@ -248,7 +412,7 @@ function InterviewUserTabInner({
     return () => { cancelled = true; };
   }, [mode, candidateId, populateFromScoring]);
 
-  // ── Fetch assigned assessors on mount ──
+  // Fetch assigned assessors on mount
   React.useEffect(() => {
     let cancelled = false;
 
@@ -270,7 +434,7 @@ function InterviewUserTabInner({
     return () => { cancelled = true; };
   }, [candidateId]);
 
-  // ── Edit mode: stale draft cleanup ──
+  // Edit mode: stale draft cleanup
   React.useEffect(() => {
     if (modeProp !== "edit") return;
     if (isCompleted) {
@@ -278,7 +442,7 @@ function InterviewUserTabInner({
     }
   }, [modeProp, isCompleted, candidateId]);
 
-  // ── Edit mode: restore draft from localStorage ──
+  // Edit mode: restore draft from localStorage
   React.useEffect(() => {
     if (mode !== "edit" || isCompleted) return;
     const storageKey = USER_FORM_STORAGE_KEY(candidateId);
@@ -296,7 +460,7 @@ function InterviewUserTabInner({
     }
   }, [mode, candidateId, isCompleted]);
 
-  // ── Edit mode: save draft to localStorage when form changes ──
+  // Edit mode: save draft to localStorage when form changes
   React.useEffect(() => {
     if (mode !== "edit" || isCompleted) return;
     const storageKey = USER_FORM_STORAGE_KEY(candidateId);
@@ -309,12 +473,12 @@ function InterviewUserTabInner({
     localStorage.setItem(storageKey, JSON.stringify(dataToSave));
   }, [mode, candidateId, isCompleted, userScoring, userKeyCompetencies, userUserNotes, userConclusion]);
 
-  // ── Clear localStorage after successful submit ──
+  // Clear localStorage after successful submit
   const clearUserFormStorage = React.useCallback(() => {
     localStorage.removeItem(USER_FORM_STORAGE_KEY(candidateId));
   }, [candidateId]);
 
-  // ── Fetch employees for assignee management ──
+  // Fetch employees for assignee management
   const fetchEmployeesForAssignment = React.useCallback(async () => {
     setIsLoadingEmployees(true);
     try {
@@ -346,16 +510,15 @@ function InterviewUserTabInner({
     }
   }, []);
 
-  // ── Load employees when canEditAssignees ──
+  // Load employees when canEditAssignees
   React.useEffect(() => {
     if (canEditAssignees && !isCompleted) {
       fetchEmployeesForAssignment();
     }
   }, [canEditAssignees, isCompleted, fetchEmployeesForAssignment]);
 
-  // ── Assign assessor ──
+  // Assign assessor
   const handleAssignAssessor = React.useCallback(async (employee: EmployeeWithRelations) => {
-    // Check if already assigned
     if (assignedAssessors.some((a) => a.employeeId === parseInt(employee.id, 10))) {
       return;
     }
@@ -378,7 +541,7 @@ function InterviewUserTabInner({
     }
   }, [candidateId, assignedAssessors]);
 
-  // ── Remove assessor ──
+  // Remove assessor
   const handleRemoveAssessor = React.useCallback(async (employeeId: number) => {
     setIsRemoving(employeeId);
     try {
@@ -396,7 +559,7 @@ function InterviewUserTabInner({
     }
   }, [candidateId]);
 
-  // ── Submit handler ──
+  // Submit handler
   const handleUserAssessmentSubmit = async () => {
     if (!userConclusion) {
       showToast.error("Please select Interview Result Conclusion");
@@ -447,7 +610,7 @@ function InterviewUserTabInner({
     }
   };
 
-  // ── Score statistics ──
+  // Score statistics
   const filledScores = Object.values(userScoring).filter((s): s is number => s !== null);
   const totalFilled = filledScores.length;
   const totalCriteria = HR_SCORING_CRITERIA.length;
@@ -456,12 +619,30 @@ function InterviewUserTabInner({
   const maxTotal = totalCriteria * 5;
   const progressPercent = Math.round((totalFilled / totalCriteria) * 100);
 
-  // ── View mode loading ──
+  // View mode loading
   if (mode === "view" && isLoadingScoring) {
     return (
-      <div className="flex items-center justify-center py-16">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        <span className="ml-2 text-sm text-muted-foreground">Loading assessment data...</span>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "64px 0",
+        }}
+      >
+        <Loader2
+          className="animate-spin"
+          style={{ width: "24px", height: "24px", color: "var(--hsd-ui-color-gray-400)" }}
+        />
+        <span
+          style={{
+            marginLeft: "8px",
+            fontSize: "0.875rem",
+            color: "var(--hsd-ui-color-gray-500)",
+          }}
+        >
+          Loading assessment data...
+        </span>
       </div>
     );
   }
@@ -470,409 +651,720 @@ function InterviewUserTabInner({
     <div className="space-y-5">
       {/* Post-submission notice */}
       {isCompleted && modeProp === "edit" && (
-        <section className="rounded-2xl border bg-card">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
-            <h2 className="text-base font-semibold text-foreground">Assessment Status</h2>
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
-              <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+        <SectionCard title="Assessment Status" icon={CheckCircle2}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "12px",
+              borderRadius: "8px",
+              backgroundColor: "var(--hsd-ui-color-blue-50, #e3f2fd)",
+              border: "1px solid var(--hsd-ui-color-blue-300, #64b5f6)",
+              padding: "12px 16px",
+            }}
+          >
+            <CheckCircle2 style={{ width: "20px", height: "20px", color: "#1565c0", flexShrink: 0 }} />
+            <div>
+              <p
+                style={{
+                  fontSize: "0.875rem",
+                  fontWeight: 500,
+                  color: "#1565c0",
+                  margin: 0,
+                }}
+              >
+                Assessment Already Submitted
+              </p>
+              <p
+                style={{
+                  fontSize: "0.75rem",
+                  color: "var(--hsd-ui-color-gray-500)",
+                  margin: "2px 0 0",
+                }}
+              >
+                This assessment has already been submitted. Viewing in read-only mode.
+              </p>
             </div>
           </div>
-          <div className="px-6 py-5">
-            <div className="flex items-center gap-3 rounded-lg bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 px-4 py-3">
-              <CheckCircle2 className="h-5 w-5 text-blue-600 shrink-0" />
-              <div>
-                <p className="text-sm font-medium text-blue-700 dark:text-blue-400">Assessment Already Submitted</p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  This assessment has already been submitted. Viewing in read-only mode.
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
+        </SectionCard>
       )}
 
       {/* Status Banner -- Passed */}
       {interview2Status === "passed" && (
-        <section className="rounded-2xl border bg-card">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
-            <h2 className="text-base font-semibold text-foreground">Assessment Result</h2>
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
-              <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
-            </div>
-          </div>
-          <div className="px-6 py-5">
-            <div className="flex items-center justify-between gap-3 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 px-4 py-3">
-              <div className="flex items-center gap-3">
-                <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
-                <div>
-                  <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">Assessment User — Passed</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Candidate cleared User assessment. Proceed to MCU for the next stage.
-                  </p>
-                </div>
+        <SectionCard title="Assessment Result" icon={CheckCircle2}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "12px",
+              borderRadius: "8px",
+              backgroundColor: "var(--hsd-ui-color-lime-50, #f4fee6)",
+              border: "1px solid var(--hsd-ui-color-green-300, #75dead)",
+              padding: "12px 16px",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <CheckCircle2 style={{ width: "20px", height: "20px", color: "#059669", flexShrink: 0 }} />
+              <div>
+                <p
+                  style={{
+                    fontSize: "0.875rem",
+                    fontWeight: 500,
+                    color: "#186742",
+                    margin: 0,
+                  }}
+                >
+                  Assessment User — Passed
+                </p>
+                <p
+                  style={{
+                    fontSize: "0.75rem",
+                    color: "var(--hsd-ui-color-gray-500)",
+                    margin: "2px 0 0",
+                  }}
+                >
+                  Candidate cleared User assessment. Proceed to MCU for the next stage.
+                </p>
               </div>
-              {onTabChange && (
-                <Button size="sm" onClick={() => onTabChange("mcu")}>
-                  Proceed to MCU
-                  <ChevronRight className="ml-1 h-4 w-4" />
-                </Button>
-              )}
             </div>
+            {onTabChange && (
+              <Button
+                size="default"
+                onClick={() => onTabChange("mcu")}
+                style={btnPrimary}
+              >
+                Proceed to MCU
+                <ChevronRight style={{ marginLeft: "4px", width: "16px", height: "16px" }} />
+              </Button>
+            )}
           </div>
-        </section>
+        </SectionCard>
       )}
 
       {/* Status Banner -- Failed */}
       {interview2Status === "failed" && (
-        <section className="rounded-2xl border bg-card">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
-            <h2 className="text-base font-semibold text-foreground">Assessment Result</h2>
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
-              <XCircle className="h-4 w-4 text-muted-foreground" />
+        <SectionCard title="Assessment Result" icon={XCircle}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "12px",
+              borderRadius: "8px",
+              backgroundColor: "rgba(250, 55, 70, 0.04)",
+              border: "1px solid rgba(250, 55, 70, 0.3)",
+              padding: "12px 16px",
+            }}
+          >
+            <XCircle style={{ width: "20px", height: "20px", color: "rgba(250, 55, 70, 1)", flexShrink: 0 }} />
+            <div>
+              <p
+                style={{
+                  fontSize: "0.875rem",
+                  fontWeight: 500,
+                  color: "rgba(250, 55, 70, 1)",
+                  margin: 0,
+                }}
+              >
+                Assessment User — Failed
+              </p>
+              <p
+                style={{
+                  fontSize: "0.75rem",
+                  color: "var(--hsd-ui-color-gray-500)",
+                  margin: "2px 0 0",
+                }}
+              >
+                Candidate did not pass the User assessment and cannot proceed further.
+              </p>
             </div>
           </div>
-          <div className="px-6 py-5">
-            <div className="flex items-center gap-3 rounded-lg bg-red-50 dark:bg-destructive/10 border border-red-200 dark:border-destructive/20 px-4 py-3">
-              <XCircle className="h-5 w-5 text-destructive shrink-0" />
-              <div>
-                <p className="text-sm font-medium text-destructive">Assessment User — Failed</p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Candidate did not pass the User assessment and cannot proceed further.
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
+        </SectionCard>
       )}
 
       {/* Assigned Assessors */}
       {assignedAssessors.length > 0 && (
-        <section className="rounded-2xl border bg-card">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
-            <h2 className="text-base font-semibold text-foreground">Assigned Assessors</h2>
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </div>
-          </div>
-          <div className="px-6 py-5">
-            <div className="flex flex-wrap gap-3">
-              {assignedAssessors.map((assessor) => (
-                <div
-                  key={assessor.employeeId}
-                  className="inline-flex items-center gap-2.5 px-3 py-2 rounded-lg border bg-secondary/30"
-                >
-                  <Avatar className="h-7 w-7">
-                    <AvatarFallback className="bg-accent text-accent-foreground text-xs font-medium">
-                      {assessor.employeeName ? assessor.employeeName.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase() : "?"}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">
-                      {assessor.employeeName || "No Data"}
-                    </p>
-                    {assessor.employeeEmail && (
-                      <p className="text-xs text-muted-foreground truncate">
-                        {assessor.employeeEmail}
-                      </p>
-                    )}
-                  </div>
-                  {canEditAssignees && !isCompleted && (
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveAssessor(assessor.employeeId)}
-                      disabled={isRemoving === assessor.employeeId}
-                      className="ml-1 h-5 w-5 rounded-full flex items-center justify-center bg-secondary/80 text-muted-foreground hover:bg-destructive hover:text-white transition-colors"
+        <SectionCard title="Assigned Assessors" icon={Users}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "12px" }}>
+            {assignedAssessors.map((assessor) => (
+              <div
+                key={assessor.employeeId}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "10px",
+                  padding: "8px 16px 8px 8px",
+                  borderRadius: "4px",
+                  border: "1px solid rgba(0, 30, 210, 0.12)",
+                  backgroundColor: "rgba(0, 30, 210, 0.03)",
+                }}
+              >
+                <Avatar className="h-7 w-7">
+                  <AvatarFallback
+                    style={{
+                      backgroundColor: "var(--hsd-ui-background-color-primary)",
+                      color: "#fff",
+                      fontSize: "0.6875rem",
+                      fontWeight: 500,
+                    }}
+                  >
+                    {assessor.employeeName ? assessor.employeeName.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase() : "?"}
+                  </AvatarFallback>
+                </Avatar>
+                <div style={{ minWidth: 0 }}>
+                  <p
+                    style={{
+                      fontSize: "0.875rem",
+                      fontWeight: 500,
+                      color: "var(--hsd-ui-color-gray-900)",
+                      margin: 0,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {assessor.employeeName || "No Data"}
+                  </p>
+                  {assessor.employeeEmail && (
+                    <p
+                      style={{
+                        fontSize: "0.75rem",
+                        color: "var(--hsd-ui-color-gray-500)",
+                        margin: 0,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
                     >
-                      {isRemoving === assessor.employeeId ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : (
-                        <X className="h-3 w-3" />
-                      )}
-                    </button>
+                      {assessor.employeeEmail}
+                    </p>
                   )}
                 </div>
-              ))}
-            </div>
+              </div>
+            ))}
           </div>
-        </section>
+        </SectionCard>
       )}
 
       {/* Manage Assessors */}
       {canEditAssignees && !isCompleted && assignedAssessors.length === 0 && (
-        <section className="rounded-2xl border bg-card">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
-            <h2 className="text-base font-semibold text-foreground">Manage Assessors</h2>
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
-              <User className="h-4 w-4 text-muted-foreground" />
-            </div>
-          </div>
-          <div className="px-6 py-5">
-            <Popover open={assessorSearchOpen} onOpenChange={setAssessorSearchOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  role="combobox"
-                  aria-expanded={assessorSearchOpen}
-                  className="w-full justify-between h-11 px-3 bg-secondary/30 hover:bg-secondary/50 border-secondary"
-                  disabled={isAssigning}
+        <SectionCard title="Manage Assessors" icon={User}>
+          <Popover open={assessorSearchOpen} onOpenChange={setAssessorSearchOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                role="combobox"
+                aria-expanded={assessorSearchOpen}
+                disabled={isAssigning}
+                className="w-full justify-between"
+                style={{
+                  height: "44px",
+                  padding: "0 12px",
+                  backgroundColor: "var(--hsd-ui-color-gray-100)",
+                  borderColor: "rgba(120, 134, 127, 0.2)",
+                  borderRadius: "8px",
+                }}
+              >
+                <span
+                  style={{
+                    color: "var(--hsd-ui-color-gray-500)",
+                    fontSize: "0.875rem",
+                  }}
                 >
-                  <span className="text-muted-foreground text-sm">
-                    {isAssigning ? "Assigning..." : "Click to search and add assessors..."}
-                  </span>
-                  <ChevronRight
-                    className={cn(
-                      "h-4 w-4 text-muted-foreground transition-transform duration-200",
-                      assessorSearchOpen && "rotate-90"
+                  {isAssigning ? "Assigning..." : "Click to search and add assessors..."}
+                </span>
+                <ChevronRight
+                  className={cn(
+                    "transition-transform duration-200",
+                    assessorSearchOpen && "rotate-90"
+                  )}
+                  style={{ width: "16px", height: "16px", color: "var(--hsd-ui-color-gray-400)" }}
+                />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+              <Command className="border-0">
+                <CommandInput
+                  placeholder="Type to search employees..."
+                  value={assessorSearchQuery}
+                  onValueChange={setAssessorSearchQuery}
+                  className="h-11"
+                />
+                <CommandList>
+                  <CommandEmpty>
+                    {isLoadingEmployees ? (
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          padding: "24px 0",
+                          gap: "8px",
+                        }}
+                      >
+                        <Loader2
+                          className="animate-spin"
+                          style={{ width: "16px", height: "16px", color: "var(--hsd-ui-color-gray-400)" }}
+                        />
+                        <span style={{ fontSize: "0.875rem", color: "var(--hsd-ui-color-gray-500)" }}>
+                          Loading employees...
+                        </span>
+                      </div>
+                    ) : (
+                      <div
+                        style={{
+                          padding: "24px 0",
+                          textAlign: "center",
+                          fontSize: "0.875rem",
+                          color: "var(--hsd-ui-color-gray-500)",
+                        }}
+                      >
+                        No employees found
+                      </div>
                     )}
-                  />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
-                <Command className="border-0">
-                  <CommandInput
-                    placeholder="Type to search employees..."
-                    value={assessorSearchQuery}
-                    onValueChange={setAssessorSearchQuery}
-                    className="h-11"
-                  />
-                  <CommandList>
-                    <CommandEmpty>
-                      {isLoadingEmployees ? (
-                        <div className="flex items-center justify-center py-6 gap-2">
-                          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                          <span className="text-sm text-muted-foreground">Loading employees...</span>
-                        </div>
-                      ) : (
-                        <div className="py-6 text-center text-sm text-muted-foreground">No employees found</div>
-                      )}
-                    </CommandEmpty>
-                    <CommandGroup>
-                      <ScrollArea className="h-[240px]">
-                        {availableEmployees
-                          .filter((emp) => {
-                            const name = `${emp.firstName} ${emp.lastName}`.toLowerCase();
-                            const query = assessorSearchQuery.toLowerCase();
-                            return name.includes(query) || emp.email?.toLowerCase().includes(query);
-                          })
-                          .map((emp) => {
-                            const isAssigned = assignedAssessors.some(
-                              (a) => a.employeeId === parseInt(emp.id, 10)
-                            );
-                            return (
-                              <CommandItem
-                                key={emp.id}
-                                value={`${emp.firstName} ${emp.lastName} ${emp.email}`}
-                                onSelect={() => handleAssignAssessor(emp)}
-                                disabled={isAssigned}
-                                className="cursor-pointer group"
+                  </CommandEmpty>
+                  <CommandGroup>
+                    <ScrollArea className="h-[240px]">
+                      {availableEmployees
+                        .filter((emp) => {
+                          const name = `${emp.firstName} ${emp.lastName}`.toLowerCase();
+                          const query = assessorSearchQuery.toLowerCase();
+                          return name.includes(query) || emp.email?.toLowerCase().includes(query);
+                        })
+                        .map((emp) => {
+                          const isAssigned = assignedAssessors.some(
+                            (a) => a.employeeId === parseInt(emp.id, 10)
+                          );
+                          return (
+                            <CommandItem
+                              key={emp.id}
+                              value={`${emp.firstName} ${emp.lastName} ${emp.email}`}
+                              onSelect={() => handleAssignAssessor(emp)}
+                              disabled={isAssigned}
+                              className="cursor-pointer group"
+                            >
+                              <div
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: "12px",
+                                  width: "100%",
+                                  padding: "4px 0",
+                                }}
                               >
-                                <div className="flex items-center gap-3 w-full py-1">
-                                  <div className="relative">
-                                    <Avatar className="h-9 w-9 ring-2 ring-transparent">
-                                      <AvatarFallback
-                                        className={cn(
-                                          "text-xs font-medium transition-colors",
-                                          isAssigned ? "bg-blue-600 text-white" : "bg-secondary text-foreground"
-                                        )}
-                                      >
-                                        {getInitials(`${emp.firstName} ${emp.lastName}`)}
-                                      </AvatarFallback>
-                                    </Avatar>
-                                    {isAssigned && (
-                                      <div className="absolute -bottom-0.5 -right-0.5 h-4 w-4 rounded-full bg-emerald-500 flex items-center justify-center ring-2 ring-background">
-                                        <Check className="h-2.5 w-2.5 text-white" />
-                                      </div>
-                                    )}
-                                  </div>
-                                  <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium truncate text-foreground">
-                                      {emp.firstName} {emp.lastName}
-                                    </p>
-                                    <p className="text-xs text-muted-foreground truncate">
-                                      {emp.jobTitle?.name || emp.email}
-                                    </p>
-                                  </div>
+                                <div style={{ position: "relative" }}>
+                                  <Avatar className="h-9 w-9">
+                                    <AvatarFallback
+                                      style={{
+                                        fontSize: "0.6875rem",
+                                        fontWeight: 500,
+                                        backgroundColor: isAssigned
+                                          ? "#2563eb"
+                                          : "var(--hsd-ui-color-gray-100)",
+                                        color: isAssigned
+                                          ? "#fff"
+                                          : "var(--hsd-ui-color-gray-700)",
+                                      }}
+                                    >
+                                      {getInitials(`${emp.firstName} ${emp.lastName}`)}
+                                    </AvatarFallback>
+                                  </Avatar>
                                   {isAssigned && (
-                                    <Badge className="bg-blue-500/20 text-blue-600 border-0 text-[10px]">
-                                      Assigned
-                                    </Badge>
+                                    <div
+                                      style={{
+                                        position: "absolute",
+                                        bottom: "-2px",
+                                        right: "-2px",
+                                        height: "16px",
+                                        width: "16px",
+                                        borderRadius: "50%",
+                                        backgroundColor: "#10b981",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        border: "2px solid #fff",
+                                      }}
+                                    >
+                                      <Check style={{ width: "10px", height: "10px", color: "#fff" }} />
+                                    </div>
                                   )}
                                 </div>
-                              </CommandItem>
-                            );
-                          })}
-                      </ScrollArea>
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
-          </div>
-        </section>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <p
+                                    style={{
+                                      fontSize: "0.875rem",
+                                      fontWeight: 500,
+                                      color: "var(--hsd-ui-color-gray-900)",
+                                      margin: 0,
+                                      overflow: "hidden",
+                                      textOverflow: "ellipsis",
+                                      whiteSpace: "nowrap",
+                                    }}
+                                  >
+                                    {emp.firstName} {emp.lastName}
+                                  </p>
+                                  <p
+                                    style={{
+                                      fontSize: "0.75rem",
+                                      color: "var(--hsd-ui-color-gray-500)",
+                                      margin: 0,
+                                      overflow: "hidden",
+                                      textOverflow: "ellipsis",
+                                      whiteSpace: "nowrap",
+                                    }}
+                                  >
+                                    {emp.jobTitle?.name || emp.email}
+                                  </p>
+                                </div>
+                                {isAssigned && (
+                                  <TuvBadge text="Assigned" variant="info" size="xs" border />
+                                )}
+                              </div>
+                            </CommandItem>
+                          );
+                        })}
+                    </ScrollArea>
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
+        </SectionCard>
       )}
 
       {/* Score Overview */}
-      <section className="rounded-2xl border bg-card">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
-          <h2 className="text-base font-semibold text-foreground">Score Overview</h2>
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
-            <BarChart3 className="h-4 w-4 text-muted-foreground" />
+      <SectionCard title="Score Overview" icon={BarChart3}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(3, 1fr)",
+            gap: "32px",
+          }}
+        >
+          <div>
+            <p
+              style={{
+                fontSize: "0.6875rem",
+                fontWeight: 500,
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+                color: "var(--hsd-ui-color-gray-500)",
+                margin: 0,
+              }}
+            >
+              Progress
+            </p>
+            <div style={{ display: "flex", alignItems: "flex-end", gap: "6px", marginTop: "4px" }}>
+              <span
+                style={{
+                  fontSize: "1.5rem",
+                  fontWeight: 700,
+                  fontVariantNumeric: "tabular-nums",
+                  color: "var(--hsd-ui-color-gray-900)",
+                }}
+              >
+                {totalFilled}
+              </span>
+              <span
+                style={{
+                  fontSize: "0.875rem",
+                  color: "var(--hsd-ui-color-gray-500)",
+                  marginBottom: "2px",
+                }}
+              >
+                / {totalCriteria}
+              </span>
+            </div>
+            <div
+              style={{
+                marginTop: "8px",
+                height: "6px",
+                width: "100%",
+                borderRadius: "9999px",
+                backgroundColor: "var(--hsd-ui-color-gray-100)",
+                overflow: "hidden",
+              }}
+            >
+              <div
+                style={{
+                  height: "100%",
+                  borderRadius: "9999px",
+                  backgroundColor: "var(--hsd-ui-background-color-primary)",
+                  transition: "width 0.5s ease-out",
+                  width: `${progressPercent}%`,
+                }}
+              />
+            </div>
+          </div>
+          <div>
+            <p
+              style={{
+                fontSize: "0.6875rem",
+                fontWeight: 500,
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+                color: "var(--hsd-ui-color-gray-500)",
+                margin: 0,
+              }}
+            >
+              Average
+            </p>
+            <div style={{ display: "flex", alignItems: "flex-end", gap: "6px", marginTop: "4px" }}>
+              <span
+                style={{
+                  fontSize: "1.5rem",
+                  fontWeight: 700,
+                  fontVariantNumeric: "tabular-nums",
+                  ...scoreColorStyle(averageScore),
+                }}
+              >
+                {totalFilled > 0 ? averageScore.toFixed(1) : "\u2014"}
+              </span>
+              <span
+                style={{
+                  fontSize: "0.875rem",
+                  color: "var(--hsd-ui-color-gray-500)",
+                  marginBottom: "2px",
+                }}
+              >
+                / 5.0
+              </span>
+            </div>
+            <p
+              style={{
+                fontSize: "0.75rem",
+                color: "var(--hsd-ui-color-gray-500)",
+                marginTop: "4px",
+              }}
+            >
+              {totalFilled === 0
+                ? "No scores yet"
+                : averageScore >= 4.5
+                ? "Excellent"
+                : averageScore >= 3.5
+                ? "Good"
+                : averageScore >= 2.5
+                ? "Fair"
+                : averageScore >= 1.5
+                ? "Poor"
+                : "Very Poor"}
+            </p>
+          </div>
+          <div>
+            <p
+              style={{
+                fontSize: "0.6875rem",
+                fontWeight: 500,
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+                color: "var(--hsd-ui-color-gray-500)",
+                margin: 0,
+              }}
+            >
+              Total Score
+            </p>
+            <div style={{ display: "flex", alignItems: "flex-end", gap: "6px", marginTop: "4px" }}>
+              <span
+                style={{
+                  fontSize: "1.5rem",
+                  fontWeight: 700,
+                  fontVariantNumeric: "tabular-nums",
+                  color: "var(--hsd-ui-color-gray-900)",
+                }}
+              >
+                {totalScore}
+              </span>
+              <span
+                style={{
+                  fontSize: "0.875rem",
+                  color: "var(--hsd-ui-color-gray-500)",
+                  marginBottom: "2px",
+                }}
+              >
+                / {maxTotal}
+              </span>
+            </div>
+            <p
+              style={{
+                fontSize: "0.75rem",
+                color: "var(--hsd-ui-color-gray-500)",
+                marginTop: "4px",
+              }}
+            >
+              {totalFilled > 0 ? `${Math.round((totalScore / maxTotal) * 100)}% of maximum` : "Start scoring below"}
+            </p>
           </div>
         </div>
-        <div className="px-6 py-5">
-          <div className="grid grid-cols-3 gap-x-8">
-            <div>
-              <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Progress</p>
-              <div className="flex items-end gap-1.5 mt-1">
-                <span className="text-2xl font-bold tabular-nums">{totalFilled}</span>
-                <span className="text-sm text-muted-foreground mb-0.5">/ {totalCriteria}</span>
-              </div>
-              <div className="mt-2 h-1.5 w-full rounded-full bg-secondary overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-accent transition-all duration-500 ease-out"
-                  style={{ width: `${progressPercent}%` }}
-                />
-              </div>
-            </div>
-            <div>
-              <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Average</p>
-              <div className="flex items-end gap-1.5 mt-1">
-                <span className={cn("text-2xl font-bold tabular-nums", scoreColor(averageScore))}>
-                  {totalFilled > 0 ? averageScore.toFixed(1) : "—"}
-                </span>
-                <span className="text-sm text-muted-foreground mb-0.5">/ 5.0</span>
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {totalFilled === 0
-                  ? "No scores yet"
-                  : averageScore >= 4.5
-                  ? "Excellent"
-                  : averageScore >= 3.5
-                  ? "Good"
-                  : averageScore >= 2.5
-                  ? "Fair"
-                  : averageScore >= 1.5
-                  ? "Poor"
-                  : "Very Poor"}
-              </p>
-            </div>
-            <div>
-              <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Total Score</p>
-              <div className="flex items-end gap-1.5 mt-1">
-                <span className="text-2xl font-bold tabular-nums">{totalScore}</span>
-                <span className="text-sm text-muted-foreground mb-0.5">/ {maxTotal}</span>
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {totalFilled > 0 ? `${Math.round((totalScore / maxTotal) * 100)}% of maximum` : "Start scoring below"}
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
+      </SectionCard>
 
       {/* Interview Scoring */}
-      <section className="rounded-2xl border bg-card">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
-          <h2 className="text-base font-semibold text-foreground">Interview Scoring</h2>
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
-            <ClipboardCheck className="h-4 w-4 text-muted-foreground" />
-          </div>
+      <SectionCard title="Interview Scoring" icon={ClipboardCheck}>
+        {/* Score legend */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "flex-end",
+            gap: "16px",
+            marginBottom: "12px",
+            paddingBottom: "12px",
+            borderBottom: "1px solid rgba(120, 134, 127, 0.15)",
+          }}
+        >
+          {SCORE_OPTIONS.map((opt) => (
+            <div key={opt.value} style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <div
+                style={{
+                  height: "10px",
+                  width: "10px",
+                  borderRadius: "50%",
+                  backgroundColor: dotColor(opt.value),
+                }}
+              />
+              <span
+                style={{
+                  fontSize: "0.6875rem",
+                  color: "var(--hsd-ui-color-gray-500)",
+                }}
+              >
+                {opt.label}
+              </span>
+            </div>
+          ))}
         </div>
-        <div className="px-6 py-5">
-          {/* Score legend */}
-          <div className="flex items-center justify-end gap-4 mb-3 pb-3 border-b">
-            {SCORE_OPTIONS.map((opt) => (
-              <div key={opt.value} className="flex items-center gap-1.5">
-                <div
-                  className={cn(
-                    "h-2.5 w-2.5 rounded-full",
-                    opt.value === 1 && "bg-red-500",
-                    opt.value === 2 && "bg-orange-500",
-                    opt.value === 3 && "bg-amber-500",
-                    opt.value === 4 && "bg-blue-500",
-                    opt.value === 5 && "bg-emerald-500"
-                  )}
-                />
-                <span className="text-[11px] text-muted-foreground">{opt.label}</span>
-              </div>
-            ))}
-          </div>
 
-          <div className="space-y-1">
-            {HR_SCORING_CRITERIA.map((criteria, index) => {
-              const currentScore = userScoring[criteria.key];
-              return (
-                <div
-                  key={criteria.key}
-                  className={cn(
-                    "group flex items-center justify-between py-3 px-3 -mx-3 rounded-lg transition-colors",
-                    currentScore === null && !isCompleted && mode === "edit" && "hover:bg-secondary/50"
-                  )}
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <span className="text-xs text-muted-foreground font-mono w-5 text-right shrink-0">{index + 1}.</span>
-                    <span className="text-sm font-medium truncate">{criteria.label}</span>
-                  </div>
-                  <div className="flex items-center gap-1 shrink-0 ml-4">
-                    {SCORE_OPTIONS.map((option) => {
-                      const isSelected = currentScore === option.value;
-                      return (
-                        <button
-                          key={option.value}
-                          type="button"
-                          disabled={isCompleted || mode === "view"}
-                          onClick={() =>
-                            setUserScoring((prev) => ({
-                              ...prev,
-                              [criteria.key]: option.value,
-                            }))
-                          }
-                          title={option.label}
-                          className={cn(
-                            "relative h-8 w-8 rounded-md text-xs font-semibold transition-all duration-200",
-                            pillColor(option.value, isSelected),
-                            !isSelected && !isCompleted && mode === "edit" && "hover:scale-110 hover:bg-secondary",
-                            (isCompleted || mode === "view") && "cursor-not-allowed opacity-60"
-                          )}
-                        >
-                          {option.value}
-                        </button>
-                      );
-                    })}
-                    {/* Selected label */}
-                    <span
-                      className={cn(
-                        "ml-2 text-[11px] font-medium w-16 text-right transition-opacity",
-                        currentScore ? "opacity-100" : "opacity-0"
-                      )}
-                    >
-                      {currentScore ? SCORE_OPTIONS.find((o) => o.value === currentScore)?.label : ""}
-                    </span>
-                  </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+          {HR_SCORING_CRITERIA.map((criteria, index) => {
+            const currentScore = userScoring[criteria.key];
+            return (
+              <div
+                key={criteria.key}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "12px",
+                  margin: "0 -12px",
+                  borderRadius: "8px",
+                  transition: "background-color 0.15s",
+                  ...(currentScore === null && !isCompleted && mode === "edit"
+                    ? {}
+                    : {}),
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "12px", minWidth: 0 }}>
+                  <span
+                    style={{
+                      fontSize: "0.75rem",
+                      color: "var(--hsd-ui-color-gray-400)",
+                      fontFamily: "monospace",
+                      width: "20px",
+                      textAlign: "right",
+                      flexShrink: 0,
+                    }}
+                  >
+                    {index + 1}.
+                  </span>
+                  <span
+                    style={{
+                      fontSize: "0.875rem",
+                      fontWeight: 500,
+                      color: "var(--hsd-ui-color-gray-700)",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {criteria.label}
+                  </span>
                 </div>
-              );
-            })}
-          </div>
+                <div style={{ display: "flex", alignItems: "center", gap: "4px", flexShrink: 0, marginLeft: "16px" }}>
+                  {SCORE_OPTIONS.map((option) => {
+                    const isSelected = currentScore === option.value;
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        disabled={isCompleted || mode === "view"}
+                        onClick={() =>
+                          setUserScoring((prev) => ({
+                            ...prev,
+                            [criteria.key]: option.value,
+                          }))
+                        }
+                        title={option.label}
+                        style={{
+                          position: "relative",
+                          height: "32px",
+                          width: "32px",
+                          borderRadius: "6px",
+                          fontSize: "0.75rem",
+                          fontWeight: 600,
+                          transition: "all 0.2s",
+                          border: "none",
+                          cursor: isCompleted || mode === "view" ? "not-allowed" : "pointer",
+                          opacity: isCompleted || mode === "view" ? 0.6 : 1,
+                          ...pillStyle(option.value, isSelected),
+                        }}
+                      >
+                        {option.value}
+                      </button>
+                    );
+                  })}
+                  {/* Selected label */}
+                  <span
+                    style={{
+                      marginLeft: "8px",
+                      fontSize: "0.6875rem",
+                      fontWeight: 500,
+                      width: "64px",
+                      textAlign: "right",
+                      transition: "opacity 0.15s",
+                      opacity: currentScore ? 1 : 0,
+                      color: "var(--hsd-ui-color-gray-700)",
+                    }}
+                  >
+                    {currentScore ? SCORE_OPTIONS.find((o) => o.value === currentScore)?.label : ""}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
         </div>
-      </section>
+      </SectionCard>
 
       {/* Additional Information */}
-      <section className="rounded-2xl border bg-card">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
-          <h2 className="text-base font-semibold text-foreground">Additional Information</h2>
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
-            <FileText className="h-4 w-4 text-muted-foreground" />
-          </div>
-        </div>
-        <div className="px-6 py-5 space-y-5">
-          <div className="space-y-2">
-            <Label className="text-sm">Key Competencies Required by the Department / Company</Label>
+      <SectionCard title="Additional Information" icon={FileText}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            <Label
+              style={{
+                fontSize: "14px",
+                fontWeight: 500,
+                color: "var(--hsd-ui-color-gray-700)",
+              }}
+            >
+              Key Competencies Required by the Department / Company
+            </Label>
             {isCompleted || mode === "view" ? (
-              <div className="rounded-lg border border-input bg-muted/30 p-3 text-sm min-h-20 opacity-60">
+              <div
+                className="border"
+                style={{
+                  borderRadius: "8px",
+                  borderColor: "rgba(120, 134, 127, 0.2)",
+                  backgroundColor: "var(--hsd-ui-color-gray-100)",
+                  padding: "12px",
+                  fontSize: "0.875rem",
+                  minHeight: "80px",
+                  opacity: 0.6,
+                }}
+              >
                 {userKeyCompetencies ? (
                   <LexicalRenderer value={userKeyCompetencies} />
                 ) : (
-                  <span className="text-muted-foreground">No content</span>
+                  <span style={{ color: "var(--hsd-ui-color-gray-400)", fontStyle: "italic" }}>
+                    No content
+                  </span>
                 )}
               </div>
             ) : (
@@ -884,14 +1376,35 @@ function InterviewUserTabInner({
             )}
           </div>
 
-          <div className="space-y-2">
-            <Label className="text-sm">Interviewer Notes</Label>
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            <Label
+              style={{
+                fontSize: "14px",
+                fontWeight: 500,
+                color: "var(--hsd-ui-color-gray-700)",
+              }}
+            >
+              Interviewer Notes
+            </Label>
             {isCompleted || mode === "view" ? (
-              <div className="rounded-lg border border-input bg-muted/30 p-3 text-sm min-h-20 opacity-60">
+              <div
+                className="border"
+                style={{
+                  borderRadius: "8px",
+                  borderColor: "rgba(120, 134, 127, 0.2)",
+                  backgroundColor: "var(--hsd-ui-color-gray-100)",
+                  padding: "12px",
+                  fontSize: "0.875rem",
+                  minHeight: "80px",
+                  opacity: 0.6,
+                }}
+              >
                 {userUserNotes ? (
                   <LexicalRenderer value={userUserNotes} />
                 ) : (
-                  <span className="text-muted-foreground">No content</span>
+                  <span style={{ color: "var(--hsd-ui-color-gray-400)", fontStyle: "italic" }}>
+                    No content
+                  </span>
                 )}
               </div>
             ) : (
@@ -903,125 +1416,212 @@ function InterviewUserTabInner({
             )}
           </div>
         </div>
-      </section>
+      </SectionCard>
 
       {/* Interview Result Conclusion */}
-      <section className="rounded-2xl border bg-card">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
-          <h2 className="text-base font-semibold text-foreground">Interview Result Conclusion</h2>
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
-            <Award className="h-4 w-4 text-muted-foreground" />
-          </div>
-        </div>
-        <div className="px-6 py-5">
-          <div className="grid grid-cols-3 gap-3">
-            {([
-              {
-                value: "proceed" as const,
-                label: "Proceed",
-                desc: "Advance to next stage",
-                icon: CheckCircle2,
-                colors: {
-                  active: "border-emerald-500 bg-emerald-50 ring-2 ring-emerald-500/20",
-                  icon: "text-emerald-600",
-                  dot: "bg-emerald-500",
-                },
+      <SectionCard title="Interview Result Conclusion" icon={Award}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(3, 1fr)",
+            gap: "12px",
+          }}
+        >
+          {([
+            {
+              value: "proceed" as const,
+              label: "Proceed",
+              desc: "Advance to next stage",
+              icon: CheckCircle2,
+              activeColors: {
+                border: "#10b981",
+                bg: "rgba(16, 185, 129, 0.06)",
+                iconColor: "#059669",
+                dotColor: "#10b981",
               },
-              {
-                value: "recommended" as const,
-                label: "Recommended",
-                desc: "Conditionally advance",
-                icon: ClipboardCheck,
-                colors: {
-                  active: "border-blue-500 bg-blue-50 ring-2 ring-blue-500/20",
-                  icon: "text-blue-600",
-                  dot: "bg-blue-500",
-                },
+            },
+            {
+              value: "recommended" as const,
+              label: "Recommended",
+              desc: "Conditionally advance",
+              icon: ClipboardCheck,
+              activeColors: {
+                border: "#3b82f6",
+                bg: "rgba(59, 130, 246, 0.06)",
+                iconColor: "#2563eb",
+                dotColor: "#3b82f6",
               },
-              {
-                value: "rejected" as const,
-                label: "Rejected",
-                desc: "Do not proceed",
-                icon: XCircle,
-                colors: {
-                  active: "border-red-500 bg-red-50 ring-2 ring-red-500/20",
-                  icon: "text-red-600",
-                  dot: "bg-red-500",
-                },
+            },
+            {
+              value: "rejected" as const,
+              label: "Rejected",
+              desc: "Do not proceed",
+              icon: XCircle,
+              activeColors: {
+                border: "#ef4444",
+                bg: "rgba(239, 68, 68, 0.06)",
+                iconColor: "#dc2626",
+                dotColor: "#ef4444",
               },
-            ]).map((option) => {
-              const Icon = option.icon;
-              const isSelected = userConclusion === option.value;
-              return (
-                <button
-                  key={option.value}
-                  type="button"
-                  disabled={isCompleted || mode === "view"}
-                  onClick={() => setUserConclusion(option.value)}
-                  className={cn(
-                    "relative flex flex-col items-center gap-2 rounded-xl border-2 p-5 transition-all duration-200 text-center",
-                    isSelected
-                      ? option.colors.active
-                      : "border-border bg-background hover:border-muted-foreground/30 hover:bg-secondary/30",
-                    (isCompleted || mode === "view") && "opacity-60 cursor-not-allowed"
-                  )}
-                >
-                  {isSelected && (
-                    <div className={cn("absolute top-2.5 right-2.5 h-2.5 w-2.5 rounded-full", option.colors.dot)} />
-                  )}
+            },
+          ]).map((option) => {
+            const Icon = option.icon;
+            const isSelected = userConclusion === option.value;
+            return (
+              <button
+                key={option.value}
+                type="button"
+                disabled={isCompleted || mode === "view"}
+                onClick={() => setUserConclusion(option.value)}
+                style={{
+                  position: "relative",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: "8px",
+                  borderRadius: "8px",
+                  border: `2px solid ${isSelected ? option.activeColors.border : "rgba(120, 134, 127, 0.2)"}`,
+                  backgroundColor: isSelected ? option.activeColors.bg : "#fff",
+                  padding: "20px",
+                  textAlign: "center",
+                  transition: "all 0.2s",
+                  cursor: isCompleted || mode === "view" ? "not-allowed" : "pointer",
+                  opacity: isCompleted || mode === "view" ? 0.6 : 1,
+                }}
+              >
+                {isSelected && (
                   <div
-                    className={cn(
-                      "flex h-10 w-10 items-center justify-center rounded-full transition-colors",
-                      isSelected ? "bg-white/60" : "bg-secondary"
-                    )}
+                    style={{
+                      position: "absolute",
+                      top: "10px",
+                      right: "10px",
+                      height: "10px",
+                      width: "10px",
+                      borderRadius: "50%",
+                      backgroundColor: option.activeColors.dotColor,
+                    }}
+                  />
+                )}
+                <div
+                  style={{
+                    display: "flex",
+                    height: "40px",
+                    width: "40px",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    borderRadius: "50%",
+                    backgroundColor: isSelected
+                      ? "rgba(255, 255, 255, 0.6)"
+                      : "var(--hsd-ui-color-gray-100)",
+                    transition: "background-color 0.15s",
+                  }}
+                >
+                  <Icon
+                    style={{
+                      width: "20px",
+                      height: "20px",
+                      color: isSelected ? option.activeColors.iconColor : "var(--hsd-ui-color-gray-400)",
+                    }}
+                  />
+                </div>
+                <div>
+                  <p
+                    style={{
+                      fontSize: "0.875rem",
+                      fontWeight: 600,
+                      color: isSelected ? option.activeColors.iconColor : "var(--hsd-ui-color-gray-900)",
+                      margin: 0,
+                    }}
                   >
-                    <Icon className={cn("h-5 w-5", isSelected ? option.colors.icon : "text-muted-foreground")} />
-                  </div>
-                  <div>
-                    <p className={cn("text-sm font-semibold", isSelected ? option.colors.icon : "text-foreground")}>
-                      {option.label}
-                    </p>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">{option.desc}</p>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
+                    {option.label}
+                  </p>
+                  <p
+                    style={{
+                      fontSize: "0.6875rem",
+                      color: "var(--hsd-ui-color-gray-500)",
+                      margin: "2px 0 0",
+                    }}
+                  >
+                    {option.desc}
+                  </p>
+                </div>
+              </button>
+            );
+          })}
         </div>
-      </section>
+      </SectionCard>
 
       {/* Action Buttons -- edit mode only, not completed */}
       {mode === "edit" && !isCompleted && (
-        <div className="flex items-center justify-between pt-2">
-          <p className="text-xs text-muted-foreground">
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            paddingTop: "8px",
+          }}
+        >
+          <p
+            style={{
+              fontSize: "0.75rem",
+              color: "var(--hsd-ui-color-gray-500)",
+              margin: 0,
+            }}
+          >
             {totalFilled < totalCriteria
               ? `${totalCriteria - totalFilled} scoring criteria remaining`
               : userConclusion
               ? "Ready to submit"
               : "Select a conclusion to submit"}
           </p>
-          <Button onClick={() => setShowUserPreview(true)}>
-            <Send />
+          <Button onClick={() => setShowUserPreview(true)} style={btnPrimary}>
+            <Send style={{ width: "16px", height: "16px", marginRight: "6px" }} />
             Submit Assessment
           </Button>
         </div>
       )}
 
-      {/* ── User Preview Dialog ── */}
+      {/* User Preview Dialog */}
       <Dialog open={showUserPreview} onOpenChange={setShowUserPreview}>
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto p-0">
-          {/* Header with gradient accent */}
-          <div className="relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/8 via-blue-500/4 to-transparent" />
-            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2" />
-            <DialogHeader className="relative px-6 pt-6 pb-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-500/10 ring-1 ring-blue-500/20">
-                  <ClipboardCheck className="h-5 w-5 text-blue-600" />
+          {/* Header */}
+          <div
+            style={{
+              padding: "24px 24px 16px",
+              borderBottom: "1px solid rgba(120, 134, 127, 0.15)",
+            }}
+          >
+            <DialogHeader>
+              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    height: "44px",
+                    width: "44px",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    borderRadius: "8px",
+                    backgroundColor: "var(--hsd-ui-color-navy-50)",
+                  }}
+                >
+                  <ClipboardCheck style={{ width: "20px", height: "20px", color: "var(--hsd-ui-color-navy-500)" }} />
                 </div>
                 <div>
-                  <DialogTitle className="text-lg font-semibold">Confirm Submission</DialogTitle>
-                  <DialogDescription className="text-sm">
+                  <DialogTitle
+                    style={{
+                      fontSize: "1.125rem",
+                      fontWeight: 600,
+                      color: "var(--hsd-ui-color-gray-900)",
+                    }}
+                  >
+                    Confirm Submission
+                  </DialogTitle>
+                  <DialogDescription
+                    style={{
+                      fontSize: "0.875rem",
+                      color: "var(--hsd-ui-color-gray-500)",
+                    }}
+                  >
                     Review your User Assessment before submitting
                   </DialogDescription>
                 </div>
@@ -1029,30 +1629,77 @@ function InterviewUserTabInner({
             </DialogHeader>
           </div>
 
-          <div className="px-6 pb-6 space-y-5">
+          <div style={{ padding: "24px", display: "flex", flexDirection: "column", gap: "20px" }}>
             {/* Candidate Card */}
             {candidate && (
-              <div className="flex items-center gap-4 p-4 rounded-xl border bg-gradient-to-r from-secondary/50 to-secondary/20">
-                <Avatar className="h-12 w-12 ring-2 ring-background shadow-sm">
-                  <AvatarFallback className="bg-blue-500 text-white font-semibold">
+              <div
+                className="border"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "16px",
+                  padding: "16px",
+                  borderRadius: "8px",
+                  borderColor: "rgba(120, 134, 127, 0.2)",
+                  backgroundColor: "var(--hsd-ui-color-gray-100)",
+                }}
+              >
+                <Avatar className="h-12 w-12">
+                  <AvatarFallback
+                    style={{
+                      backgroundColor: "var(--hsd-ui-color-navy-50)",
+                      color: "var(--hsd-ui-color-navy-500)",
+                      fontWeight: 600,
+                    }}
+                  >
                     {getInitials(candidate.fullname)}
                   </AvatarFallback>
                 </Avatar>
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-foreground truncate">{candidate.fullname}</p>
-                  <p className="text-sm text-muted-foreground truncate">{candidate.jobTitle?.name}</p>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p
+                    style={{
+                      fontWeight: 600,
+                      color: "var(--hsd-ui-color-gray-900)",
+                      margin: 0,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {candidate.fullname}
+                  </p>
+                  <p
+                    style={{
+                      fontSize: "0.875rem",
+                      color: "var(--hsd-ui-color-gray-500)",
+                      margin: 0,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {candidate.jobTitle?.name}
+                  </p>
                 </div>
                 {userConclusion && (
-                  <div
-                    className={cn(
-                      "px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wide",
-                      userConclusion === "proceed" && "bg-emerald-500/15 text-emerald-600 ring-1 ring-emerald-500/30",
-                      userConclusion === "recommended" && "bg-blue-500/15 text-blue-600 ring-1 ring-blue-500/30",
-                      userConclusion === "rejected" && "bg-red-500/15 text-red-600 ring-1 ring-red-500/30"
-                    )}
-                  >
-                    {userConclusion === "proceed" ? "Proceed" : userConclusion === "recommended" ? "Recommended" : "Rejected"}
-                  </div>
+                  <TuvBadge
+                    text={
+                      userConclusion === "proceed"
+                        ? "Proceed"
+                        : userConclusion === "recommended"
+                        ? "Recommended"
+                        : "Rejected"
+                    }
+                    variant={
+                      userConclusion === "proceed"
+                        ? "success"
+                        : userConclusion === "recommended"
+                        ? "info"
+                        : "danger"
+                    }
+                    size="sm"
+                    border
+                  />
                 )}
               </div>
             )}
@@ -1068,81 +1715,224 @@ function InterviewUserTabInner({
               const previewMaxTotal = previewTotalCriteria * 5;
 
               return (
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="rounded-xl border bg-gradient-to-br from-background to-secondary/30 p-4 text-center">
-                    <p className="text-2xl font-bold text-foreground">
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(3, 1fr)",
+                    gap: "12px",
+                  }}
+                >
+                  <div
+                    className="border"
+                    style={{
+                      borderRadius: "8px",
+                      borderColor: "rgba(120, 134, 127, 0.2)",
+                      backgroundColor: "#fff",
+                      padding: "16px",
+                      textAlign: "center",
+                    }}
+                  >
+                    <p
+                      style={{
+                        fontSize: "1.5rem",
+                        fontWeight: 700,
+                        color: "var(--hsd-ui-color-gray-900)",
+                        margin: 0,
+                      }}
+                    >
                       {previewTotalFilled}/{previewTotalCriteria}
                     </p>
-                    <p className="text-[11px] text-muted-foreground uppercase tracking-wider mt-1">Criteria Filled</p>
+                    <p
+                      style={{
+                        fontSize: "0.6875rem",
+                        fontWeight: 500,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.05em",
+                        color: "var(--hsd-ui-color-gray-500)",
+                        marginTop: "4px",
+                      }}
+                    >
+                      Criteria Filled
+                    </p>
                   </div>
-                  <div className="rounded-xl border bg-gradient-to-br from-background to-secondary/30 p-4 text-center">
-                    <p className="text-2xl font-bold text-foreground">{previewAverageScore.toFixed(1)}</p>
-                    <p className="text-[11px] text-muted-foreground uppercase tracking-wider mt-1">Avg. Score</p>
+                  <div
+                    className="border"
+                    style={{
+                      borderRadius: "8px",
+                      borderColor: "rgba(120, 134, 127, 0.2)",
+                      backgroundColor: "#fff",
+                      padding: "16px",
+                      textAlign: "center",
+                    }}
+                  >
+                    <p
+                      style={{
+                        fontSize: "1.5rem",
+                        fontWeight: 700,
+                        color: "var(--hsd-ui-color-gray-900)",
+                        margin: 0,
+                      }}
+                    >
+                      {previewAverageScore.toFixed(1)}
+                    </p>
+                    <p
+                      style={{
+                        fontSize: "0.6875rem",
+                        fontWeight: 500,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.05em",
+                        color: "var(--hsd-ui-color-gray-500)",
+                        marginTop: "4px",
+                      }}
+                    >
+                      Avg. Score
+                    </p>
                   </div>
-                  <div className="rounded-xl border bg-gradient-to-br from-background to-secondary/30 p-4 text-center">
-                    <p className="text-2xl font-bold text-foreground">
+                  <div
+                    className="border"
+                    style={{
+                      borderRadius: "8px",
+                      borderColor: "rgba(120, 134, 127, 0.2)",
+                      backgroundColor: "#fff",
+                      padding: "16px",
+                      textAlign: "center",
+                    }}
+                  >
+                    <p
+                      style={{
+                        fontSize: "1.5rem",
+                        fontWeight: 700,
+                        color: "var(--hsd-ui-color-gray-900)",
+                        margin: 0,
+                      }}
+                    >
                       {previewTotalScore}/{previewMaxTotal}
                     </p>
-                    <p className="text-[11px] text-muted-foreground uppercase tracking-wider mt-1">Total Points</p>
+                    <p
+                      style={{
+                        fontSize: "0.6875rem",
+                        fontWeight: 500,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.05em",
+                        color: "var(--hsd-ui-color-gray-500)",
+                        marginTop: "4px",
+                      }}
+                    >
+                      Total Points
+                    </p>
                   </div>
                 </div>
               );
             })()}
 
             {/* Scoring Details */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <div className="h-1 w-1 rounded-full bg-blue-500" />
-                <h4 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">Scoring Breakdown</h4>
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <div
+                  style={{
+                    height: "4px",
+                    width: "4px",
+                    borderRadius: "50%",
+                    backgroundColor: "var(--hsd-ui-color-navy-500)",
+                  }}
+                />
+                <h4
+                  style={{
+                    fontWeight: 600,
+                    fontSize: "0.875rem",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                    color: "var(--hsd-ui-color-gray-500)",
+                    margin: 0,
+                  }}
+                >
+                  Scoring Breakdown
+                </h4>
               </div>
-              <div className="rounded-xl border overflow-hidden">
+              <div
+                className="border"
+                style={{
+                  borderRadius: "8px",
+                  borderColor: "rgba(120, 134, 127, 0.2)",
+                  overflow: "hidden",
+                }}
+              >
                 {HR_SCORING_CRITERIA.map((criteria, index) => {
                   const score = userScoring[criteria.key];
                   const scoreLabel = score ? SCORE_OPTIONS.find((opt) => opt.value === score)?.label : null;
-                  const detailScoreColor =
+                  const detailScoreColorVal =
                     score && score >= 4
-                      ? "text-emerald-600"
+                      ? "#059669"
                       : score && score >= 3
-                      ? "text-blue-600"
+                      ? "#2563eb"
                       : score && score >= 2
-                      ? "text-amber-600"
+                      ? "#d97706"
                       : score
-                      ? "text-red-500"
-                      : "text-muted-foreground";
+                      ? "#ef4444"
+                      : "var(--hsd-ui-color-gray-400)";
                   return (
                     <div
                       key={criteria.key}
-                      className={cn(
-                        "flex items-center justify-between px-4 py-2.5 transition-colors",
-                        index % 2 === 0 ? "bg-secondary/20" : "bg-transparent"
-                      )}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        padding: "10px 16px",
+                        backgroundColor: index % 2 === 0 ? "var(--hsd-ui-color-gray-100)" : "#fff",
+                      }}
                     >
-                      <span className="text-sm text-foreground">{criteria.label}</span>
+                      <span
+                        style={{
+                          fontSize: "0.875rem",
+                          color: "var(--hsd-ui-color-gray-900)",
+                        }}
+                      >
+                        {criteria.label}
+                      </span>
                       {scoreLabel ? (
-                        <div className="flex items-center gap-2">
-                          <div className="flex gap-0.5">
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                          <div style={{ display: "flex", gap: "2px" }}>
                             {[1, 2, 3, 4, 5].map((dot) => (
                               <div
                                 key={dot}
-                                className={cn(
-                                  "h-1.5 w-1.5 rounded-full transition-colors",
-                                  score && dot <= score
-                                    ? score >= 4
-                                      ? "bg-emerald-500"
-                                      : score >= 3
-                                      ? "bg-blue-500"
-                                      : score >= 2
-                                      ? "bg-amber-500"
-                                      : "bg-red-500"
-                                    : "bg-secondary"
-                                )}
+                                style={{
+                                  height: "6px",
+                                  width: "6px",
+                                  borderRadius: "50%",
+                                  backgroundColor:
+                                    score && dot <= score
+                                      ? score >= 4
+                                        ? "#10b981"
+                                        : score >= 3
+                                        ? "#3b82f6"
+                                        : score >= 2
+                                        ? "#f59e0b"
+                                        : "#ef4444"
+                                      : "var(--hsd-ui-color-gray-200)",
+                                }}
                               />
                             ))}
                           </div>
-                          <span className={cn("text-xs font-medium", detailScoreColor)}>{scoreLabel}</span>
+                          <span
+                            style={{
+                              fontSize: "0.75rem",
+                              fontWeight: 500,
+                              color: detailScoreColorVal,
+                            }}
+                          >
+                            {scoreLabel}
+                          </span>
                         </div>
                       ) : (
-                        <span className="text-xs text-muted-foreground/60 italic">Not rated</span>
+                        <span
+                          style={{
+                            fontSize: "0.75rem",
+                            color: "var(--hsd-ui-color-gray-400)",
+                            fontStyle: "italic",
+                          }}
+                        >
+                          Not rated
+                        </span>
                       )}
                     </div>
                   );
@@ -1152,28 +1942,80 @@ function InterviewUserTabInner({
 
             {/* Additional Information */}
             {(userKeyCompetencies || userUserNotes) && (
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <div className="h-1 w-1 rounded-full bg-blue-500" />
-                  <h4 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">Additional Notes</h4>
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <div
+                    style={{
+                      height: "4px",
+                      width: "4px",
+                      borderRadius: "50%",
+                      backgroundColor: "var(--hsd-ui-color-navy-500)",
+                    }}
+                  />
+                  <h4
+                    style={{
+                      fontWeight: 600,
+                      fontSize: "0.875rem",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.05em",
+                      color: "var(--hsd-ui-color-gray-500)",
+                      margin: 0,
+                    }}
+                  >
+                    Additional Notes
+                  </h4>
                 </div>
-                <div className="space-y-3">
+                <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                   {userKeyCompetencies && (
-                    <div className="rounded-xl border p-4 bg-secondary/10">
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium mb-2">
+                    <div
+                      className="border"
+                      style={{
+                        borderRadius: "8px",
+                        borderColor: "rgba(120, 134, 127, 0.2)",
+                        padding: "16px",
+                        backgroundColor: "var(--hsd-ui-color-gray-100)",
+                      }}
+                    >
+                      <p
+                        style={{
+                          fontSize: "0.625rem",
+                          color: "var(--hsd-ui-color-gray-500)",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.05em",
+                          fontWeight: 500,
+                          marginBottom: "8px",
+                        }}
+                      >
                         Key Competencies
                       </p>
-                      <div className="text-sm text-foreground">
+                      <div style={{ fontSize: "0.875rem", color: "var(--hsd-ui-color-gray-900)" }}>
                         <LexicalRenderer value={userKeyCompetencies} />
                       </div>
                     </div>
                   )}
                   {userUserNotes && (
-                    <div className="rounded-xl border p-4 bg-secondary/10">
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium mb-2">
+                    <div
+                      className="border"
+                      style={{
+                        borderRadius: "8px",
+                        borderColor: "rgba(120, 134, 127, 0.2)",
+                        padding: "16px",
+                        backgroundColor: "var(--hsd-ui-color-gray-100)",
+                      }}
+                    >
+                      <p
+                        style={{
+                          fontSize: "0.625rem",
+                          color: "var(--hsd-ui-color-gray-500)",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.05em",
+                          fontWeight: 500,
+                          marginBottom: "8px",
+                        }}
+                      >
                         Interviewer Notes
                       </p>
-                      <div className="text-sm text-foreground">
+                      <div style={{ fontSize: "0.875rem", color: "var(--hsd-ui-color-gray-900)" }}>
                         <LexicalRenderer value={userUserNotes} />
                       </div>
                     </div>
@@ -1191,13 +2033,50 @@ function InterviewUserTabInner({
 
               if (isIncomplete) {
                 return (
-                  <div className="flex items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-500/10">
-                      <AlertTriangle className="h-4 w-4 text-amber-600" />
+                  <div
+                    className="border"
+                    style={{
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: "12px",
+                      borderRadius: "8px",
+                      borderColor: "var(--hsd-ui-color-orange-300, #ffcb69)",
+                      backgroundColor: "var(--hsd-ui-color-yellow-50, #fffde6)",
+                      padding: "16px",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        height: "32px",
+                        width: "32px",
+                        flexShrink: 0,
+                        alignItems: "center",
+                        justifyContent: "center",
+                        borderRadius: "8px",
+                        backgroundColor: "rgba(245, 158, 11, 0.1)",
+                      }}
+                    >
+                      <AlertTriangle style={{ width: "16px", height: "16px", color: "#d97706" }} />
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-amber-700">Incomplete Assessment</p>
-                      <p className="text-xs text-amber-600/80 mt-0.5">
+                      <p
+                        style={{
+                          fontSize: "0.875rem",
+                          fontWeight: 500,
+                          color: "#92400e",
+                          margin: 0,
+                        }}
+                      >
+                        Incomplete Assessment
+                      </p>
+                      <p
+                        style={{
+                          fontSize: "0.75rem",
+                          color: "#b45309",
+                          margin: "2px 0 0",
+                        }}
+                      >
                         {incTotalFilled < incTotalCriteria && `${incTotalCriteria - incTotalFilled} scoring criteria not filled. `}
                         {!userConclusion && "Interview conclusion not selected."}
                       </p>
@@ -1210,13 +2089,35 @@ function InterviewUserTabInner({
           </div>
 
           {/* Footer */}
-          <div className="border-t bg-secondary/30 px-6 py-4">
-            <div className="flex items-center justify-between">
-              <p className="text-xs text-muted-foreground">
+          <div
+            style={{
+              borderTop: "1px solid rgba(120, 134, 127, 0.15)",
+              backgroundColor: "var(--hsd-ui-color-gray-100)",
+              padding: "16px 24px",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
+            >
+              <p
+                style={{
+                  fontSize: "0.75rem",
+                  color: "var(--hsd-ui-color-gray-500)",
+                  margin: 0,
+                }}
+              >
                 This action cannot be undone
               </p>
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setShowUserPreview(false)} className="px-4">
+              <div style={{ display: "flex", gap: "8px" }}>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowUserPreview(false)}
+                  style={btnSecondary}
+                >
                   Cancel
                 </Button>
                 <Button
@@ -1225,16 +2126,19 @@ function InterviewUserTabInner({
                     handleUserAssessmentSubmit();
                   }}
                   disabled={isSubmittingUser}
-                  className="px-5 gap-2"
+                  style={btnPrimary}
                 >
                   {isSubmittingUser ? (
                     <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <Loader2
+                        className="animate-spin"
+                        style={{ width: "16px", height: "16px", marginRight: "6px" }}
+                      />
                       Submitting...
                     </>
                   ) : (
                     <>
-                      <Send className="h-4 w-4" />
+                      <Send style={{ width: "16px", height: "16px", marginRight: "6px" }} />
                       Confirm & Submit
                     </>
                   )}

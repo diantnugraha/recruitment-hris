@@ -2,10 +2,10 @@
 
 import * as React from "react";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import {
-  ArrowLeft,
+  ChevronLeft,
   Loader2,
-  AlertCircle,
   CheckCircle,
   XCircle,
   RotateCcw,
@@ -21,18 +21,15 @@ import {
   ChevronRight,
   UserCircle,
   Briefcase,
-  Building2,
-  MapPin,
-  Calendar,
-  Hash,
 } from "lucide-react";
 
 import { Header } from "@/components/layout/header";
 import { PageContainer } from "@/components/layout/page-container";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+import { TuvBadge } from "@/components/shared/tuv-badge";
 import {
   Dialog,
   DialogContent,
@@ -51,7 +48,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-import { cn, formatShortDate } from "@/lib/utils";
+import { formatShortDate } from "@/lib/utils";
 import { showToast } from "@/lib/utils/toast-messages";
 import { hasBiodataSubmitted } from "@/lib/utils/recruitmentHelpers";
 import { employeeRequestService } from "@/services/employee-request.service";
@@ -72,6 +69,198 @@ import {
 import type { EmployeeRequestWithRelations } from "@/types/employee-request";
 import { SlaBanner } from "@/components/shared/SlaBanner";
 
+// --- TUV button style helpers ---
+
+const btnPrimary = {
+  backgroundColor: "var(--hsd-ui-background-color-primary)",
+  borderColor: "var(--hsd-ui-border-color-primary)",
+  color: "var(--hsd-ui-text-color-primary)",
+  borderRadius: "4px",
+  height: "38px",
+  padding: "0 16px",
+  fontSize: "0.875rem",
+  fontWeight: 500,
+} as const;
+
+const btnSecondary = {
+  borderRadius: "4px",
+  height: "38px",
+  padding: "0 16px",
+  fontSize: "0.875rem",
+  fontWeight: 500,
+  borderColor: "rgba(120,134,127,0.2)",
+} as const;
+
+const btnDanger = {
+  backgroundColor: "rgba(250, 55, 70, 1)",
+  borderColor: "rgba(250, 55, 70, 1)",
+  color: "#fff",
+  borderRadius: "4px",
+  height: "38px",
+  padding: "0 16px",
+  fontSize: "0.875rem",
+  fontWeight: 500,
+} as const;
+
+// --- TUV reusable sub-components (module level) ---
+
+function DetailItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p
+        style={{
+          fontSize: "0.6875rem",
+          fontWeight: 500,
+          textTransform: "uppercase",
+          letterSpacing: "0.05em",
+          color: "var(--hsd-ui-color-gray-500)",
+          margin: 0,
+        }}
+      >
+        {label}
+      </p>
+      <p
+        style={{
+          fontSize: "0.875rem",
+          fontWeight: 500,
+          color: value ? "var(--hsd-ui-color-gray-900)" : "var(--hsd-ui-color-gray-400)",
+          margin: "2px 0 0",
+        }}
+      >
+        {value || "No Data"}
+      </p>
+    </div>
+  );
+}
+
+function SectionCard({
+  title,
+  icon: Icon,
+  headerRight,
+  titleBadge,
+  children,
+}: {
+  title: string;
+  icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
+  headerRight?: React.ReactNode;
+  titleBadge?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <section
+      className="border"
+      style={{
+        borderRadius: "8px",
+        backgroundColor: "#fff",
+        borderColor: "rgba(120, 134, 127, 0.2)",
+      }}
+    >
+      <div
+        className="flex items-center justify-between px-6 py-4"
+        style={{ borderBottom: "1px solid rgba(120, 134, 127, 0.15)" }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+        <h2
+          style={{
+            fontSize: "0.9375rem",
+            fontWeight: 600,
+            color: "var(--hsd-ui-color-gray-900)",
+            margin: 0,
+          }}
+        >
+          {title}
+        </h2>
+        {titleBadge}
+        </div>
+        <div className="flex items-center gap-2">
+          {headerRight}
+          <div
+            className="flex h-8 w-8 items-center justify-center rounded-lg"
+            style={{ backgroundColor: "var(--hsd-ui-color-gray-100)" }}
+          >
+            <Icon
+              style={{ width: "16px", height: "16px", color: "var(--hsd-ui-color-gray-500)" }}
+            />
+          </div>
+        </div>
+      </div>
+      <div className="px-6 py-5">{children}</div>
+    </section>
+  );
+}
+
+function DetailSkeleton() {
+  return (
+    <div className="space-y-5">
+      <div
+        className="border p-6"
+        style={{ borderRadius: "8px", backgroundColor: "#fff", borderColor: "rgba(120, 134, 127, 0.2)" }}
+      >
+        <div className="flex items-start gap-5">
+          <Skeleton className="h-20 w-20 shrink-0" style={{ borderRadius: "8px" }} />
+          <div className="flex-1 space-y-3 pt-1">
+            <Skeleton className="h-7 w-56" />
+            <div className="flex gap-2">
+              <Skeleton className="h-5 w-20" style={{ borderRadius: "4px" }} />
+              <Skeleton className="h-5 w-20" style={{ borderRadius: "4px" }} />
+            </div>
+            <div className="pt-3 grid grid-cols-4 gap-4">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="space-y-1.5">
+                  <Skeleton className="h-3 w-16" />
+                  <Skeleton className="h-4 w-24" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+      {Array.from({ length: 2 }).map((_, i) => (
+        <div
+          key={i}
+          className="border p-6 space-y-4"
+          style={{ borderRadius: "8px", backgroundColor: "#fff", borderColor: "rgba(120, 134, 127, 0.2)" }}
+        >
+          <Skeleton className="h-5 w-40" />
+          <div className="grid grid-cols-2 gap-4">
+            {Array.from({ length: 6 }).map((_, j) => (
+              <div key={j} className="space-y-1.5">
+                <Skeleton className="h-3 w-20" />
+                <Skeleton className="h-4 w-28" />
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// --- Status to TuvBadge variant mapping ---
+
+const STATUS_BADGE_VARIANT: Record<EmployeeRequestStatus, "success" | "danger" | "info" | "warning" | "dark" | "brand" | "purple" | "rose"> = {
+  draft: "dark",
+  created: "info",
+  hod_reviewed: "brand",
+  reviewed: "purple",
+  approved: "success",
+  rejected: "danger",
+  revise: "warning",
+  in_recruitment: "brand",
+  completed: "success",
+};
+
+const CANDIDATE_STATUS_BADGE_VARIANT: Record<string, "success" | "danger" | "info" | "warning" | "dark" | "brand" | "purple" | "rose"> = {
+  waiting_biodata: "dark",
+  screening: "info",
+  interview_1: "brand",
+  interview_2: "purple",
+  mcu: "warning",
+  waiting_accepted: "info",
+  hired: "success",
+  rejected: "danger",
+};
+
 // Workflow steps for the timeline
 const WORKFLOW_STEPS = [
   { key: "draft", label: "Draft", icon: Pencil },
@@ -87,6 +276,8 @@ function getCurrentStepIndex(status: EmployeeRequestStatus): number {
   if (status === "rejected" || status === "revise") return 0;
   return WORKFLOW_STEPS.findIndex((s) => s.key === status);
 }
+
+// --- Page component ---
 
 export default function RecruitmentRequestDetailPage() {
   const params = useParams();
@@ -280,24 +471,6 @@ export default function RecruitmentRequestDetailPage() {
     setShowActionDialog(true);
   };
 
-  const getStatusBadge = (status: EmployeeRequestStatus) => {
-    const config = EMPLOYEE_REQUEST_STATUS_CONFIG[status];
-    return (
-      <Badge variant={config?.variant || "secondary"} className="text-xs font-medium">
-        {config?.label || status}
-      </Badge>
-    );
-  };
-
-  const getCandidateStatusBadge = (status: CandidateStatus) => {
-    const config = CANDIDATE_STATUS_CONFIG[status];
-    return (
-      <Badge variant={config?.variant || "secondary"} className="text-xs">
-        {config?.label || status}
-      </Badge>
-    );
-  };
-
   const deriveCandidateStatus = (candidate: CandidateWithRelations): CandidateStatus => {
     // If candidate hasn't submitted biodata yet
     if (!hasBiodataSubmitted(candidate)) return CANDIDATE_STATUS.WAITING_BIODATA;
@@ -332,24 +505,24 @@ export default function RecruitmentRequestDetailPage() {
     if (assessment.interview1Status === "FAILED") return CANDIDATE_STATUS.REJECTED;
     if (interview1Started) return CANDIDATE_STATUS.INTERVIEW_1;
 
-    // Assessment exists but all statuses are PENDING — interview process was started
+    // Assessment exists but all statuses are PENDING -- interview process was started
     return CANDIDATE_STATUS.INTERVIEW_1;
   };
 
   const getActionDialogContent = () => {
     switch (actionType) {
       case "review":
-        return { title: "Review Request", description: "Mark this request as reviewed and forward to management for approval.", buttonText: "Mark as Reviewed", buttonVariant: "default" as const };
+        return { title: "Review Request", description: "Mark this request as reviewed and forward to management for approval.", buttonText: "Mark as Reviewed", isDanger: false };
       case "approve":
-        return { title: "Approve Request", description: "Approve this employee request. Recruitment can begin after approval.", buttonText: "Approve", buttonVariant: "default" as const };
+        return { title: "Approve Request", description: "Approve this employee request. Recruitment can begin after approval.", buttonText: "Approve", isDanger: false };
       case "reject":
-        return { title: "Reject Request", description: "Reject this employee request. Please provide a reason for rejection.", buttonText: "Reject", buttonVariant: "destructive" as const };
+        return { title: "Reject Request", description: "Reject this employee request. Please provide a reason for rejection.", buttonText: "Reject", isDanger: true };
       case "revise":
-        return { title: "Request Revision", description: "Return this request for revision. Please specify what needs to be changed.", buttonText: "Request Revision", buttonVariant: "outline" as const };
+        return { title: "Request Revision", description: "Return this request for revision. Please specify what needs to be changed.", buttonText: "Request Revision", isDanger: false };
       case "start_recruitment":
-        return { title: "Start Recruitment", description: "Start the recruitment process. You can then invite candidates to apply.", buttonText: "Start Recruitment", buttonVariant: "default" as const };
+        return { title: "Start Recruitment", description: "Start the recruitment process. You can then invite candidates to apply.", buttonText: "Start Recruitment", isDanger: false };
       default:
-        return { title: "", description: "", buttonText: "", buttonVariant: "default" as const };
+        return { title: "", description: "", buttonText: "", isDanger: false };
     }
   };
 
@@ -371,11 +544,12 @@ export default function RecruitmentRequestDetailPage() {
   if (isLoading) {
     return (
       <>
-        <Header title="Recruitment" />
+        <Header />
         <PageContainer>
-          <div className="flex items-center justify-center h-64">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <div className="mb-5">
+            <Skeleton className="h-5 w-40" style={{ borderRadius: "4px" }} />
           </div>
+          <DetailSkeleton />
         </PageContainer>
       </>
     );
@@ -385,14 +559,14 @@ export default function RecruitmentRequestDetailPage() {
   if (error || !request) {
     return (
       <>
-        <Header title="Recruitment" />
+        <Header />
         <PageContainer>
-          <div className="flex flex-col items-center justify-center h-64 gap-4">
-            <AlertCircle className="h-12 w-12 text-destructive" />
-            <p className="text-muted-foreground">{error || "Request not found"}</p>
-            <Button onClick={() => router.push("/recruitment")}>
-              <ArrowLeft />
-              Back to Recruitment
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "300px", gap: "12px" }}>
+            <p style={{ fontSize: "0.875rem", color: "var(--hsd-ui-color-gray-500)", margin: 0 }}>
+              {error || "Request not found"}
+            </p>
+            <Button variant="outline" onClick={fetchData} style={btnSecondary}>
+              Try Again
             </Button>
           </div>
         </PageContainer>
@@ -401,63 +575,88 @@ export default function RecruitmentRequestDetailPage() {
   }
 
   const dialogContent = getActionDialogContent();
+  const currentStepIndex = getCurrentStepIndex(request.status);
+  const statusConfig = EMPLOYEE_REQUEST_STATUS_CONFIG[request.status];
 
   return (
     <>
-      <Header title="Recruitment" />
+      <Header />
       <PageContainer>
         <div className="space-y-5">
-          {/* Top bar: Back + Title + Actions */}
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3 min-w-0">
-              <Button variant="ghost" onClick={() => router.push("/recruitment")} className="shrink-0">
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-              <div className="min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h1 className="font-semibold text-accent text-lg leading-none">
-                    {request.recruitmentCode
-                      ? request.recruitmentCode.replace("REC-", "RC.").replace(/-/g, "")
-                      : request.code}
-                  </h1>
-                  {getStatusBadge(request.status)}
-                </div>
-                <p className="text-sm text-muted-foreground mt-0.5 truncate">
-                  {request.jobTitle?.name}
-                  {request.department?.name ? ` · ${request.department.name}` : ""}
-                </p>
-              </div>
+          {/* Top Bar -- back link + title + actions */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <Link
+                href="/recruitment"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "4px",
+                  fontSize: "0.875rem",
+                  fontWeight: 400,
+                  color: "var(--hsd-ui-color-gray-500)",
+                  textDecoration: "none",
+                }}
+              >
+                <ChevronLeft style={{ width: "16px", height: "16px" }} />
+                Recruitment
+              </Link>
+              <h1
+                style={{
+                  fontSize: "1.5rem",
+                  fontWeight: 600,
+                  color: "var(--hsd-ui-color-gray-900)",
+                  margin: "8px 0 0",
+                }}
+              >
+                {request.recruitmentCode
+                  ? request.recruitmentCode.replace("REC-", "RC.").replace(/-/g, "")
+                  : request.code}
+              </h1>
             </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+              <span
+                style={{
+                  fontSize: "0.75rem",
+                  color: "var(--hsd-ui-color-gray-400)",
+                  marginRight: "4px",
+                }}
+              >
+                Updated {new Intl.DateTimeFormat("id-ID", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(request.updatedAt))}
+              </span>
 
-            {/* Action Buttons */}
-            <div className="flex items-center gap-2 shrink-0">
+              {/* Action Buttons */}
               {request.status === "created" && (
                 <>
-                  <Button variant="outline" onClick={() => openActionDialog("revise")}>
-                    <RotateCcw />
+                  <Button variant="outline" onClick={() => openActionDialog("revise")} style={btnSecondary}>
+                    <RotateCcw style={{ width: "16px", height: "16px", marginRight: "6px" }} />
                     Request Revision
                   </Button>
-                  <Button onClick={() => openActionDialog("review")}>
-                    <CheckCircle />
+                  <Button onClick={() => openActionDialog("review")} style={btnPrimary}>
+                    <CheckCircle style={{ width: "16px", height: "16px", marginRight: "6px" }} />
                     Mark as Reviewed
                   </Button>
                 </>
               )}
               {request.status === "reviewed" && (
                 <>
-                  <Button variant="destructive" onClick={() => openActionDialog("reject")}>
-                    <XCircle />
+                  <Button variant="outline" onClick={() => openActionDialog("revise")} style={btnSecondary}>
+                    <RotateCcw style={{ width: "16px", height: "16px", marginRight: "6px" }} />
+                    Request Revision
+                  </Button>
+                  <Button onClick={() => openActionDialog("reject")} style={btnDanger}>
+                    <XCircle style={{ width: "16px", height: "16px", marginRight: "6px" }} />
                     Reject
                   </Button>
-                  <Button onClick={() => openActionDialog("approve")}>
-                    <CheckCircle />
+                  <Button onClick={() => openActionDialog("approve")} style={btnPrimary}>
+                    <CheckCircle style={{ width: "16px", height: "16px", marginRight: "6px" }} />
                     Approve
                   </Button>
                 </>
               )}
               {request.status === "approved" && (
-                <Button onClick={() => openActionDialog("start_recruitment")}>
-                  <PlayCircle />
+                <Button onClick={() => openActionDialog("start_recruitment")} style={btnPrimary}>
+                  <PlayCircle style={{ width: "16px", height: "16px", marginRight: "6px" }} />
                   Start Recruitment
                 </Button>
               )}
@@ -466,15 +665,47 @@ export default function RecruitmentRequestDetailPage() {
 
           {/* Rejected Banner */}
           {request.status === "rejected" && (
-            <div className="rounded-2xl border border-destructive/30 bg-gradient-to-r from-destructive/5 via-destructive/3 to-transparent overflow-hidden relative">
-              <div className="absolute top-0 left-0 w-1 h-full bg-destructive" />
-              <div className="flex items-center gap-4 p-5 pl-6">
-                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-destructive/10 ring-4 ring-destructive/5">
-                  <XCircle className="h-5 w-5 text-destructive" />
+            <div
+              className="border"
+              style={{
+                borderRadius: "8px",
+                backgroundColor: "rgba(250, 55, 70, 0.04)",
+                borderColor: "rgba(250, 55, 70, 0.3)",
+                padding: "24px",
+              }}
+            >
+              <div className="flex items-center gap-4">
+                <div
+                  className="flex items-center justify-center shrink-0"
+                  style={{
+                    width: "36px",
+                    height: "36px",
+                    borderRadius: "50%",
+                    backgroundColor: "rgba(250, 55, 70, 0.1)",
+                  }}
+                >
+                  <XCircle style={{ width: "16px", height: "16px", color: "rgba(250, 55, 70, 1)" }} />
                 </div>
                 <div>
-                  <p className="font-semibold text-destructive text-sm">Request Rejected</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">This employee request has been rejected by management.</p>
+                  <h3
+                    style={{
+                      fontSize: "0.9375rem",
+                      fontWeight: 600,
+                      color: "rgba(250, 55, 70, 1)",
+                      margin: 0,
+                    }}
+                  >
+                    Request Rejected
+                  </h3>
+                  <p
+                    style={{
+                      fontSize: "0.875rem",
+                      color: "var(--hsd-ui-color-gray-500)",
+                      margin: "4px 0 0",
+                    }}
+                  >
+                    This employee request has been rejected by management.
+                  </p>
                 </div>
               </div>
             </div>
@@ -485,212 +716,388 @@ export default function RecruitmentRequestDetailPage() {
             <SlaBanner sla={request.sla} />
           )}
 
-          {/* Workflow Timeline */}
-          {request.status !== "rejected" && (() => {
-            const currentStep = getCurrentStepIndex(request.status);
-            return (
-              <div className="rounded-2xl border border-accent/10 bg-gradient-to-br from-accent/5 to-transparent overflow-hidden">
-                <div className="p-4">
-                  <div className="flex items-center justify-between">
-                    {WORKFLOW_STEPS.map((step, index) => {
-                      const StepIcon = step.icon;
-                      const isActive = index === currentStep;
-                      const isCompleted = index < currentStep;
-                      const isPending = index > currentStep;
+          {/* Workflow Progress */}
+          {request.status !== "rejected" && (
+            <div
+              className="border"
+              style={{ borderRadius: "8px", backgroundColor: "#fff", borderColor: "rgba(120, 134, 127, 0.2)" }}
+            >
+              <div style={{ padding: "24px 32px 20px" }}>
+                <div style={{ display: "grid", gridTemplateColumns: `repeat(${WORKFLOW_STEPS.length}, 1fr)`, position: "relative" }}>
+                  {/* Connector line — sits behind circles */}
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: "16px",
+                      left: "calc(50% / " + WORKFLOW_STEPS.length + ")",
+                      right: "calc(50% / " + WORKFLOW_STEPS.length + ")",
+                      height: "2px",
+                      backgroundColor: "var(--hsd-ui-color-gray-200)",
+                    }}
+                  />
+                  {/* Completed connector overlay */}
+                  {currentStepIndex > 0 && (
+                    <div
+                      style={{
+                        position: "absolute",
+                        top: "16px",
+                        left: "calc(50% / " + WORKFLOW_STEPS.length + ")",
+                        width: `calc(${((currentStepIndex) / (WORKFLOW_STEPS.length - 1)) * 100}% - 50% / ${WORKFLOW_STEPS.length} * 2)`,
+                        height: "2px",
+                        backgroundColor: "var(--hsd-ui-color-navy-500)",
+                        transition: "width 0.5s ease",
+                      }}
+                    />
+                  )}
+                  {/* Steps */}
+                  {WORKFLOW_STEPS.map((step, index) => {
+                    const StepIcon = step.icon;
+                    const isActive = index === currentStepIndex;
+                    const isCompleted = index < currentStepIndex;
 
-                      return (
-                        <React.Fragment key={step.key}>
-                          <div className="flex flex-col items-center gap-2">
-                            <div
-                              className={cn(
-                                "h-9 w-9 rounded-full flex items-center justify-center transition-all duration-500",
-                                isActive && "bg-accent text-accent-foreground ring-4 ring-accent/20",
-                                isCompleted && "bg-accent/20 text-accent",
-                                isPending && "bg-secondary text-muted-foreground"
-                              )}
-                            >
-                              {isCompleted ? <Check className="h-4 w-4" /> : <StepIcon className="h-4 w-4" />}
-                            </div>
-                            <span
-                              className={cn(
-                                "text-xs font-medium text-center transition-colors",
-                                isActive && "text-accent",
-                                isCompleted && "text-accent/80",
-                                isPending && "text-muted-foreground"
-                              )}
-                            >
-                              {step.label}
-                            </span>
-                          </div>
-                          {index < WORKFLOW_STEPS.length - 1 && (
-                            <div
-                              className={cn(
-                                "flex-1 h-0.5 mx-2 transition-colors duration-500",
-                                index < currentStep ? "bg-accent" : "bg-secondary"
-                              )}
-                            />
+                    return (
+                      <div key={step.key} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "8px", position: "relative" }}>
+                        <div
+                          style={{
+                            width: "32px",
+                            height: "32px",
+                            borderRadius: "50%",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            backgroundColor: isActive
+                              ? "var(--hsd-ui-color-navy-500)"
+                              : isCompleted
+                              ? "var(--hsd-ui-color-navy-50)"
+                              : "var(--hsd-ui-color-gray-100)",
+                            color: isActive
+                              ? "#fff"
+                              : isCompleted
+                              ? "var(--hsd-ui-color-navy-500)"
+                              : "var(--hsd-ui-color-gray-400)",
+                            border: isCompleted
+                              ? "1.5px solid var(--hsd-ui-color-navy-200)"
+                              : isActive
+                              ? "none"
+                              : "1.5px solid var(--hsd-ui-color-gray-200)",
+                            boxShadow: isActive ? "0 0 0 3px var(--hsd-ui-color-navy-100)" : "none",
+                            transition: "all 0.3s ease",
+                          }}
+                        >
+                          {isCompleted ? (
+                            <Check style={{ width: "16px", height: "16px", strokeWidth: 2.5 }} />
+                          ) : (
+                            <StepIcon style={{ width: "15px", height: "15px" }} />
                           )}
-                        </React.Fragment>
-                      );
-                    })}
+                        </div>
+                        <span
+                          style={{
+                            fontSize: "var(--hsd-ui-fontSizes-sm)",
+                            fontWeight: isActive ? 500 : 400,
+                            color: isActive
+                              ? "var(--hsd-ui-color-navy-500)"
+                              : isCompleted
+                              ? "var(--hsd-ui-color-gray-900)"
+                              : "var(--hsd-ui-color-gray-400)",
+                            textAlign: "center",
+                            lineHeight: "1.25",
+                            transition: "color 0.3s ease",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {step.label}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Profile Header Card */}
+          <div
+            className="border"
+            style={{ borderRadius: "8px", backgroundColor: "#fff", borderColor: "rgba(120, 134, 127, 0.2)" }}
+          >
+            <div className="p-6">
+              <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
+                {/* Icon */}
+                <div
+                  className="flex h-20 w-20 shrink-0 items-center justify-center"
+                  style={{ borderRadius: "8px", backgroundColor: "var(--hsd-ui-color-navy-50)" }}
+                >
+                  <Briefcase style={{ width: "36px", height: "36px", color: "var(--hsd-ui-color-navy-500)" }} />
+                </div>
+
+                <div className="flex-1 min-w-0 sm:pt-2">
+                  {/* Code & Title */}
+                  <h1
+                    style={{
+                      fontSize: "1.25rem",
+                      fontWeight: 600,
+                      color: "var(--hsd-ui-color-gray-900)",
+                      margin: 0,
+                    }}
+                  >
+                    {request.jobTitle?.name}
+                  </h1>
+                  <p
+                    style={{
+                      fontSize: "0.875rem",
+                      fontWeight: 400,
+                      color: "var(--hsd-ui-color-gray-600)",
+                      margin: "4px 0 0",
+                    }}
+                  >
+                    {request.department?.name}
+                  </p>
+
+                  {/* Badges */}
+                  <div className="flex items-center gap-2 mt-2 flex-wrap">
+                    <TuvBadge
+                      text={statusConfig?.label || request.status}
+                      variant={STATUS_BADGE_VARIANT[request.status]}
+                      size="sm"
+                      border
+                    />
+                    <TuvBadge
+                      text={EMPLOYMENT_TYPE_LABELS[request.employmentType as EmploymentType] || request.employmentType}
+                      variant="info"
+                      size="sm"
+                      border
+                    />
+                    {request.recruitmentCode && (
+                      <TuvBadge
+                        text={request.recruitmentCode}
+                        variant="purple"
+                        size="sm"
+                        border
+                      />
+                    )}
+                  </div>
+
+                  {/* Key facts row */}
+                  <div
+                    className="mt-5 pt-4 grid grid-cols-2 gap-x-8 gap-y-3 sm:grid-cols-4"
+                    style={{ borderTop: "1px solid rgba(120, 134, 127, 0.15)" }}
+                  >
+                    <DetailItem label="Openings" value={`${request.quantity} ${request.quantity > 1 ? "positions" : "position"}`} />
+                    <DetailItem label="Work Location" value={request.jobPlacement ? (WORK_LOCATION_LABELS[request.jobPlacement as WorkLocation] || request.jobPlacement) : ""} />
+                    <DetailItem label="Target Onboard" value={request.expectedOnboardDate ? formatShortDate(request.expectedOnboardDate) : ""} />
+                    <DetailItem
+                      label="Employee Request"
+                      value={request.code}
+                    />
                   </div>
                 </div>
               </div>
-            );
-          })()}
+            </div>
+          </div>
 
           {/* Job Details */}
-          <section className="rounded-2xl border bg-card">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
-              <div className="flex items-center gap-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
-                  <Briefcase className="h-4 w-4 text-muted-foreground" />
-                </div>
-                <h2 className="text-base font-semibold text-foreground">Job Details</h2>
-              </div>
+          <SectionCard
+            title="Job Details"
+            icon={Briefcase}
+            headerRight={
               <button
                 onClick={() => router.push(`/employee-request/${request.id}`)}
-                className="text-xs text-accent hover:underline font-medium"
+                style={{
+                  fontSize: "0.75rem",
+                  fontWeight: 500,
+                  color: "var(--hsd-ui-background-color-primary)",
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  textDecoration: "none",
+                }}
               >
                 {request.code}
               </button>
+            }
+          >
+            <div className="grid grid-cols-2 gap-x-8 gap-y-5 sm:grid-cols-3">
+              <DetailItem label="Position" value={request.jobTitle?.name || ""} />
+              <DetailItem label="Department" value={request.department?.name || ""} />
+              <DetailItem label="Employment Type" value={request.employmentType ? EMPLOYMENT_TYPE_LABELS[request.employmentType as EmploymentType] : ""} />
+              <DetailItem label="Work Location" value={request.jobPlacement ? (WORK_LOCATION_LABELS[request.jobPlacement as WorkLocation] || request.jobPlacement) : ""} />
+              <DetailItem label="Openings" value={String(request.quantity)} />
+              <DetailItem label="Target Onboard" value={request.expectedOnboardDate ? formatShortDate(request.expectedOnboardDate) : ""} />
             </div>
-            <div className="px-6 py-5">
-              <div className="grid grid-cols-2 gap-x-8 gap-y-5 sm:grid-cols-3">
-                <div>
-                  <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Position</p>
-                  <p className={`mt-0.5 text-sm font-medium ${request.jobTitle?.name ? "text-foreground" : "text-muted-foreground"}`}>
-                    {request.jobTitle?.name || "No Data"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Department</p>
-                  <p className={`mt-0.5 text-sm font-medium ${request.department?.name ? "text-foreground" : "text-muted-foreground"}`}>
-                    {request.department?.name || "No Data"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Employment Type</p>
-                  <p className="mt-0.5 text-sm font-medium text-foreground">
-                    {request.employmentType ? EMPLOYMENT_TYPE_LABELS[request.employmentType as EmploymentType] : "No Data"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Work Location</p>
-                  <p className={`mt-0.5 text-sm font-medium ${request.jobPlacement ? "text-foreground" : "text-muted-foreground"}`}>
-                    {request.jobPlacement ? (WORK_LOCATION_LABELS[request.jobPlacement as WorkLocation] || request.jobPlacement) : "No Data"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Openings</p>
-                  <p className="mt-0.5 text-sm font-medium text-foreground">{request.quantity}</p>
-                </div>
-                <div>
-                  <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Target Onboard</p>
-                  <p className={`mt-0.5 text-sm font-medium ${request.expectedOnboardDate ? "text-foreground" : "text-muted-foreground"}`}>
-                    {request.expectedOnboardDate ? formatShortDate(request.expectedOnboardDate) : "No Data"}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </section>
+          </SectionCard>
 
           {/* Candidates Section */}
-          <section className="rounded-2xl border bg-card">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
-              <div className="flex items-center gap-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                </div>
-                <div className="flex items-center gap-2">
-                  <h2 className="text-base font-semibold text-foreground">Candidates</h2>
-                  {candidates.length > 0 && (
-                    <Badge variant="secondary" className="text-xs">
-                      {candidates.length}
-                    </Badge>
-                  )}
-                </div>
-              </div>
+          <SectionCard
+            title="Candidates"
+            icon={Users}
+            titleBadge={candidates.length > 0 ? <TuvBadge text={String(candidates.length)} variant="info" size="xs" border /> : undefined}
+            headerRight={
               <div className="flex items-center gap-2">
                 {candidates.length > 0 && (
                   <div className="relative">
-                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                    <Search
+                      className="absolute left-2.5 top-1/2 -translate-y-1/2"
+                      style={{ width: "14px", height: "14px", color: "var(--hsd-ui-color-gray-400)" }}
+                    />
                     <Input
                       placeholder="Search..."
                       value={candidateSearch}
                       onChange={(e) => setCandidateSearch(e.target.value)}
-                      className="pl-8 h-10 text-sm w-[160px]"
+                      className="pl-8 h-9 text-sm w-[160px]"
+                      style={{ borderColor: "rgba(120,134,127,0.2)", borderRadius: "4px" }}
                     />
                   </div>
                 )}
                 {canInviteCandidates && (
-                  <Button onClick={() => setShowInviteDialog(true)}>
-                    <Mail />
+                  <Button onClick={() => setShowInviteDialog(true)} style={btnPrimary}>
+                    <Mail style={{ width: "16px", height: "16px", marginRight: "6px" }} />
                     Invite
                   </Button>
                 )}
               </div>
-            </div>
+            }
+          >
             {candidates.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center px-6">
-                <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-muted">
-                  <Users className="h-7 w-7 text-muted-foreground" />
+              <div className="flex flex-col items-center justify-center py-8 text-center">
+                <div
+                  className="flex h-14 w-14 items-center justify-center rounded-xl"
+                  style={{ backgroundColor: "var(--hsd-ui-color-gray-100)" }}
+                >
+                  <Users style={{ width: "28px", height: "28px", color: "var(--hsd-ui-color-gray-400)" }} />
                 </div>
-                <h4 className="mt-4 font-semibold">No candidates yet</h4>
-                <p className="mt-1 text-sm text-muted-foreground max-w-xs">
+                <h4
+                  style={{
+                    fontSize: "0.9375rem",
+                    fontWeight: 600,
+                    color: "var(--hsd-ui-color-gray-900)",
+                    margin: "16px 0 0",
+                  }}
+                >
+                  No candidates yet
+                </h4>
+                <p
+                  style={{
+                    fontSize: "0.875rem",
+                    color: "var(--hsd-ui-color-gray-500)",
+                    margin: "4px 0 0",
+                    maxWidth: "280px",
+                  }}
+                >
                   Invite candidates to apply for this position
                 </p>
                 {canInviteCandidates && (
-                  <Button variant="outline" className="mt-4" onClick={() => setShowInviteDialog(true)}>
-                    <UserPlus />
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowInviteDialog(true)}
+                    style={{ ...btnSecondary, marginTop: "16px" }}
+                  >
+                    <UserPlus style={{ width: "16px", height: "16px", marginRight: "6px" }} />
                     Invite Candidate
                   </Button>
                 )}
               </div>
             ) : (
-              <div className="overflow-x-auto">
+              <div
+                style={{
+                  margin: "0 -24px -20px",
+                  border: "1px solid rgba(120, 134, 127, 0.2)",
+                  borderRadius: "0 0 8px 8px",
+                  borderTop: "none",
+                  overflow: "hidden",
+                }}
+              >
                 <Table>
                   <TableHeader>
-                    <TableRow className="bg-muted/50 hover:bg-muted/50">
-                      <TableHead className="pl-6 w-1/4 font-medium text-muted-foreground text-xs uppercase tracking-wider">Code</TableHead>
-                      <TableHead className="w-1/4 font-medium text-muted-foreground text-xs uppercase tracking-wider">Name</TableHead>
-                      <TableHead className="w-1/4 font-medium text-muted-foreground text-xs uppercase tracking-wider">Applied</TableHead>
-                      <TableHead className="w-1/4 font-medium text-muted-foreground text-xs uppercase tracking-wider">Status</TableHead>
-                      <TableHead className="w-10 pr-6"></TableHead>
+                    <TableRow
+                      onMouseOver={undefined}
+                      onMouseOut={undefined}
+                      style={{ backgroundColor: "#F8F9FB", borderBottom: "1px solid rgba(120, 134, 127, 0.2)" }}
+                    >
+                      <TableHead>Code</TableHead>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Applied</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead style={{ width: "40px" }} />
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredCandidates.map((candidate) => (
-                      <TableRow
-                        key={candidate.id}
-                        className="group cursor-pointer"
-                        onClick={() => router.push(`/recruitment/${candidate.id}`)}
-                      >
-                        <TableCell className="pl-6 py-4">
-                          <span className="text-sm text-accent font-medium">
-                            {candidate.detail?.candidateCode || `CND-${candidate.id}`}
-                          </span>
-                        </TableCell>
-                        <TableCell className="py-4">
-                          <p className="text-sm font-medium">{candidate.fullname}</p>
-                          <p className="text-xs text-muted-foreground">{candidate.email}</p>
-                        </TableCell>
-                        <TableCell className="py-4 text-sm text-muted-foreground">
-                          {candidate.createdAt ? formatShortDate(candidate.createdAt) : "No Data"}
-                        </TableCell>
-                        <TableCell className="py-4">
-                          {getCandidateStatusBadge(deriveCandidateStatus(candidate))}
-                        </TableCell>
-                        <TableCell className="pr-6 py-4">
-                          <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {filteredCandidates.map((candidate) => {
+                      const candidateStatus = deriveCandidateStatus(candidate);
+                      const statusConf = CANDIDATE_STATUS_CONFIG[candidateStatus];
+                      return (
+                        <TableRow
+                          key={candidate.id}
+                          className="group cursor-pointer"
+                          onClick={() => router.push(`/recruitment/${candidate.id}`)}
+                        >
+                          <TableCell>
+                            <span
+                              style={{
+                                fontSize: "0.875rem",
+                                fontWeight: 500,
+                                color: "var(--hsd-ui-color-navy-500)",
+                              }}
+                            >
+                              {candidate.detail?.candidateCode || `CND-${candidate.id}`}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <p
+                              style={{
+                                fontSize: "0.875rem",
+                                fontWeight: 500,
+                                color: "var(--hsd-ui-color-gray-900)",
+                                margin: 0,
+                              }}
+                            >
+                              {candidate.fullname}
+                            </p>
+                            <p
+                              style={{
+                                fontSize: "0.75rem",
+                                color: "var(--hsd-ui-color-gray-500)",
+                                margin: "2px 0 0",
+                              }}
+                            >
+                              {candidate.email}
+                            </p>
+                          </TableCell>
+                          <TableCell
+                            style={{
+                              fontSize: "0.875rem",
+                              color: "var(--hsd-ui-color-gray-500)",
+                            }}
+                          >
+                            {candidate.createdAt ? formatShortDate(candidate.createdAt) : "No Data"}
+                          </TableCell>
+                          <TableCell>
+                            <TuvBadge
+                              text={statusConf?.label || candidateStatus}
+                              variant={CANDIDATE_STATUS_BADGE_VARIANT[candidateStatus] || "dark"}
+                              size="sm"
+                              border
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <ChevronRight
+                              style={{
+                                width: "16px",
+                                height: "16px",
+                                color: "var(--hsd-ui-color-gray-400)",
+                                opacity: 0,
+                                transition: "opacity 0.15s",
+                              }}
+                              className="group-hover:opacity-100"
+                            />
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>
             )}
-          </section>
+          </SectionCard>
         </div>
       </PageContainer>
 
@@ -702,7 +1109,10 @@ export default function RecruitmentRequestDetailPage() {
             <DialogDescription>{dialogContent.description}</DialogDescription>
           </DialogHeader>
           <div className="py-4">
-            <Label htmlFor="comment">
+            <Label
+              htmlFor="comment"
+              style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--hsd-ui-color-gray-700)" }}
+            >
               Comment {actionType === "reject" || actionType === "revise" ? "(required)" : "(optional)"}
             </Label>
             <Textarea
@@ -719,15 +1129,18 @@ export default function RecruitmentRequestDetailPage() {
               variant="outline"
               onClick={() => { setShowActionDialog(false); setActionComment(""); setActionType(null); }}
               disabled={isProcessing}
+              style={btnSecondary}
             >
               Cancel
             </Button>
             <Button
-              variant={dialogContent.buttonVariant}
               onClick={handleAction}
               disabled={isProcessing || ((actionType === "reject" || actionType === "revise") && !actionComment)}
+              style={dialogContent.isDanger ? btnDanger : btnPrimary}
             >
-              {isProcessing && <Loader2 className="animate-spin" />}
+              {isProcessing && (
+                <Loader2 className="animate-spin" style={{ width: "16px", height: "16px", marginRight: "6px" }} />
+              )}
               {dialogContent.buttonText}
             </Button>
           </DialogFooter>
@@ -738,8 +1151,14 @@ export default function RecruitmentRequestDetailPage() {
       <Dialog open={showInviteDialog} onOpenChange={setShowInviteDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Mail className="h-5 w-5" />
+            <DialogTitle
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            >
+              <Mail style={{ width: "20px", height: "20px" }} />
               Send Invitation
             </DialogTitle>
             <DialogDescription>
@@ -747,8 +1166,10 @@ export default function RecruitmentRequestDetailPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="fullname">Full Name <span className="text-destructive">*</span></Label>
+            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+              <Label style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--hsd-ui-color-gray-700)" }}>
+                Full Name <span style={{ color: "rgba(250, 55, 70, 1)" }}>*</span>
+              </Label>
               <Input
                 id="fullname"
                 placeholder="Enter candidate's full name"
@@ -757,8 +1178,10 @@ export default function RecruitmentRequestDetailPage() {
                 disabled={isSendingInvite}
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email Address <span className="text-destructive">*</span></Label>
+            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+              <Label style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--hsd-ui-color-gray-700)" }}>
+                Email Address <span style={{ color: "rgba(250, 55, 70, 1)" }}>*</span>
+              </Label>
               <Input
                 id="email"
                 type="email"
@@ -774,21 +1197,23 @@ export default function RecruitmentRequestDetailPage() {
               variant="outline"
               onClick={() => { setShowInviteDialog(false); setInviteFullName(""); setInviteEmail(""); }}
               disabled={isSendingInvite}
+              style={btnSecondary}
             >
               Cancel
             </Button>
             <Button
               onClick={handleSendInvitation}
               disabled={isSendingInvite || !inviteFullName.trim() || !inviteEmail.trim()}
+              style={btnPrimary}
             >
               {isSendingInvite ? (
                 <>
-                  <Loader2 className="animate-spin" />
+                  <Loader2 className="animate-spin" style={{ width: "16px", height: "16px", marginRight: "6px" }} />
                   Sending...
                 </>
               ) : (
                 <>
-                  <Send />
+                  <Send style={{ width: "16px", height: "16px", marginRight: "6px" }} />
                   Send Invitation
                 </>
               )}

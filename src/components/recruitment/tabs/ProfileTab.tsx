@@ -12,13 +12,171 @@ import {
   ClipboardList,
 } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+import { TuvBadge } from "@/components/shared/tuv-badge";
 import { formatShortDate } from "@/lib/utils";
 import type {
   CandidateWithRelations,
   CandidateBiodata,
 } from "@/services/candidate.service";
+
+// --- TUV button style helpers ---
+
+const btnPrimary = {
+  backgroundColor: "var(--hsd-ui-background-color-primary)",
+  borderColor: "var(--hsd-ui-border-color-primary)",
+  color: "var(--hsd-ui-text-color-primary)",
+  borderRadius: "4px",
+  height: "38px",
+  padding: "0 16px",
+  fontSize: "0.875rem",
+  fontWeight: 500,
+} as const;
+
+const btnSecondary = {
+  borderRadius: "4px",
+  height: "38px",
+  padding: "0 16px",
+  fontSize: "0.875rem",
+  fontWeight: 500,
+  borderColor: "rgba(120,134,127,0.2)",
+} as const;
+
+const btnDanger = {
+  backgroundColor: "rgba(250, 55, 70, 1)",
+  borderColor: "rgba(250, 55, 70, 1)",
+  color: "#fff",
+  borderRadius: "4px",
+  height: "38px",
+  padding: "0 16px",
+  fontSize: "0.875rem",
+  fontWeight: 500,
+} as const;
+
+// --- TUV reusable sub-components ---
+
+function DetailItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p
+        style={{
+          fontSize: "0.6875rem",
+          fontWeight: 500,
+          textTransform: "uppercase",
+          letterSpacing: "0.05em",
+          color: "var(--hsd-ui-color-gray-500)",
+          margin: 0,
+        }}
+      >
+        {label}
+      </p>
+      <p
+        style={{
+          fontSize: "0.875rem",
+          fontWeight: 500,
+          color: value ? "var(--hsd-ui-color-gray-900)" : "var(--hsd-ui-color-gray-400)",
+          margin: "2px 0 0",
+        }}
+      >
+        {value || "No Data"}
+      </p>
+    </div>
+  );
+}
+
+function SectionCard({
+  title,
+  icon: Icon,
+  children,
+}: {
+  title: string;
+  icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
+  children: React.ReactNode;
+}) {
+  return (
+    <section
+      className="border"
+      style={{
+        borderRadius: "8px",
+        backgroundColor: "#fff",
+        borderColor: "rgba(120, 134, 127, 0.2)",
+      }}
+    >
+      <div
+        className="flex items-center justify-between px-6 py-4"
+        style={{ borderBottom: "1px solid rgba(120, 134, 127, 0.15)" }}
+      >
+        <h2
+          style={{
+            fontSize: "0.9375rem",
+            fontWeight: 600,
+            color: "var(--hsd-ui-color-gray-900)",
+            margin: 0,
+          }}
+        >
+          {title}
+        </h2>
+        <div
+          className="flex h-8 w-8 items-center justify-center rounded-lg"
+          style={{ backgroundColor: "var(--hsd-ui-color-gray-100)" }}
+        >
+          <Icon
+            style={{ width: "16px", height: "16px", color: "var(--hsd-ui-color-gray-500)" }}
+          />
+        </div>
+      </div>
+      <div className="px-6 py-5">{children}</div>
+    </section>
+  );
+}
+
+// --- TUV Table sub-components ---
+
+const tableStyles = {
+  wrapper: {
+    borderRadius: "8px",
+    border: "1px solid rgba(120, 134, 127, 0.2)",
+    overflow: "hidden",
+  } as React.CSSProperties,
+  th: {
+    textAlign: "left" as const,
+    padding: "12px 16px",
+    fontSize: "0.6875rem",
+    fontWeight: 500,
+    textTransform: "uppercase" as const,
+    letterSpacing: "0.05em",
+    color: "var(--hsd-ui-color-gray-500)",
+    backgroundColor: "var(--hsd-ui-color-gray-50)",
+    borderBottom: "1px solid rgba(120, 134, 127, 0.15)",
+  } as React.CSSProperties,
+  td: {
+    padding: "12px 16px",
+    fontSize: "0.875rem",
+    color: "var(--hsd-ui-color-gray-600)",
+    borderBottom: "1px solid rgba(120, 134, 127, 0.1)",
+  } as React.CSSProperties,
+  tdBold: {
+    padding: "12px 16px",
+    fontSize: "0.875rem",
+    fontWeight: 500,
+    color: "var(--hsd-ui-color-gray-900)",
+    borderBottom: "1px solid rgba(120, 134, 127, 0.1)",
+  } as React.CSSProperties,
+};
+
+const emptyText: React.CSSProperties = {
+  fontSize: "0.875rem",
+  color: "var(--hsd-ui-color-gray-400)",
+  margin: 0,
+  fontStyle: "italic",
+};
+
+// --- Verification badge mapping ---
+
+const VERIFY_BADGE_VARIANT: Record<string, "success" | "dark"> = {
+  VERIFIED: "success",
+};
+
+// --- Main component ---
 
 interface ProfileTabProps {
   candidate: CandidateWithRelations;
@@ -30,430 +188,296 @@ export function ProfileTab({ candidate, biodata, isBiodataLoading: _isBiodataLoa
   return (
     <div className="mt-6 space-y-5">
       {/* Application Details */}
-      <section className="rounded-2xl border bg-card">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
-          <h2 className="text-base font-semibold text-foreground">Application Details</h2>
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
-            <Briefcase className="h-4 w-4 text-muted-foreground" />
-          </div>
-        </div>
-        <div className="px-6 py-5">
-          <div className="grid grid-cols-2 gap-x-8 gap-y-5 sm:grid-cols-3">
-            <div>
-              <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Candidate Code</p>
-              <p className={`mt-0.5 text-sm font-medium ${candidate.detail?.candidateCode ? "text-foreground" : "text-muted-foreground"}`}>
-                {candidate.detail?.candidateCode || "No Data"}
-              </p>
-            </div>
-            <div>
-              <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Employee Request</p>
-              <p className={`mt-0.5 text-sm font-medium ${candidate.employeeRequest?.code ? "text-foreground" : "text-muted-foreground"}`}>
-                {candidate.employeeRequest?.code || "No Data"}
-              </p>
-            </div>
-            <div>
-              <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Position Applied</p>
-              <p className={`mt-0.5 text-sm font-medium ${candidate.jobTitle?.name ? "text-foreground" : "text-muted-foreground"}`}>
-                {candidate.jobTitle?.name || "No Data"}
-              </p>
-            </div>
-            <div>
-              <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Verification Status</p>
-              <div className="mt-1">
-                <Badge variant={candidate.verify === "VERIFIED" ? "default" : "secondary"}>
-                  {candidate.verify}
-                </Badge>
-              </div>
-            </div>
-            <div>
-              <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Applied Date</p>
-              <p className={`mt-0.5 text-sm font-medium ${candidate.createdAt ? "text-foreground" : "text-muted-foreground"}`}>
-                {candidate.createdAt ? formatShortDate(candidate.createdAt) : "No Data"}
-              </p>
+      <SectionCard title="Application Details" icon={Briefcase}>
+        <div className="grid grid-cols-2 gap-x-8 gap-y-5 sm:grid-cols-3">
+          <DetailItem label="Candidate Code" value={candidate.detail?.candidateCode || ""} />
+          <DetailItem label="Employee Request" value={candidate.employeeRequest?.code || ""} />
+          <DetailItem label="Position Applied" value={candidate.jobTitle?.name || ""} />
+          <div>
+            <p
+              style={{
+                fontSize: "0.6875rem",
+                fontWeight: 500,
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+                color: "var(--hsd-ui-color-gray-500)",
+                margin: 0,
+              }}
+            >
+              Verification Status
+            </p>
+            <div style={{ marginTop: "4px" }}>
+              <TuvBadge
+                text={candidate.verify}
+                variant={VERIFY_BADGE_VARIANT[candidate.verify] || "dark"}
+                size="sm"
+                border
+              />
             </div>
           </div>
+          <DetailItem
+            label="Applied Date"
+            value={candidate.createdAt ? formatShortDate(candidate.createdAt) : ""}
+          />
         </div>
-      </section>
+      </SectionCard>
 
       {/* Personal Information */}
-      <section className="rounded-2xl border bg-card">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
-          <h2 className="text-base font-semibold text-foreground">Personal Information</h2>
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
-            <User className="h-4 w-4 text-muted-foreground" />
-          </div>
+      <SectionCard title="Personal Information" icon={User}>
+        <div className="grid grid-cols-2 gap-x-8 gap-y-5 sm:grid-cols-3">
+          <DetailItem
+            label="Birth Date"
+            value={candidate.birthDate ? formatShortDate(candidate.birthDate) : ""}
+          />
+          <DetailItem label="Birth Place" value={candidate.birthPlace || ""} />
+          <DetailItem label="Religion" value={candidate.religion || ""} />
+          <DetailItem label="Marital Status" value={candidate.marritalStatus || ""} />
+          <DetailItem label="Citizenship" value={candidate.citizenship || ""} />
         </div>
-        <div className="px-6 py-5">
-          <div className="grid grid-cols-2 gap-x-8 gap-y-5 sm:grid-cols-3">
-            <div>
-              <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Birth Date</p>
-              <p className={`mt-0.5 text-sm font-medium ${candidate.birthDate ? "text-foreground" : "text-muted-foreground"}`}>
-                {candidate.birthDate ? formatShortDate(candidate.birthDate) : "No Data"}
-              </p>
-            </div>
-            <div>
-              <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Birth Place</p>
-              <p className={`mt-0.5 text-sm font-medium ${candidate.birthPlace ? "text-foreground" : "text-muted-foreground"}`}>
-                {candidate.birthPlace || "No Data"}
-              </p>
-            </div>
-            <div>
-              <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Religion</p>
-              <p className={`mt-0.5 text-sm font-medium ${candidate.religion ? "text-foreground" : "text-muted-foreground"}`}>
-                {candidate.religion || "No Data"}
-              </p>
-            </div>
-            <div>
-              <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Marital Status</p>
-              <p className={`mt-0.5 text-sm font-medium ${candidate.marritalStatus ? "text-foreground" : "text-muted-foreground"}`}>
-                {candidate.marritalStatus || "No Data"}
-              </p>
-            </div>
-            <div>
-              <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Citizenship</p>
-              <p className={`mt-0.5 text-sm font-medium ${candidate.citizenship ? "text-foreground" : "text-muted-foreground"}`}>
-                {candidate.citizenship || "No Data"}
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
+      </SectionCard>
 
       {/* Contact Information */}
-      <section className="rounded-2xl border bg-card">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
-          <h2 className="text-base font-semibold text-foreground">Contact Information</h2>
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
-            <MapPin className="h-4 w-4 text-muted-foreground" />
+      <SectionCard title="Contact Information" icon={MapPin}>
+        <div className="grid grid-cols-2 gap-x-8 gap-y-5 sm:grid-cols-3">
+          <div className="col-span-2 sm:col-span-3">
+            <DetailItem label="Address" value={candidate.address || ""} />
           </div>
+          <DetailItem label="Resident Status" value={candidate.residentStatus || ""} />
+          <DetailItem label="Mobile Phone" value={candidate.mobilePhone || ""} />
+          <DetailItem label="Email" value={candidate.email} />
         </div>
-        <div className="px-6 py-5">
-          <div className="grid grid-cols-2 gap-x-8 gap-y-5 sm:grid-cols-3">
-            <div className="col-span-2 sm:col-span-3">
-              <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Address</p>
-              <p className={`mt-0.5 text-sm font-medium ${candidate.address ? "text-foreground" : "text-muted-foreground"}`}>
-                {candidate.address || "No Data"}
-              </p>
-            </div>
-            <div>
-              <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Resident Status</p>
-              <p className={`mt-0.5 text-sm font-medium ${candidate.residentStatus ? "text-foreground" : "text-muted-foreground"}`}>
-                {candidate.residentStatus || "No Data"}
-              </p>
-            </div>
-            <div>
-              <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Mobile Phone</p>
-              <p className={`mt-0.5 text-sm font-medium ${candidate.mobilePhone ? "text-foreground" : "text-muted-foreground"}`}>
-                {candidate.mobilePhone || "No Data"}
-              </p>
-            </div>
-            <div>
-              <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Email</p>
-              <p className="mt-0.5 text-sm font-medium text-foreground">{candidate.email}</p>
-            </div>
-          </div>
-        </div>
-      </section>
+      </SectionCard>
 
       {/* Identity Documents */}
-      <section className="rounded-2xl border bg-card">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
-          <h2 className="text-base font-semibold text-foreground">Identity Documents</h2>
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
-            <IdCard className="h-4 w-4 text-muted-foreground" />
-          </div>
+      <SectionCard title="Identity Documents" icon={IdCard}>
+        <div className="grid grid-cols-2 gap-x-8 gap-y-5">
+          <DetailItem label="ID Number (KTP)" value={candidate.idNo || ""} />
+          <DetailItem label="Tax ID (NPWP)" value={candidate.taxId || ""} />
+          <DetailItem label="BPJS ID" value={candidate.bpjsId || ""} />
+          <DetailItem label="Driving License" value={candidate.drivingLicense || ""} />
         </div>
-        <div className="px-6 py-5">
-          <div className="grid grid-cols-2 gap-x-8 gap-y-5">
-            <div>
-              <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">ID Number (KTP)</p>
-              <p className={`mt-0.5 text-sm font-medium ${candidate.idNo ? "text-foreground" : "text-muted-foreground"}`}>
-                {candidate.idNo || "No Data"}
-              </p>
-            </div>
-            <div>
-              <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Tax ID (NPWP)</p>
-              <p className={`mt-0.5 text-sm font-medium ${candidate.taxId ? "text-foreground" : "text-muted-foreground"}`}>
-                {candidate.taxId || "No Data"}
-              </p>
-            </div>
-            <div>
-              <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">BPJS ID</p>
-              <p className={`mt-0.5 text-sm font-medium ${candidate.bpjsId ? "text-foreground" : "text-muted-foreground"}`}>
-                {candidate.bpjsId || "No Data"}
-              </p>
-            </div>
-            <div>
-              <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Driving License</p>
-              <p className={`mt-0.5 text-sm font-medium ${candidate.drivingLicense ? "text-foreground" : "text-muted-foreground"}`}>
-                {candidate.drivingLicense || "No Data"}
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
+      </SectionCard>
 
       {/* Educational Background */}
-      <section className="rounded-2xl border bg-card">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
-          <h2 className="text-base font-semibold text-foreground">Educational Background</h2>
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
-            <GraduationCap className="h-4 w-4 text-muted-foreground" />
-          </div>
-        </div>
-        <div className="px-6 py-5">
-          {biodata?.education && biodata.education.length > 0 ? (
-            <div className="overflow-x-auto rounded-lg border">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-muted/50 border-b">
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground text-xs uppercase tracking-wider">School / University</th>
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground text-xs uppercase tracking-wider">City</th>
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground text-xs uppercase tracking-wider">Degree</th>
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground text-xs uppercase tracking-wider">Major</th>
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground text-xs uppercase tracking-wider">Year</th>
+      <SectionCard title="Educational Background" icon={GraduationCap}>
+        {biodata?.education && biodata.education.length > 0 ? (
+          <div className="overflow-x-auto" style={tableStyles.wrapper}>
+            <table style={{ width: "100%" }}>
+              <thead>
+                <tr>
+                  <th style={tableStyles.th}>School / University</th>
+                  <th style={tableStyles.th}>City</th>
+                  <th style={tableStyles.th}>Degree</th>
+                  <th style={tableStyles.th}>Major</th>
+                  <th style={tableStyles.th}>Year</th>
+                </tr>
+              </thead>
+              <tbody>
+                {biodata.education.map((edu, index) => (
+                  <tr
+                    key={edu.id}
+                    style={
+                      index === biodata.education.length - 1
+                        ? { borderBottom: "none" }
+                        : undefined
+                    }
+                  >
+                    <td style={tableStyles.tdBold}>{edu.schoolUniversity}</td>
+                    <td style={tableStyles.td}>{edu.city}</td>
+                    <td style={tableStyles.td}>{edu.degree}</td>
+                    <td style={tableStyles.td}>{edu.major}</td>
+                    <td style={tableStyles.td}>{edu.yearGraduate}</td>
                   </tr>
-                </thead>
-                <tbody>
-                  {biodata.education.map((edu, index) => (
-                    <tr key={edu.id} className={cn("border-b last:border-b-0", index % 2 === 0 ? "bg-transparent" : "bg-muted/30")}>
-                      <td className="py-3 px-4 font-medium">{edu.schoolUniversity}</td>
-                      <td className="py-3 px-4 text-muted-foreground">{edu.city}</td>
-                      <td className="py-3 px-4 text-muted-foreground">{edu.degree}</td>
-                      <td className="py-3 px-4 text-muted-foreground">{edu.major}</td>
-                      <td className="py-3 px-4 text-muted-foreground">{edu.yearGraduate}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground italic">No educational background data available</p>
-          )}
-        </div>
-      </section>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p style={emptyText}>No educational background data available</p>
+        )}
+      </SectionCard>
 
       {/* Work Experience */}
-      <section className="rounded-2xl border bg-card">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
-          <h2 className="text-base font-semibold text-foreground">Work Experience</h2>
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
-            <Building2 className="h-4 w-4 text-muted-foreground" />
-          </div>
-        </div>
-        <div className="px-6 py-5">
-          {biodata?.workExperience && biodata.workExperience.length > 0 ? (
-            <div className="overflow-x-auto rounded-lg border">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-muted/50 border-b">
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground text-xs uppercase tracking-wider">Company</th>
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground text-xs uppercase tracking-wider">City</th>
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground text-xs uppercase tracking-wider">Job Title</th>
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground text-xs uppercase tracking-wider">Period</th>
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground text-xs uppercase tracking-wider">Length</th>
+      <SectionCard title="Work Experience" icon={Building2}>
+        {biodata?.workExperience && biodata.workExperience.length > 0 ? (
+          <div className="overflow-x-auto" style={tableStyles.wrapper}>
+            <table style={{ width: "100%" }}>
+              <thead>
+                <tr>
+                  <th style={tableStyles.th}>Company</th>
+                  <th style={tableStyles.th}>City</th>
+                  <th style={tableStyles.th}>Job Title</th>
+                  <th style={tableStyles.th}>Period</th>
+                  <th style={tableStyles.th}>Length</th>
+                </tr>
+              </thead>
+              <tbody>
+                {biodata.workExperience.map((exp, index) => (
+                  <tr
+                    key={exp.id}
+                    style={
+                      index === biodata.workExperience.length - 1
+                        ? { borderBottom: "none" }
+                        : undefined
+                    }
+                  >
+                    <td style={tableStyles.tdBold}>{exp.company}</td>
+                    <td style={tableStyles.td}>{exp.city}</td>
+                    <td style={tableStyles.td}>{exp.jobTitle}</td>
+                    <td style={tableStyles.td}>{exp.period}</td>
+                    <td style={tableStyles.td}>{exp.lengthOfWorking}</td>
                   </tr>
-                </thead>
-                <tbody>
-                  {biodata.workExperience.map((exp, index) => (
-                    <tr key={exp.id} className={cn("border-b last:border-b-0", index % 2 === 0 ? "bg-transparent" : "bg-muted/30")}>
-                      <td className="py-3 px-4 font-medium">{exp.company}</td>
-                      <td className="py-3 px-4 text-muted-foreground">{exp.city}</td>
-                      <td className="py-3 px-4 text-muted-foreground">{exp.jobTitle}</td>
-                      <td className="py-3 px-4 text-muted-foreground">{exp.period}</td>
-                      <td className="py-3 px-4 text-muted-foreground">{exp.lengthOfWorking}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground italic">No work experience data available</p>
-          )}
-        </div>
-      </section>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p style={emptyText}>No work experience data available</p>
+        )}
+      </SectionCard>
 
       {/* Family Members */}
-      <section className="rounded-2xl border bg-card">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
-          <h2 className="text-base font-semibold text-foreground">Family Members</h2>
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </div>
-        </div>
-        <div className="px-6 py-5">
-          {biodata?.family && biodata.family.length > 0 ? (
-            <div className="overflow-x-auto rounded-lg border">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-muted/50 border-b">
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground text-xs uppercase tracking-wider">Name</th>
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground text-xs uppercase tracking-wider">Relation</th>
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground text-xs uppercase tracking-wider">Age</th>
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground text-xs uppercase tracking-wider">Education</th>
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground text-xs uppercase tracking-wider">Work</th>
+      <SectionCard title="Family Members" icon={Users}>
+        {biodata?.family && biodata.family.length > 0 ? (
+          <div className="overflow-x-auto" style={tableStyles.wrapper}>
+            <table style={{ width: "100%" }}>
+              <thead>
+                <tr>
+                  <th style={tableStyles.th}>Name</th>
+                  <th style={tableStyles.th}>Relation</th>
+                  <th style={tableStyles.th}>Age</th>
+                  <th style={tableStyles.th}>Education</th>
+                  <th style={tableStyles.th}>Work</th>
+                </tr>
+              </thead>
+              <tbody>
+                {biodata.family.map((member, index) => (
+                  <tr
+                    key={member.id}
+                    style={
+                      index === biodata.family.length - 1
+                        ? { borderBottom: "none" }
+                        : undefined
+                    }
+                  >
+                    <td style={tableStyles.tdBold}>{member.name}</td>
+                    <td style={tableStyles.td}>{member.relation}</td>
+                    <td style={tableStyles.td}>{member.age}</td>
+                    <td style={tableStyles.td}>{member.education}</td>
+                    <td style={tableStyles.td}>{member.work}</td>
                   </tr>
-                </thead>
-                <tbody>
-                  {biodata.family.map((member, index) => (
-                    <tr key={member.id} className={cn("border-b last:border-b-0", index % 2 === 0 ? "bg-transparent" : "bg-muted/30")}>
-                      <td className="py-3 px-4 font-medium">{member.name}</td>
-                      <td className="py-3 px-4 text-muted-foreground">{member.relation}</td>
-                      <td className="py-3 px-4 text-muted-foreground">{member.age}</td>
-                      <td className="py-3 px-4 text-muted-foreground">{member.education}</td>
-                      <td className="py-3 px-4 text-muted-foreground">{member.work}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground italic">No family member data available</p>
-          )}
-        </div>
-      </section>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p style={emptyText}>No family member data available</p>
+        )}
+      </SectionCard>
 
       {/* Course / Training Experience */}
-      <section className="rounded-2xl border bg-card">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
-          <h2 className="text-base font-semibold text-foreground">Course / Training Experience</h2>
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
-            <Award className="h-4 w-4 text-muted-foreground" />
-          </div>
-        </div>
-        <div className="px-6 py-5">
-          {biodata?.training && biodata.training.length > 0 ? (
-            <div className="overflow-x-auto rounded-lg border">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-muted/50 border-b">
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground text-xs uppercase tracking-wider">Course Topic</th>
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground text-xs uppercase tracking-wider">Provider</th>
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground text-xs uppercase tracking-wider">Year</th>
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground text-xs uppercase tracking-wider">City</th>
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground text-xs uppercase tracking-wider">Certificate</th>
+      <SectionCard title="Course / Training Experience" icon={Award}>
+        {biodata?.training && biodata.training.length > 0 ? (
+          <div className="overflow-x-auto" style={tableStyles.wrapper}>
+            <table style={{ width: "100%" }}>
+              <thead>
+                <tr>
+                  <th style={tableStyles.th}>Course Topic</th>
+                  <th style={tableStyles.th}>Provider</th>
+                  <th style={tableStyles.th}>Year</th>
+                  <th style={tableStyles.th}>City</th>
+                  <th style={tableStyles.th}>Certificate</th>
+                </tr>
+              </thead>
+              <tbody>
+                {biodata.training.map((course, index) => (
+                  <tr
+                    key={course.id}
+                    style={
+                      index === biodata.training.length - 1
+                        ? { borderBottom: "none" }
+                        : undefined
+                    }
+                  >
+                    <td style={tableStyles.tdBold}>{course.courseTopic}</td>
+                    <td style={tableStyles.td}>{course.provider}</td>
+                    <td style={tableStyles.td}>{course.year}</td>
+                    <td style={tableStyles.td}>{course.city}</td>
+                    <td style={tableStyles.td}>{course.certificate}</td>
                   </tr>
-                </thead>
-                <tbody>
-                  {biodata.training.map((course, index) => (
-                    <tr key={course.id} className={cn("border-b last:border-b-0", index % 2 === 0 ? "bg-transparent" : "bg-muted/30")}>
-                      <td className="py-3 px-4 font-medium">{course.courseTopic}</td>
-                      <td className="py-3 px-4 text-muted-foreground">{course.provider}</td>
-                      <td className="py-3 px-4 text-muted-foreground">{course.year}</td>
-                      <td className="py-3 px-4 text-muted-foreground">{course.city}</td>
-                      <td className="py-3 px-4 text-muted-foreground">{course.certificate}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground italic">No course/training data available</p>
-          )}
-        </div>
-      </section>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p style={emptyText}>No course/training data available</p>
+        )}
+      </SectionCard>
 
       {/* Self Assessment */}
-      <section className="rounded-2xl border bg-card">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
-          <h2 className="text-base font-semibold text-foreground">Self Assessment</h2>
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
-            <ClipboardList className="h-4 w-4 text-muted-foreground" />
+      <SectionCard title="Self Assessment" icon={ClipboardList}>
+        {biodata?.selfAssessment ? (
+          <div className="grid gap-6 md:grid-cols-2">
+            {[
+              { question: "What caused you to leave your last job?", answer: biodata.selfAssessment.reasonLeavingLastJob },
+              { question: "Describe your last job description!", answer: biodata.selfAssessment.lastJobDescription },
+              { question: "What is your reason/purpose for applying to this company?", answer: biodata.selfAssessment.reasonApplying },
+              { question: "What tasks/jobs are you good at, related to the position you are applying for?", answer: biodata.selfAssessment.relevantSkills },
+              { question: "Last salary received?", answer: biodata.selfAssessment.lastSalary },
+              { question: "What salary do you expect?", answer: biodata.selfAssessment.expectedSalary },
+              { question: "Active language?", answer: biodata.selfAssessment.activeLanguage },
+              { question: "Are you willing to transfer/rotate at work?", answer: biodata.selfAssessment.willingToTransfer },
+              { question: "Are you willing to do double work for the company due to limited personnel?", answer: biodata.selfAssessment.willingToDoubleWork },
+              { question: "Who are the employees you know at this company?", answer: biodata.selfAssessment.knownEmployees },
+              { question: "When are you ready to work?", answer: biodata.selfAssessment.readyToWork },
+              { question: "What is your relationship with the employee?", answer: biodata.selfAssessment.employeeRelationship },
+              { question: "Your reference contact name", answer: biodata.selfAssessment.referenceContactName },
+              { question: "Your reference contact phone no", answer: biodata.selfAssessment.referenceContactPhone },
+            ].map((item, index) => (
+              <div key={index} style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                <p
+                  style={{
+                    fontSize: "0.875rem",
+                    fontWeight: 500,
+                    color: "var(--hsd-ui-color-gray-700)",
+                    margin: 0,
+                  }}
+                >
+                  {item.question}
+                </p>
+                <div
+                  style={{
+                    backgroundColor: "rgba(120, 134, 127, 0.06)",
+                    border: "1px solid rgba(120, 134, 127, 0.2)",
+                    borderRadius: "4px",
+                    padding: "10px 12px",
+                    minHeight: "38px",
+                    display: "flex",
+                    alignItems: "center",
+                  }}
+                >
+                  <p
+                    style={{
+                      fontSize: "0.875rem",
+                      fontWeight: 400,
+                      color: item.answer
+                        ? "var(--hsd-ui-color-gray-900)"
+                        : "var(--hsd-ui-color-gray-400)",
+                      margin: 0,
+                      lineHeight: 1.5,
+                      fontStyle: item.answer ? "normal" : "italic",
+                    }}
+                  >
+                    {item.answer || "No Data"}
+                  </p>
+                </div>
+              </div>
+            ))}
           </div>
-        </div>
-        <div className="px-6 py-5">
-          {biodata?.selfAssessment ? (
-            <div className="grid gap-6 md:grid-cols-2">
-              <div className="space-y-2">
-                <p className="text-sm font-semibold text-foreground">What caused you to leave your last job?</p>
-                <div className="bg-secondary/50 rounded-lg p-4 min-h-[80px]">
-                  <p className="text-sm text-foreground/80 leading-relaxed">{biodata.selfAssessment.reasonLeavingLastJob || "No Data"}</p>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <p className="text-sm font-semibold text-foreground">Describe your last job description!</p>
-                <div className="bg-secondary/50 rounded-lg p-4 min-h-[80px]">
-                  <p className="text-sm text-foreground/80 leading-relaxed">{biodata.selfAssessment.lastJobDescription || "No Data"}</p>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <p className="text-sm font-semibold text-foreground">What is your reason/purpose for applying to this company?</p>
-                <div className="bg-secondary/50 rounded-lg p-4 min-h-[80px]">
-                  <p className="text-sm text-foreground/80 leading-relaxed">{biodata.selfAssessment.reasonApplying || "No Data"}</p>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <p className="text-sm font-semibold text-foreground">What tasks/jobs are you good at, related to the position you are applying for?</p>
-                <div className="bg-secondary/50 rounded-lg p-4 min-h-[80px]">
-                  <p className="text-sm text-foreground/80 leading-relaxed">{biodata.selfAssessment.relevantSkills || "No Data"}</p>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <p className="text-sm font-semibold text-foreground">Last salary received?</p>
-                <div className="bg-secondary/50 rounded-lg p-4">
-                  <p className="text-sm text-foreground/80">{biodata.selfAssessment.lastSalary || "No Data"}</p>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <p className="text-sm font-semibold text-foreground">What salary do you expect?</p>
-                <div className="bg-secondary/50 rounded-lg p-4">
-                  <p className="text-sm text-foreground/80">{biodata.selfAssessment.expectedSalary || "No Data"}</p>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <p className="text-sm font-semibold text-foreground">Active language?</p>
-                <div className="bg-secondary/50 rounded-lg p-4">
-                  <p className="text-sm text-foreground/80">{biodata.selfAssessment.activeLanguage || "No Data"}</p>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <p className="text-sm font-semibold text-foreground">Are you willing to transfer/rotate at work?</p>
-                <div className="bg-secondary/50 rounded-lg p-4">
-                  <p className="text-sm text-foreground/80">{biodata.selfAssessment.willingToTransfer || "No Data"}</p>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <p className="text-sm font-semibold text-foreground">Are you willing to do double work for the company due to limited personnel?</p>
-                <div className="bg-secondary/50 rounded-lg p-4">
-                  <p className="text-sm text-foreground/80">{biodata.selfAssessment.willingToDoubleWork || "No Data"}</p>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <p className="text-sm font-semibold text-foreground">Who are the employees you know at this company?</p>
-                <div className="bg-secondary/50 rounded-lg p-4">
-                  <p className="text-sm text-foreground/80">{biodata.selfAssessment.knownEmployees || "No Data"}</p>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <p className="text-sm font-semibold text-foreground">When are you ready to work?</p>
-                <div className="bg-secondary/50 rounded-lg p-4">
-                  <p className="text-sm text-foreground/80">{biodata.selfAssessment.readyToWork || "No Data"}</p>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <p className="text-sm font-semibold text-foreground">What is your relationship with the employee?</p>
-                <div className="bg-secondary/50 rounded-lg p-4">
-                  <p className="text-sm text-foreground/80">{biodata.selfAssessment.employeeRelationship || "No Data"}</p>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <p className="text-sm font-semibold text-foreground">Your reference contact name</p>
-                <div className="bg-secondary/50 rounded-lg p-4">
-                  <p className="text-sm text-foreground/80">{biodata.selfAssessment.referenceContactName || "No Data"}</p>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <p className="text-sm font-semibold text-foreground">Your reference contact phone no</p>
-                <div className="bg-secondary/50 rounded-lg p-4">
-                  <p className="text-sm text-foreground/80">{biodata.selfAssessment.referenceContactPhone || "No Data"}</p>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground italic">No self assessment data available</p>
-          )}
-        </div>
-      </section>
+        ) : (
+          <p style={emptyText}>No self assessment data available</p>
+        )}
+      </SectionCard>
     </div>
   );
 }

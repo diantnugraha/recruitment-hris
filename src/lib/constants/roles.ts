@@ -21,8 +21,8 @@ export const ROLE_LABELS: Record<RoleId, string> = {
   [ROLES.AUDITOR]: 'Auditor',
   [ROLES.FINANCE]: 'Finance',
   [ROLES.MANAGER]: 'PC Head/Manager',
-  [ROLES.MANAGEMENT]: 'Management',
-  [ROLES.HR_MANAGER]: 'HR Manager',
+  [ROLES.MANAGEMENT]: 'Director',
+  [ROLES.HR_MANAGER]: 'HR Coordinator',
   [ROLES.CANDIDATES]: 'Candidates',
   [ROLES.HOD]: 'Head Of Division',
 };
@@ -61,9 +61,9 @@ export const ROLE_CONFIG: Record<
     description: 'Division head access',
   },
   [ROLES.MANAGEMENT]: {
-    label: 'Management',
-    variant: 'secondary',
-    description: 'Management level access',
+    label: 'Director',
+    variant: 'destructive',
+    description: 'Director level access with full CRUD permissions',
   },
   [ROLES.AUDITOR]: {
     label: 'Auditor',
@@ -76,9 +76,9 @@ export const ROLE_CONFIG: Record<
     description: 'Finance access',
   },
   [ROLES.HR_MANAGER]: {
-    label: 'HR Manager',
+    label: 'HR Coordinator',
     variant: 'default',
-    description: 'HR Manager access',
+    description: 'HR Coordinator access',
   },
   [ROLES.CANDIDATES]: {
     label: 'Candidates',
@@ -92,8 +92,10 @@ export const ROLE_CONFIG: Record<
  * Must match backend HR_ROLE_IDS in recruitment-hris-api/src/middlewares/roleMiddleware.ts.
  */
 export const HR_ROLES: RoleId[] = [
+  ROLES.HUMAN_RESOURCES,
   ROLES.HR_MANAGER,
   ROLES.SUPER_ADMIN,
+  ROLES.MANAGEMENT,  // Director - full CRUD access like HR
 ];
 
 /**

@@ -2,15 +2,26 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { ArrowLeft, Loader2, Save, Send, AlertTriangle, Info } from "lucide-react";
+import {
+  ChevronLeft,
+  Loader2,
+  Save,
+  Send,
+  AlertTriangle,
+  Info,
+  Briefcase,
+  UserCheck,
+  CalendarClock,
+  FileText,
+} from "lucide-react";
 
 import { Header } from "@/components/layout/header";
 import { PageContainer } from "@/components/layout/page-container";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -22,7 +33,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   Dialog,
@@ -48,6 +58,81 @@ import {
 import { ROLES } from "@/lib/constants/roles";
 import { useAuthStore } from "@/stores/auth-store";
 import type { JobTitle, Department, RestBudgetData } from "@/types";
+
+/* TUV button style helpers */
+const btnPrimary = {
+  backgroundColor: "var(--hsd-ui-background-color-primary)",
+  borderColor: "var(--hsd-ui-border-color-primary)",
+  color: "var(--hsd-ui-text-color-primary)",
+  borderRadius: "4px",
+  height: "38px",
+  padding: "0 16px",
+  fontSize: "0.875rem",
+  fontWeight: 500,
+} as const;
+
+const btnSecondary = {
+  borderRadius: "4px",
+  height: "38px",
+  padding: "0 16px",
+  fontSize: "0.875rem",
+  fontWeight: 500,
+  borderColor: "rgba(120,134,127,0.2)",
+} as const;
+
+/* Label style helper */
+const labelStyle = {
+  fontSize: "0.875rem",
+  fontWeight: 500,
+  color: "var(--hsd-ui-color-gray-700)",
+} as const;
+
+/* Section card wrapper */
+function SectionCard({
+  title,
+  icon: Icon,
+  children,
+}: {
+  title: string;
+  icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
+  children: React.ReactNode;
+}) {
+  return (
+    <section
+      className="border"
+      style={{
+        borderRadius: "8px",
+        backgroundColor: "#fff",
+        borderColor: "rgba(120, 134, 127, 0.2)",
+      }}
+    >
+      <div
+        className="flex items-center justify-between px-6 py-4"
+        style={{ borderBottom: "1px solid rgba(120, 134, 127, 0.15)" }}
+      >
+        <h2
+          style={{
+            fontSize: "0.9375rem",
+            fontWeight: 600,
+            color: "var(--hsd-ui-color-gray-900)",
+            margin: 0,
+          }}
+        >
+          {title}
+        </h2>
+        <div
+          className="flex h-8 w-8 items-center justify-center rounded-lg"
+          style={{ backgroundColor: "var(--hsd-ui-color-gray-100)" }}
+        >
+          <Icon
+            style={{ width: "16px", height: "16px", color: "var(--hsd-ui-color-gray-500)" }}
+          />
+        </div>
+      </div>
+      <div className="px-6 py-5">{children}</div>
+    </section>
+  );
+}
 
 // --- Schema ---
 
@@ -216,8 +301,8 @@ export default function NewEmployeeRequestPage() {
         job_title_id: Number(data.jobTitleId),
         department_id: Number(data.departmentId),
         // DB purpose = dropdown (new/replacement), DB reason = free text justification
-        purpose: data.reason,    // FE "Reason" dropdown → DB purpose
-        reason: data.purpose,    // FE "Purpose/Justification" textarea → DB reason
+        purpose: data.reason,    // FE "Reason" dropdown -> DB purpose
+        reason: data.purpose,    // FE "Purpose/Justification" textarea -> DB reason
         quantity: data.headcount,
         employment_type: data.employmentType,
         education: data.education,
@@ -286,10 +371,13 @@ export default function NewEmployeeRequestPage() {
   if (isLoadingData) {
     return (
       <>
-        <Header title="New Employee Request" />
+        <Header />
         <PageContainer>
-          <div className="flex items-center justify-center h-64">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "300px" }}>
+            <Loader2
+              className="animate-spin"
+              style={{ width: "24px", height: "24px", color: "var(--hsd-ui-color-navy-500)" }}
+            />
           </div>
         </PageContainer>
       </>
@@ -298,431 +386,471 @@ export default function NewEmployeeRequestPage() {
 
   return (
     <>
-      <Header title="New Employee Request" />
+      <Header />
       <PageContainer>
-        <div className="space-y-6">
-          {/* Back button */}
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <Button variant="ghost" onClick={() => router.push("/employee-request")}>
-              <ArrowLeft />
-              Back
-            </Button>
-            <div className="flex items-center gap-2">
+        <div className="space-y-5">
+          {/* Top Bar -- back link + title + actions */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <Link
+                href="/employee-request"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "4px",
+                  fontSize: "0.875rem",
+                  fontWeight: 400,
+                  color: "var(--hsd-ui-color-gray-500)",
+                  textDecoration: "none",
+                }}
+              >
+                <ChevronLeft style={{ width: "16px", height: "16px" }} />
+                Employee Request
+              </Link>
+              <h1
+                style={{
+                  fontSize: "1.5rem",
+                  fontWeight: 600,
+                  color: "var(--hsd-ui-color-gray-900)",
+                  margin: "8px 0 0",
+                }}
+              >
+                Create New Employee Request
+              </h1>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
               <Button
                 variant="outline"
                 onClick={handleSaveDraft}
                 disabled={isSubmitting}
+                style={btnSecondary}
               >
                 {isSubmitting ? (
-                  <Loader2 className="animate-spin" />
+                  <Loader2 className="animate-spin" style={{ width: "16px", height: "16px", marginRight: "6px" }} />
                 ) : (
-                  <Save />
+                  <Save style={{ width: "16px", height: "16px", marginRight: "6px" }} />
                 )}
                 Save as Draft
               </Button>
-              <Button onClick={handleOpenSubmitDialog} disabled={isSubmitting}>
+              <Button
+                onClick={handleOpenSubmitDialog}
+                disabled={isSubmitting}
+                style={btnPrimary}
+              >
                 {isSubmitting ? (
-                  <Loader2 className="animate-spin" />
+                  <Loader2 className="animate-spin" style={{ width: "16px", height: "16px", marginRight: "6px" }} />
                 ) : (
-                  <Send />
+                  <Send style={{ width: "16px", height: "16px", marginRight: "6px" }} />
                 )}
                 Submit Request
               </Button>
             </div>
           </div>
 
-          <form className="space-y-6">
-            {/* Position Details */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Position Details</CardTitle>
-                <CardDescription>
-                  Specify the position and department for this request
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="jobTitleId">
-                      Job Title <span className="text-destructive">*</span>
-                    </Label>
-                    <SearchableSelect
-                      options={jobTitles.map((jt) => ({
-                        value: String(jt.id),
-                        label: jt.name,
-                      }))}
-                      value={watchedJobTitleId}
-                      onValueChange={(value) => setValue("jobTitleId", value)}
-                      placeholder="Select job title"
-                      searchPlaceholder="Search job title..."
-                      emptyText="No job title found."
-                    />
-                    {errors.jobTitleId && (
-                      <p className="text-sm text-destructive">{errors.jobTitleId.message}</p>
+          {/* Position Details */}
+          <SectionCard title="Position Details" icon={Briefcase}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
+              {/* Job Title */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                <Label style={labelStyle}>Job Title *</Label>
+                <SearchableSelect
+                  options={jobTitles.map((jt) => ({
+                    value: String(jt.id),
+                    label: jt.name,
+                  }))}
+                  value={watchedJobTitleId}
+                  onValueChange={(value) => setValue("jobTitleId", value)}
+                  placeholder="Select job title"
+                  searchPlaceholder="Search job title..."
+                  emptyText="No job title found."
+                />
+                {errors.jobTitleId && (
+                  <p style={{ fontSize: "0.75rem", color: "var(--destructive)", margin: 0 }}>{errors.jobTitleId.message}</p>
+                )}
+              </div>
+
+              {/* Department */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                <Label style={labelStyle}>Department *</Label>
+                <SearchableSelect
+                  options={departments.map((d) => ({
+                    value: String(d.id),
+                    label: d.name,
+                  }))}
+                  value={watchedDepartmentId}
+                  onValueChange={(value) => setValue("departmentId", value)}
+                  placeholder="Select department"
+                  searchPlaceholder="Search department..."
+                  emptyText="No department found."
+                  disabled={isManager}
+                />
+                {errors.departmentId && (
+                  <p style={{ fontSize: "0.75rem", color: "var(--destructive)", margin: 0 }}>{errors.departmentId.message}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Budget Info Card */}
+            {watchedDepartmentId && watchedJobTitleId && (
+              <div
+                style={{ marginTop: "20px" }}
+                className={`rounded-lg border p-4 ${
+                  !jobTitleCategory
+                    ? "border-yellow-200 bg-yellow-50 dark:border-yellow-900 dark:bg-yellow-950"
+                    : availableBudget !== null && availableBudget <= 0
+                      ? "border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950"
+                      : "border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950"
+                }`}
+              >
+                {isLoadingBudget ? (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Loading budget info...
+                  </div>
+                ) : !jobTitleCategory ? (
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="h-5 w-5 text-yellow-600 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
+                        Job title has no category
+                      </p>
+                      <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">
+                        This job title does not have a category (Technical/Administration). Please update the job title first before submitting.
+                      </p>
+                    </div>
+                  </div>
+                ) : restBudget ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      {availableBudget !== null && availableBudget <= 0 ? (
+                        <AlertTriangle className="h-5 w-5 text-red-600 shrink-0" />
+                      ) : (
+                        <Info className="h-5 w-5 text-blue-600 shrink-0" />
+                      )}
+                      <p className="text-sm font-medium">
+                        Budget Info — {jobTitleCategory}
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Budget</p>
+                        <p className="text-lg font-semibold">{restBudget.budget[budgetCategory!]}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Active</p>
+                        <p className="text-lg font-semibold">{restBudget.activeEmployees[budgetCategory!]}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Pending</p>
+                        <p className="text-lg font-semibold">{restBudget.pendingRequests[budgetCategory!]}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Available</p>
+                        <p className={`text-lg font-semibold ${
+                          availableBudget !== null && availableBudget <= 0
+                            ? "text-red-600"
+                            : "text-green-600"
+                        }`}>
+                          {availableBudget}
+                        </p>
+                      </div>
+                    </div>
+                    {availableBudget !== null && availableBudget <= 0 && (
+                      <p className="text-xs text-red-600 dark:text-red-400">
+                        Insufficient budget. You cannot submit this request until more budget is available.
+                      </p>
                     )}
                   </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="departmentId">
-                      Department <span className="text-destructive">*</span>
-                    </Label>
-                    <SearchableSelect
-                      options={departments.map((d) => ({
-                        value: String(d.id),
-                        label: d.name,
-                      }))}
-                      value={watchedDepartmentId}
-                      onValueChange={(value) => setValue("departmentId", value)}
-                      placeholder="Select department"
-                      searchPlaceholder="Search department..."
-                      emptyText="No department found."
-                      disabled={isManager}
-                    />
-                    {errors.departmentId && (
-                      <p className="text-sm text-destructive">{errors.departmentId.message}</p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Budget Info Card */}
-                {watchedDepartmentId && watchedJobTitleId && (
-                  <div className={`rounded-lg border p-4 ${
-                    !jobTitleCategory
-                      ? "border-yellow-200 bg-yellow-50 dark:border-yellow-900 dark:bg-yellow-950"
-                      : availableBudget !== null && availableBudget <= 0
-                        ? "border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950"
-                        : "border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950"
-                  }`}>
-                    {isLoadingBudget ? (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Loading budget info...
-                      </div>
-                    ) : !jobTitleCategory ? (
-                      <div className="flex items-start gap-2">
-                        <AlertTriangle className="h-5 w-5 text-yellow-600 shrink-0 mt-0.5" />
-                        <div>
-                          <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
-                            Job title has no category
-                          </p>
-                          <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">
-                            This job title does not have a category (Technical/Administration). Please update the job title first before submitting.
-                          </p>
-                        </div>
-                      </div>
-                    ) : restBudget ? (
-                      <div className="space-y-3">
-                        <div className="flex items-center gap-2">
-                          {availableBudget !== null && availableBudget <= 0 ? (
-                            <AlertTriangle className="h-5 w-5 text-red-600 shrink-0" />
-                          ) : (
-                            <Info className="h-5 w-5 text-blue-600 shrink-0" />
-                          )}
-                          <p className="text-sm font-medium">
-                            Budget Info — {jobTitleCategory}
-                          </p>
-                        </div>
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
-                          <div>
-                            <p className="text-xs text-muted-foreground">Budget</p>
-                            <p className="text-lg font-semibold">{restBudget.budget[budgetCategory!]}</p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-muted-foreground">Active</p>
-                            <p className="text-lg font-semibold">{restBudget.activeEmployees[budgetCategory!]}</p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-muted-foreground">Pending</p>
-                            <p className="text-lg font-semibold">{restBudget.pendingRequests[budgetCategory!]}</p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-muted-foreground">Available</p>
-                            <p className={`text-lg font-semibold ${
-                              availableBudget !== null && availableBudget <= 0
-                                ? "text-red-600"
-                                : "text-green-600"
-                            }`}>
-                              {availableBudget}
-                            </p>
-                          </div>
-                        </div>
-                        {availableBudget !== null && availableBudget <= 0 && (
-                          <p className="text-xs text-red-600 dark:text-red-400">
-                            Insufficient budget. You cannot submit this request until more budget is available.
-                          </p>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Info className="h-4 w-4" />
-                        No budget allocated for this department in the current year.
-                      </div>
-                    )}
+                ) : (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Info className="h-4 w-4" />
+                    No budget allocated for this department in the current year.
                   </div>
                 )}
+              </div>
+            )}
 
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="reason">
-                      Reason <span className="text-destructive">*</span>
-                    </Label>
-                    <Select
-                      value={watchedReason}
-                      onValueChange={(value) => setValue("reason", value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select reason" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {REQUEST_REASON_OPTIONS.map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {errors.reason && (
-                      <p className="text-sm text-destructive">{errors.reason.message}</p>
-                    )}
-                  </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginTop: "20px" }}>
+              {/* Reason */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                <Label style={labelStyle}>Reason *</Label>
+                <Select
+                  value={watchedReason}
+                  onValueChange={(value) => setValue("reason", value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select reason" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {REQUEST_REASON_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.reason && (
+                  <p style={{ fontSize: "0.75rem", color: "var(--destructive)", margin: 0 }}>{errors.reason.message}</p>
+                )}
+              </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="employmentType">
-                      Employment Type <span className="text-destructive">*</span>
-                    </Label>
-                    <Select
-                      value={watchedEmploymentType}
-                      onValueChange={(value) => setValue("employmentType", value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {EMPLOYMENT_TYPE_OPTIONS.map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {errors.employmentType && (
-                      <p className="text-sm text-destructive">{errors.employmentType.message}</p>
-                    )}
-                  </div>
-                </div>
+              {/* Employment Type */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                <Label style={labelStyle}>Employment Type *</Label>
+                <Select
+                  value={watchedEmploymentType}
+                  onValueChange={(value) => setValue("employmentType", value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {EMPLOYMENT_TYPE_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.employmentType && (
+                  <p style={{ fontSize: "0.75rem", color: "var(--destructive)", margin: 0 }}>{errors.employmentType.message}</p>
+                )}
+              </div>
+            </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="purpose">
-                    Purpose / Justification <span className="text-destructive">*</span>
-                  </Label>
-                  <Textarea
-                    placeholder="Explain why this position is needed..."
-                    rows={3}
-                    {...register("purpose")}
+            <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginTop: "20px" }}>
+              <Label style={labelStyle}>Purpose / Justification *</Label>
+              <Textarea
+                placeholder="Explain why this position is needed..."
+                rows={3}
+                {...register("purpose")}
+              />
+              {errors.purpose && (
+                <p style={{ fontSize: "0.75rem", color: "var(--destructive)", margin: 0 }}>{errors.purpose.message}</p>
+              )}
+            </div>
+          </SectionCard>
+
+          {/* Requirements */}
+          <SectionCard title="Requirements" icon={UserCheck}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
+              {/* Education Level */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                <Label style={labelStyle}>Education Level *</Label>
+                <Select
+                  value={watchedEducation}
+                  onValueChange={(value) => setValue("education", value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select education" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {EDUCATION_LEVEL_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.education && (
+                  <p style={{ fontSize: "0.75rem", color: "var(--destructive)", margin: 0 }}>{errors.education.message}</p>
+                )}
+              </div>
+
+              {/* Experience */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                <Label style={labelStyle}>Experience *</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    min={0}
+                    placeholder="e.g., 2"
+                    className="w-24"
+                    {...register("experience")}
                   />
-                  {errors.purpose && (
-                    <p className="text-sm text-destructive">{errors.purpose.message}</p>
-                  )}
+                  <span style={{ fontSize: "0.875rem", color: "var(--hsd-ui-color-gray-500)" }}>years</span>
                 </div>
-              </CardContent>
-            </Card>
+                {errors.experience && (
+                  <p style={{ fontSize: "0.75rem", color: "var(--destructive)", margin: 0 }}>{errors.experience.message}</p>
+                )}
+              </div>
+            </div>
 
-            {/* Requirements */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Requirements</CardTitle>
-                <CardDescription>
-                  Define the qualifications and requirements for candidates
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="education">
-                      Education Level <span className="text-destructive">*</span>
-                    </Label>
-                    <Select
-                      value={watchedEducation}
-                      onValueChange={(value) => setValue("education", value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select education" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {EDUCATION_LEVEL_OPTIONS.map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {errors.education && (
-                      <p className="text-sm text-destructive">{errors.education.message}</p>
-                    )}
-                  </div>
+            <div
+              style={{
+                borderTop: "1px solid rgba(120, 134, 127, 0.15)",
+                marginTop: "20px",
+                paddingTop: "20px",
+              }}
+            />
 
-                  <div className="space-y-2">
-                    <Label htmlFor="experience">
-                      Experience <span className="text-destructive">*</span>
-                    </Label>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="number"
-                        min={0}
-                        placeholder="e.g., 2"
-                        className="w-24"
-                        {...register("experience")}
-                      />
-                      <span className="text-sm text-muted-foreground">years</span>
-                    </div>
-                    {errors.experience && (
-                      <p className="text-sm text-destructive">{errors.experience.message}</p>
-                    )}
-                  </div>
-                </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "20px" }}>
+              {/* Gender Preference */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                <Label style={labelStyle}>Gender Preference *</Label>
+                <Select
+                  value={watchedGenderPreference}
+                  onValueChange={(value) => setValue("genderPreference", value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select preference" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {GENDER_PREFERENCE_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-                <Separator />
+              {/* Age Min */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                <Label style={labelStyle}>Age Min</Label>
+                <Input
+                  type="number"
+                  min={18}
+                  max={60}
+                  placeholder="e.g., 22"
+                  {...register("ageMin")}
+                />
+              </div>
 
-                <div className="grid gap-4 sm:grid-cols-3">
-                  <div className="space-y-2">
-                    <Label htmlFor="genderPreference">
-                      Gender Preference <span className="text-destructive">*</span>
-                    </Label>
-                    <Select
-                      value={watchedGenderPreference}
-                      onValueChange={(value) => setValue("genderPreference", value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select preference" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {GENDER_PREFERENCE_OPTIONS.map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+              {/* Age Max */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                <Label style={labelStyle}>Age Max</Label>
+                <Input
+                  type="number"
+                  min={18}
+                  max={60}
+                  placeholder="e.g., 35"
+                  {...register("ageMax")}
+                />
+              </div>
+            </div>
+          </SectionCard>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="ageMin">Age Min</Label>
-                    <Input
-                      type="number"
-                      min={18}
-                      max={60}
-                      placeholder="e.g., 22"
-                      {...register("ageMin")}
-                    />
-                  </div>
+          {/* Headcount & Timeline */}
+          <SectionCard title="Headcount & Timeline" icon={CalendarClock}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
+              {/* Headcount */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                <Label style={labelStyle}>Headcount *</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  placeholder="e.g., 5"
+                  {...register("headcount")}
+                />
+                {errors.headcount && (
+                  <p style={{ fontSize: "0.75rem", color: "var(--destructive)", margin: 0 }}>{errors.headcount.message}</p>
+                )}
+              </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="ageMax">Age Max</Label>
-                    <Input
-                      type="number"
-                      min={18}
-                      max={60}
-                      placeholder="e.g., 35"
-                      {...register("ageMax")}
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+              {/* Expected Onboard Date */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                <Label style={labelStyle}>Expected Onboard Date</Label>
+                <Input
+                  type="date"
+                  {...register("expectedOnboardDate")}
+                />
+              </div>
+            </div>
 
-            {/* Headcount & Timeline */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Headcount & Timeline</CardTitle>
-                <CardDescription>
-                  Set the headcount and expected timeline
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="headcount">
-                      Headcount <span className="text-destructive">*</span>
-                    </Label>
-                    <Input
-                      type="number"
-                      min={1}
-                      placeholder="e.g., 5"
-                      {...register("headcount")}
-                    />
-                    {errors.headcount && (
-                      <p className="text-sm text-destructive">{errors.headcount.message}</p>
-                    )}
-                  </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginTop: "20px" }}>
+              <Label style={labelStyle}>Work Location / Placement</Label>
+              <Select
+                value={watchedJobPlacement}
+                onValueChange={(value) => setValue("jobPlacement", value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select location" />
+                </SelectTrigger>
+                <SelectContent>
+                  {WORK_LOCATION_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </SectionCard>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="expectedOnboardDate">Expected Onboard Date</Label>
-                    <Input
-                      type="date"
-                      {...register("expectedOnboardDate")}
-                    />
-                  </div>
-                </div>
+          {/* Job Description */}
+          <SectionCard title="Job Description" icon={FileText}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                <Label style={labelStyle}>General Job Purpose</Label>
+                <LexicalEditor
+                  value={watchedGeneralJobPurpose}
+                  onChange={(val) => setValue("generalJobPurpose", val)}
+                  placeholder="Describe the general purpose of this position..."
+                />
+              </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="jobPlacement">Work Location / Placement</Label>
-                  <Select
-                    value={watchedJobPlacement}
-                    onValueChange={(value) => setValue("jobPlacement", value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select location" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {WORK_LOCATION_OPTIONS.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </CardContent>
-            </Card>
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                <Label style={labelStyle}>Job Description</Label>
+                <LexicalEditor
+                  value={watchedJobDescription}
+                  onChange={(val) => setValue("jobDescription", val)}
+                  placeholder="Describe the role, responsibilities, and day-to-day activities..."
+                />
+              </div>
 
-            {/* Job Description */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Job Description</CardTitle>
-                <CardDescription>
-                  Provide detailed job description and requirements
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-2">
-                  <Label>General Job Purpose</Label>
-                  <LexicalEditor
-                    value={watchedGeneralJobPurpose}
-                    onChange={(val) => setValue("generalJobPurpose", val)}
-                    placeholder="Describe the general purpose of this position..."
-                  />
-                </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                <Label style={labelStyle}>Job Requirement</Label>
+                <LexicalEditor
+                  value={watchedJobRequirement}
+                  onChange={(val) => setValue("jobRequirement", val)}
+                  placeholder="List the requirements, qualifications, and skills needed..."
+                />
+              </div>
+            </div>
+          </SectionCard>
 
-                <div className="space-y-2">
-                  <Label>Job Description</Label>
-                  <LexicalEditor
-                    value={watchedJobDescription}
-                    onChange={(val) => setValue("jobDescription", val)}
-                    placeholder="Describe the role, responsibilities, and day-to-day activities..."
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Job Requirement</Label>
-                  <LexicalEditor
-                    value={watchedJobRequirement}
-                    onChange={(val) => setValue("jobRequirement", val)}
-                    placeholder="List the requirements, qualifications, and skills needed..."
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          </form>
+          {/* Action Buttons (bottom) */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "8px" }}>
+            <Button
+              variant="outline"
+              onClick={() => router.push("/employee-request")}
+              disabled={isSubmitting}
+              style={btnSecondary}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleSaveDraft}
+              disabled={isSubmitting}
+              style={btnSecondary}
+            >
+              {isSubmitting ? (
+                <Loader2 className="animate-spin" style={{ width: "16px", height: "16px", marginRight: "6px" }} />
+              ) : (
+                <Save style={{ width: "16px", height: "16px", marginRight: "6px" }} />
+              )}
+              Save as Draft
+            </Button>
+            <Button
+              onClick={handleOpenSubmitDialog}
+              disabled={isSubmitting}
+              style={btnPrimary}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="animate-spin" style={{ width: "16px", height: "16px", marginRight: "6px" }} />
+                  Submitting...
+                </>
+              ) : (
+                <>
+                  <Send style={{ width: "16px", height: "16px", marginRight: "6px" }} />
+                  Submit Request
+                </>
+              )}
+            </Button>
+          </div>
         </div>
       </PageContainer>
 
@@ -736,8 +864,8 @@ export default function NewEmployeeRequestPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="submitComment">Comment</Label>
+            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+              <Label style={labelStyle}>Comment</Label>
               <Textarea
                 id="submitComment"
                 placeholder="Enter your comment here..."
@@ -751,16 +879,22 @@ export default function NewEmployeeRequestPage() {
             <Button
               variant="outline"
               onClick={() => setIsSubmitDialogOpen(false)}
+              style={btnSecondary}
             >
               Cancel
             </Button>
-            <Button onClick={handleConfirmSubmit} disabled={isSubmitting}>
+            <Button onClick={handleConfirmSubmit} disabled={isSubmitting} style={btnPrimary}>
               {isSubmitting ? (
-                <Loader2 className="animate-spin" />
+                <>
+                  <Loader2 className="animate-spin" style={{ width: "16px", height: "16px", marginRight: "6px" }} />
+                  Submitting...
+                </>
               ) : (
-                <Send />
+                <>
+                  <Send style={{ width: "16px", height: "16px", marginRight: "6px" }} />
+                  Submit Request
+                </>
               )}
-              Submit Request
             </Button>
           </DialogFooter>
         </DialogContent>

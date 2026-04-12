@@ -59,9 +59,11 @@ export async function get<T>(url: string, config?: AxiosRequestConfig): Promise<
     const response = await api.get<T>(url, config);
     return response.data;
   } catch (error) {
-    // Re-throw with more context for debugging
     const axiosError = error as AxiosError;
-    console.error(`GET ${url} failed:`, axiosError.response?.status, axiosError.response?.data);
+    // Don't log 401 errors - they're handled by the response interceptor
+    if (axiosError.response?.status !== 401) {
+      console.error(`GET ${url} failed:`, axiosError.response?.status, axiosError.response?.data);
+    }
     throw error;
   }
 }

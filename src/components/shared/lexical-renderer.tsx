@@ -294,6 +294,17 @@ function hasContent(state: LexicalState): boolean {
   return state.root.children.some(checkNode);
 }
 
+/**
+ * Check if a string contains HTML tags (not JSON).
+ */
+function isHtmlString(value: string): boolean {
+  const trimmed = value.trim();
+  // Skip if it looks like JSON
+  if (trimmed.startsWith("{") || trimmed.startsWith("[")) return false;
+  // Check for common HTML tags
+  return /<[a-z][\s\S]*?>/i.test(trimmed);
+}
+
 interface LexicalRendererProps {
   /** Lexical.js JSON value — string (from API) or parsed state object */
   value: unknown;
@@ -306,6 +317,16 @@ interface LexicalRendererProps {
  * Also supports Slate.js format for backward compatibility.
  */
 export function LexicalRenderer({ value, className }: LexicalRendererProps) {
+  // Check if value is a raw HTML string (contains HTML tags but not JSON)
+  if (typeof value === "string" && isHtmlString(value)) {
+    return (
+      <div
+        className={`space-y-2 text-sm text-muted-foreground [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_li]:my-1 [&_p]:leading-relaxed [&_blockquote]:border-l-2 [&_blockquote]:pl-4 [&_blockquote]:italic ${className ?? ""}`}
+        dangerouslySetInnerHTML={{ __html: value }}
+      />
+    );
+  }
+
   const state = parseLexicalValue(value);
 
   if (!state || !hasContent(state)) return null;
@@ -324,6 +345,7 @@ export function LexicalRenderer({ value, className }: LexicalRendererProps) {
  * Useful for conditional rendering (e.g., hiding sections when empty).
  */
 export function hasLexicalContent(value: unknown): boolean {
+  if (typeof value === "string" && isHtmlString(value)) return true;
   const state = parseLexicalValue(value);
   return state ? hasContent(state) : false;
 }

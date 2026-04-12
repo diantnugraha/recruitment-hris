@@ -341,9 +341,9 @@ export const jobTitles: JobTitle[] = [
   },
   {
     id: "title-6",
-    name: "HR Manager",
-    code: "HR-MGR",
-    description: "Manages HR operations",
+    name: "HR Coordinator",
+    code: "HR-COORD",
+    description: "Coordinates HR operations",
     jobLevelId: "lvl-5",
     departmentId: "dept-10",
     responsibilities: ["Team management", "HR strategy"],

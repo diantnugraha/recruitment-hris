@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 
 import { useAuthStore } from '@/stores/auth-store';
-import { ROLES } from '@/lib/constants/roles';
+import { isHrRole } from '@/lib/constants/roles';
 import { candidateService } from '@/services/candidate.service';
 
 export type TabMode = 'edit' | 'view' | 'locked';
@@ -16,10 +16,12 @@ export interface AssessmentPermission {
   refetch: () => void;
 }
 
-const HR_ROLES = [ROLES.HR_MANAGER, ROLES.SUPER_ADMIN] as const;
-
+/**
+ * @deprecated Use isHrRole from @/lib/constants/roles instead.
+ * Kept for backward compatibility.
+ */
 export function isHROrAdmin(roleId: number): boolean {
-  return HR_ROLES.includes(roleId as typeof HR_ROLES[number]);
+  return isHrRole(roleId);
 }
 
 export function useAssessmentPermission(candidateId: string): AssessmentPermission {

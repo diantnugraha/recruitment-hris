@@ -3,6 +3,7 @@ export interface User {
   id: string;
   email: string;
   name: string;
+  displayName: string;
   roleId: number;       // numeric for access control (matches database role_access.role_id)
   roleName: string;     // human-readable role name for display
   avatar?: string;

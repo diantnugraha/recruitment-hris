@@ -6,8 +6,9 @@ Laboratory Management System Frontend built with **Next.js 16 + React + TypeScri
 
 - **Framework**: Next.js 16.1.1 (App Router)
 - **UI Library**: React 18.2.0
-- **Styling**: Tailwind CSS 3.4.17
-- **Components**: shadcn/ui (Radix UI primitives)
+- **Styling**: Tailwind CSS 3.4.17 + TUV Design Tokens (`@tuv-indo/css`)
+- **Components**: shadcn/ui (Radix UI primitives) styled with TUV design tokens
+- **Design System**: See `docs/tuv-design-system.md` for full reference
 - **State**: Zustand
 - **Forms**: React Hook Form + Zod
 - **API**: Axios
@@ -66,6 +67,32 @@ export const SAMPLE_STATUS_LABELS: Record<SampleStatus, string> = { ... };
 3. **All props must be typed** — Setiap component harus punya interface untuk props-nya. Tidak boleh implicit `any`.
 
 4. **API response harus typed** — Setiap service function harus return `Promise<ApiResponse<T>>` dengan type yang eksplisit.
+
+---
+
+## TUV Design System
+
+**Full reference: `docs/tuv-design-system.md`**
+
+This project uses TUV (PT TUV Nord Indonesia) design tokens for visual consistency with other TUV internal apps (central-invoicing, etc.).
+
+**Architecture:**
+- `@tuv-indo/css` — CSS-only package providing design tokens (colors, spacing, typography) via CSS variables
+- `shadcn/ui` — Component behavior (Dialog, DropdownMenu, Tooltip, Button, etc.)
+- Tailwind + inline `style={{}}` — Layout and positioning
+
+**DO NOT use `@tuv-indo/admin`** — it is incompatible with React 19 + Next.js SSR. Use CSS tokens only.
+
+**Rules:**
+1. Import `@tuv-indo/css/dist/style.css` in `globals.css` (already done)
+2. Use TUV CSS variables for colors: `var(--hsd-ui-color-navy-500)`, not hardcoded hex
+3. Primary brand color = **navy** (not blue, not indigo): `navy-500 = rgb(0, 30, 210)`
+4. Document background = **gray-100**: `rgb(239, 243, 248)`
+5. Default text = **gray-900**: `rgb(35, 41, 51)`
+6. Icon color = **gray-500**: `rgb(120, 134, 127)`
+7. Border color = `#d0d6dd` or `var(--hsd-ui-color-gray-300)`
+8. TUV font weights differ from standard! Normal=300, Medium=400, Semibold=500, Bold=600
+9. For button/badge/alert colors, refer to `docs/tuv-design-system.md` Button Styles section
 
 ---
 

@@ -148,6 +148,7 @@ export interface Onboarding {
   document: string;
   documentCandidate: string;
   onboardingAcceptedAt: string | null;
+  onboardingSentAt: string | null;
   facilities: Facility[];
   programs: OnboardingProgram[];
 }
@@ -313,6 +314,7 @@ interface ApiCandidate {
   job_title?: { id: number; name: string } | null;
   employee_request?: { id: number; code: string; job_placement?: string | null; sla?: SlaInfo | null } | null;
   onboarding_accepted_at?: string | null;
+  onboarding_sent_at?: string | null;
 }
 
 // --- Mapping ---
@@ -366,6 +368,7 @@ function mapCandidate(api: ApiCandidate): CandidateWithRelations {
       sla: api.employee_request.sla || null,
     } : null,
     onboardingAcceptedAt: api.onboarding_accepted_at || null,
+    onboardingSentAt: api.onboarding_sent_at || null,
   };
 }
 
@@ -963,6 +966,7 @@ export const candidateService = {
           document: string;
           document_candidate: string;
           onboarding_accepted_at: string | null;
+          onboarding_sent_at?: string | null;
           facilities: Array<{
             id: number;
             inventory_no: string;
@@ -1000,6 +1004,7 @@ export const candidateService = {
             document: res.data.document,
             documentCandidate: res.data.document_candidate,
             onboardingAcceptedAt: res.data.onboarding_accepted_at,
+            onboardingSentAt: res.data.onboarding_sent_at || null,
             facilities: (res.data.facilities || []).map(f => ({
               id: f.id,
               inventoryNo: f.inventory_no,
@@ -1089,6 +1094,7 @@ export const candidateService = {
             document: res.data.document,
             documentCandidate: res.data.document_candidate,
             onboardingAcceptedAt: null,
+            onboardingSentAt: null,
             facilities: (res.data.facilities || []).map(f => ({
               id: f.id,
               inventoryNo: f.inventory_no,
@@ -1174,6 +1180,7 @@ export const candidateService = {
             document: res.data.document,
             documentCandidate: res.data.document_candidate,
             onboardingAcceptedAt: null,
+            onboardingSentAt: null,
             facilities: (res.data.facilities || []).map(f => ({
               id: f.id,
               inventoryNo: f.inventory_no,

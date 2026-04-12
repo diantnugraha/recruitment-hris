@@ -1,6 +1,13 @@
 'use client';
 
-import { SLA_STATUS, SLA_STATUS_CONFIG, type SlaInfo } from '@/lib/constants/sla';
+import { SLA_STATUS, type SlaInfo, type SlaStatus } from '@/lib/constants/sla';
+import { TuvBadge } from '@/components/shared/tuv-badge';
+
+const SLA_BADGE_VARIANT: Record<SlaStatus, "success" | "warning" | "danger"> = {
+  on_track: "success",
+  approaching: "warning",
+  overdue: "danger",
+};
 
 interface SlaBadgeProps {
   sla: SlaInfo | null | undefined;
@@ -8,18 +15,19 @@ interface SlaBadgeProps {
 
 export function SlaBadge({ sla }: SlaBadgeProps) {
   if (!sla) {
-    return <span className="text-muted-foreground">-</span>;
+    return <span style={{ color: "var(--hsd-ui-color-gray-400)" }}>-</span>;
   }
-
-  const config = SLA_STATUS_CONFIG[sla.status];
 
   const label = sla.status === SLA_STATUS.OVERDUE
     ? `${Math.abs(sla.remainingDays)}d overdue`
     : `${sla.remainingDays}d remaining`;
 
   return (
-    <span className={`inline-flex items-center whitespace-nowrap rounded-full border px-2.5 py-0.5 text-xs font-semibold ${config.className}`}>
-      {label}
-    </span>
+    <TuvBadge
+      text={label}
+      variant={SLA_BADGE_VARIANT[sla.status]}
+      size="sm"
+      border
+    />
   );
 }

@@ -1,3 +1,5 @@
+@import "@tuv-indo/css/dist/style.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -5,8 +7,8 @@
 @layer base {
   :root {
 
-    /* Clean white & slate palette with indigo accent */
-    --background: 0 0% 100%;
+    /* Match TUV: --hsd-admin-document-bg-color = gray-100 = rgb(239, 243, 248) */
+    --background: 216 33% 95%;
     --foreground: 222 47% 11%;
     --card: 0 0% 100%;
     --card-foreground: 222 47% 11%;
@@ -118,27 +120,166 @@
   }
 }
 
-/* Refined scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+/* Select/Dropdown — match TUV Dropdown styling */
+[data-radix-popper-content-wrapper] {
+  min-width: var(--radix-popper-anchor-width) !important;
+  width: var(--radix-popper-anchor-width) !important;
 }
 
-::-webkit-scrollbar-track {
-  background: hsl(var(--muted) / 0.5);
+[data-radix-popper-content-wrapper] [role="listbox"] {
+  min-width: 100% !important;
+  width: 100% !important;
+  border-radius: 4px !important;
+  border: 1px solid rgba(120, 134, 127, 0.2) !important;
+  box-shadow: 0px 8px 12px 0px rgba(0, 0, 0, 0.08) !important;
+  padding: 4px !important;
+  font-size: 0.875rem;
 }
 
-::-webkit-scrollbar-thumb {
-  background: hsl(var(--border));
-  border-radius: 4px;
-  border: 2px solid transparent;
-  background-clip: padding-box;
+[data-radix-popper-content-wrapper] [role="option"] {
+  border-radius: 4px !important;
+  padding: 8px 12px !important;
+  font-size: 0.875rem !important;
+  cursor: pointer;
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--muted-foreground) / 0.4);
-  border: 2px solid transparent;
-  background-clip: padding-box;
+[data-radix-popper-content-wrapper] [role="option"][data-highlighted] {
+  background-color: rgba(100, 181, 246, 0.21) !important;
+  color: inherit !important;
+}
+
+[data-radix-popper-content-wrapper] [role="option"][data-state="checked"] {
+  background-color: rgba(100, 181, 246, 0.21) !important;
+  color: var(--hsd-ui-color-blue-500) !important;
+}
+
+/* Buttons — match TUV button styling */
+button, [role="button"] {
+  font-family: 'Poppins', sans-serif;
+}
+
+/* Inputs & Textareas — match TUV Input styling */
+input, textarea {
+  font-family: 'Poppins', sans-serif !important;
+  font-weight: 400 !important;
+  color: #232933 !important;
+}
+
+input::placeholder, textarea::placeholder {
+  color: #d0d6dd !important;
+}
+
+/* Override shadcn input to match TUV */
+input[type="text"], input[type="email"], input[type="password"],
+input[type="number"], input[type="search"], input[type="tel"],
+input[type="url"], input:not([type]), textarea {
+  height: 38px;
+  border-radius: 4px !important;
+  border: 1px solid rgba(120, 134, 127, 0.2) !important;
+  font-size: 0.875rem;
+  background: #fff;
+}
+
+textarea {
+  height: auto !important;
+  padding: 8px !important;
+  background: #fff !important;
+}
+
+input:focus, textarea:focus {
+  border-color: #8a98ea !important;
+  box-shadow: 0px 0px 0px 2px rgba(138, 152, 234, 0.32) !important;
+  outline: none !important;
+}
+
+/* CommandInput inside wrapper — focus handled by wrapper, not input */
+[cmdk-input-wrapper] input:focus {
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Dialog — match TUV Dialog: white bg, 4px radius */
+[data-state="open"][role="dialog"],
+[data-state="open"][role="alertdialog"],
+[data-radix-dialog-content] {
+  border-radius: 4px !important;
+  background: #fff !important;
+  background-color: #fff !important;
+  border: 1px solid rgba(120, 134, 127, 0.2) !important;
+}
+
+/* Also target shadcn DialogContent class */
+.bg-background[role="dialog"],
+.bg-background[role="alertdialog"] {
+  background: #fff !important;
+}
+
+/* Select trigger — match TUV: 4px radius, subtle focus */
+[data-radix-select-trigger] {
+  border-radius: 4px !important;
+}
+
+[data-radix-select-trigger][data-state="open"] {
+  border-color: #8a98ea !important;
+  box-shadow: 0px 0px 0px 2px rgba(138, 152, 234, 0.32) !important;
+  outline: none !important;
+}
+
+/* Date input — TUV styling, calendar icon to the right */
+input[type="date"] {
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  padding-right: 40px !important;
+  background-color: #fff !important;
+  border-radius: 4px !important;
+  border: 1px solid rgba(120, 134, 127, 0.2) !important;
+  height: 38px;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+  opacity: 0.5;
+}
+
+input[type="time"] {
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  padding-right: 40px !important;
+  background-color: #fff !important;
+  border-radius: 4px !important;
+  border: 1px solid rgba(120, 134, 127, 0.2) !important;
+  height: 38px;
+}
+
+input[type="time"]::-webkit-calendar-picker-indicator {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+  opacity: 0.5;
+}
+
+/* Command/Combobox items — match TUV dropdown styling */
+[cmdk-item][data-selected="true"] {
+  background-color: rgba(100, 181, 246, 0.21) !important;
+  color: #232933 !important;
+}
+
+/* Hide scrollbar — match TUV: *::-webkit-scrollbar { display: none } */
+*::-webkit-scrollbar {
+  display: none;
+}
+
+* {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 /* Transparent scrollbar in dialogs and scroll areas */

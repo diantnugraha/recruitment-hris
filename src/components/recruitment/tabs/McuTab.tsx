@@ -47,9 +47,136 @@ import {
   type AssessmentProgress,
   type CandidateWithRelations,
 } from "@/services/candidate.service";
-import { cn } from "@/lib/utils";
 import { showToast } from "@/lib/utils/toast-messages";
 import type { TabMode } from "@/hooks/useAssessmentPermission";
+
+// --- TUV button style helpers ---
+
+const btnPrimary = {
+  backgroundColor: "var(--hsd-ui-background-color-primary)",
+  borderColor: "var(--hsd-ui-border-color-primary)",
+  color: "var(--hsd-ui-text-color-primary)",
+  borderRadius: "4px",
+  height: "38px",
+  padding: "0 16px",
+  fontSize: "0.875rem",
+  fontWeight: 500,
+} as const;
+
+const btnSecondary = {
+  borderRadius: "4px",
+  height: "38px",
+  padding: "0 16px",
+  fontSize: "0.875rem",
+  fontWeight: 500,
+  borderColor: "rgba(120,134,127,0.2)",
+} as const;
+
+const btnDanger = {
+  backgroundColor: "rgb(250, 55, 70)",
+  borderColor: "rgb(250, 55, 70)",
+  color: "var(--hsd-ui-color-gray-50, #fff)",
+  borderRadius: "4px",
+  height: "38px",
+  padding: "0 16px",
+  fontSize: "0.875rem",
+  fontWeight: 500,
+} as const;
+
+const btnSuccess = {
+  backgroundColor: "rgb(140, 240, 0)",
+  borderColor: "rgb(140, 240, 0)",
+  color: "var(--hsd-ui-color-gray-900, #232933)",
+  borderRadius: "4px",
+  height: "38px",
+  padding: "0 16px",
+  fontSize: "0.875rem",
+  fontWeight: 500,
+} as const;
+
+// --- TUV reusable sub-components ---
+
+function DetailItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p
+        style={{
+          fontSize: "0.6875rem",
+          fontWeight: 500,
+          textTransform: "uppercase",
+          letterSpacing: "0.05em",
+          color: "var(--hsd-ui-color-gray-500)",
+          margin: 0,
+        }}
+      >
+        {label}
+      </p>
+      <p
+        style={{
+          fontSize: "0.875rem",
+          fontWeight: 500,
+          color: value ? "var(--hsd-ui-color-gray-900)" : "var(--hsd-ui-color-gray-400)",
+          margin: "2px 0 0",
+        }}
+      >
+        {value || "No Data"}
+      </p>
+    </div>
+  );
+}
+
+function SectionCard({
+  title,
+  icon: Icon,
+  headerExtra,
+  children,
+}: {
+  title: string;
+  icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
+  headerExtra?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <section
+      className="border"
+      style={{
+        borderRadius: "8px",
+        backgroundColor: "#fff",
+        borderColor: "rgba(120, 134, 127, 0.2)",
+      }}
+    >
+      <div
+        className="flex items-center justify-between px-6 py-4"
+        style={{ borderBottom: "1px solid rgba(120, 134, 127, 0.15)" }}
+      >
+        <h2
+          style={{
+            fontSize: "0.9375rem",
+            fontWeight: 600,
+            color: "var(--hsd-ui-color-gray-900)",
+            margin: 0,
+          }}
+        >
+          {title}
+        </h2>
+        <div className="flex items-center gap-2">
+          {headerExtra}
+          <div
+            className="flex h-8 w-8 items-center justify-center rounded-lg"
+            style={{ backgroundColor: "var(--hsd-ui-color-gray-100)" }}
+          >
+            <Icon
+              style={{ width: "16px", height: "16px", color: "var(--hsd-ui-color-gray-500)" }}
+            />
+          </div>
+        </div>
+      </div>
+      <div className="px-6 py-5">{children}</div>
+    </section>
+  );
+}
+
+// --- Main component ---
 
 interface McuTabProps {
   candidate: CandidateWithRelations;
@@ -69,12 +196,46 @@ export function McuTab({
   // Locked mode — early return before hooks
   if (mode === "locked") {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-center">
-        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted mb-4">
-          <Lock className="h-6 w-6 text-muted-foreground" />
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "64px 0",
+          textAlign: "center",
+        }}
+      >
+        <div
+          className="flex items-center justify-center"
+          style={{
+            width: "56px",
+            height: "56px",
+            borderRadius: "50%",
+            backgroundColor: "var(--hsd-ui-color-gray-100)",
+            marginBottom: "16px",
+          }}
+        >
+          <Lock style={{ width: "24px", height: "24px", color: "var(--hsd-ui-color-gray-400)" }} />
         </div>
-        <h3 className="text-base font-semibold text-foreground">MCU Locked</h3>
-        <p className="text-sm text-muted-foreground mt-1 max-w-sm">
+        <h3
+          style={{
+            fontSize: "1rem",
+            fontWeight: 600,
+            color: "var(--hsd-ui-color-gray-900)",
+            margin: 0,
+          }}
+        >
+          MCU Locked
+        </h3>
+        <p
+          style={{
+            fontSize: "0.875rem",
+            color: "var(--hsd-ui-color-gray-500)",
+            margin: "4px 0 0",
+            maxWidth: "24rem",
+          }}
+        >
           Complete Interview User (Assessment User) first to unlock Medical Check-Up.
         </p>
       </div>
@@ -272,270 +433,327 @@ function McuTabInner({
 
   return (
     <div className="space-y-5">
-      {/* Status Banner — Passed */}
+      {/* Status Banner -- Passed */}
       {mcuStatus === "passed" && (
-        <section className="rounded-2xl border bg-card">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
-            <h2 className="text-base font-semibold text-foreground">MCU Result</h2>
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
-              <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+        <SectionCard title="MCU Result" icon={CheckCircle2}>
+          <div
+            className="flex items-center gap-3"
+            style={{
+              borderRadius: "8px",
+              backgroundColor: "rgba(0, 168, 120, 0.06)",
+              border: "1px solid rgba(0, 168, 120, 0.25)",
+              padding: "12px 16px",
+            }}
+          >
+            <CheckCircle2 style={{ width: "20px", height: "20px", color: "rgba(0, 168, 120, 1)", flexShrink: 0 }} />
+            <div>
+              <p style={{ fontSize: "0.875rem", fontWeight: 500, color: "rgba(0, 168, 120, 1)", margin: 0 }}>
+                Medical Check-Up Passed
+              </p>
+              <p style={{ fontSize: "0.75rem", color: "var(--hsd-ui-color-gray-500)", margin: "2px 0 0" }}>
+                Candidate has been cleared for medical examination.
+              </p>
             </div>
           </div>
-          <div className="px-6 py-5">
-            <div className="flex items-center gap-3 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 px-4 py-3">
-              <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
-              <div>
-                <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">Medical Check-Up Passed</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Candidate has been cleared for medical examination.</p>
-              </div>
-            </div>
-          </div>
-        </section>
+        </SectionCard>
       )}
 
-      {/* Status Banner — Failed */}
+      {/* Status Banner -- Failed */}
       {mcuStatus === "failed" && (
-        <section className="rounded-2xl border bg-card">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
-            <h2 className="text-base font-semibold text-foreground">MCU Result</h2>
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
-              <XCircle className="h-4 w-4 text-muted-foreground" />
+        <SectionCard title="MCU Result" icon={XCircle}>
+          <div
+            className="flex items-center gap-3"
+            style={{
+              borderRadius: "8px",
+              backgroundColor: "rgba(250, 55, 70, 0.04)",
+              border: "1px solid rgba(250, 55, 70, 0.25)",
+              padding: "12px 16px",
+            }}
+          >
+            <XCircle style={{ width: "20px", height: "20px", color: "rgba(250, 55, 70, 1)", flexShrink: 0 }} />
+            <div>
+              <p style={{ fontSize: "0.875rem", fontWeight: 500, color: "rgba(250, 55, 70, 1)", margin: 0 }}>
+                Medical Check-Up Failed
+              </p>
+              <p style={{ fontSize: "0.75rem", color: "var(--hsd-ui-color-gray-500)", margin: "2px 0 0" }}>
+                Candidate did not pass the medical examination.
+              </p>
             </div>
           </div>
-          <div className="px-6 py-5">
-            <div className="flex items-center gap-3 rounded-lg bg-red-50 dark:bg-destructive/10 border border-red-200 dark:border-destructive/20 px-4 py-3">
-              <XCircle className="h-5 w-5 text-destructive shrink-0" />
-              <div>
-                <p className="text-sm font-medium text-destructive">Medical Check-Up Failed</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Candidate did not pass the medical examination.</p>
-              </div>
-            </div>
-          </div>
-        </section>
+        </SectionCard>
       )}
 
       {/* MCU Schedule Section */}
       {progress?.mcuDate ? (
-        <section className="rounded-2xl border bg-card">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
-            <h2 className="text-base font-semibold text-foreground">MCU Schedule</h2>
-            <div className="flex items-center gap-2">
-              {mcuIsPending && mode === "edit" && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowScheduleMcuDialog(true)}
-                >
-                  <Pencil className="h-3.5 w-3.5" />
-                  Reschedule
-                </Button>
-              )}
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
-                <Calendar className="h-4 w-4 text-muted-foreground" />
-              </div>
-            </div>
-          </div>
-          <div className="px-6 py-5">
-            <div className="grid grid-cols-2 gap-x-8 gap-y-5">
-              <div>
-                <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Date & Time</p>
-                <p className="mt-0.5 text-sm font-medium text-foreground">
-                  {new Date(progress.mcuDate).toLocaleDateString("id-ID", {
-                    weekday: "long",
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    timeZone: "Asia/Jakarta",
-                  })} WIB
-                </p>
-              </div>
-              <div>
-                <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Location</p>
-                <p className="mt-0.5 text-sm font-medium text-foreground">{progress.mcuLocation}</p>
-              </div>
-            </div>
-          </div>
-        </section>
-      ) : mcuIsPending && mode === "edit" ? (
-        <section className="rounded-2xl border bg-card">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
-            <h2 className="text-base font-semibold text-foreground">MCU Schedule</h2>
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-            </div>
-          </div>
-          <div className="px-6 py-5">
-            <div className="flex flex-col items-center justify-center py-6 text-center">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted mb-3">
-                <Stethoscope className="h-6 w-6 text-muted-foreground" />
-              </div>
-              <h3 className="text-sm font-semibold">Schedule Medical Check-Up</h3>
-              <p className="text-xs text-muted-foreground max-w-md mt-1 mb-4">
-                Set the MCU date and location for this candidate. The candidate will be notified via email.
-              </p>
-              <Button onClick={() => setShowScheduleMcuDialog(true)}>
-                <Calendar className="h-4 w-4" />
-                Schedule MCU
+        <SectionCard
+          title="MCU Schedule"
+          icon={Calendar}
+          headerExtra={
+            mcuIsPending && mode === "edit" ? (
+              <Button
+                variant="outline"
+                size="default"
+                onClick={() => setShowScheduleMcuDialog(true)}
+                style={btnSecondary}
+              >
+                <Pencil style={{ width: "14px", height: "14px", marginRight: "4px" }} />
+                Reschedule
               </Button>
-            </div>
+            ) : undefined
+          }
+        >
+          <div className="grid grid-cols-2 gap-x-8 gap-y-5">
+            <DetailItem
+              label="Date & Time"
+              value={
+                new Date(progress.mcuDate).toLocaleDateString("en-US", {
+                  weekday: "long",
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  hour12: false,
+                  timeZone: "Asia/Jakarta",
+                }) + " WIB"
+              }
+            />
+            <DetailItem label="Location" value={progress.mcuLocation || ""} />
           </div>
-        </section>
+        </SectionCard>
+      ) : mcuIsPending && mode === "edit" ? (
+        <SectionCard title="MCU Schedule" icon={Calendar}>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "24px 0",
+              textAlign: "center",
+            }}
+          >
+            <div
+              className="flex items-center justify-center"
+              style={{
+                width: "48px",
+                height: "48px",
+                borderRadius: "50%",
+                backgroundColor: "var(--hsd-ui-color-gray-100)",
+                marginBottom: "12px",
+              }}
+            >
+              <Stethoscope style={{ width: "24px", height: "24px", color: "var(--hsd-ui-color-gray-400)" }} />
+            </div>
+            <h3
+              style={{
+                fontSize: "0.875rem",
+                fontWeight: 600,
+                color: "var(--hsd-ui-color-gray-900)",
+                margin: 0,
+              }}
+            >
+              Schedule Medical Check-Up
+            </h3>
+            <p
+              style={{
+                fontSize: "0.75rem",
+                color: "var(--hsd-ui-color-gray-500)",
+                maxWidth: "28rem",
+                margin: "4px 0 16px",
+              }}
+            >
+              Set the MCU date and location for this candidate. The candidate will be notified via email.
+            </p>
+            <Button onClick={() => setShowScheduleMcuDialog(true)} style={btnPrimary}>
+              <Calendar style={{ width: "16px", height: "16px", marginRight: "6px" }} />
+              Schedule MCU
+            </Button>
+          </div>
+        </SectionCard>
       ) : null}
 
       {/* MCU Document */}
-      <section className="rounded-2xl border bg-card">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
-          <h2 className="text-base font-semibold text-foreground">MCU Document</h2>
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
-            <File className="h-4 w-4 text-muted-foreground" />
-          </div>
-        </div>
-        <div className="px-6 py-5">
-          {/* Hidden file input */}
-          <input
-            ref={mcuFileInputRef}
-            type="file"
-            accept=".pdf,.jpg,.jpeg,.png"
-            onChange={handleMcuFileUpload}
-            className="hidden"
-          />
+      <SectionCard title="MCU Document" icon={File}>
+        {/* Hidden file input */}
+        <input
+          ref={mcuFileInputRef}
+          type="file"
+          accept=".pdf,.jpg,.jpeg,.png"
+          onChange={handleMcuFileUpload}
+          className="hidden"
+        />
 
-          {/* Document state */}
-          {mcuDocument?.url ? (
-            <div className="rounded-lg border bg-secondary/20 p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-500/10">
-                    <File className="h-5 w-5 text-blue-600" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="font-medium text-sm truncate">{mcuDocument.name || "MCU Document"}</p>
-                    <p className="text-xs text-muted-foreground">Uploaded successfully</p>
-                  </div>
+        {/* Document state */}
+        {mcuDocument?.url ? (
+          <div
+            style={{
+              borderRadius: "8px",
+              border: "1px solid rgba(120, 134, 127, 0.2)",
+              backgroundColor: "var(--hsd-ui-color-gray-50)",
+              padding: "16px",
+            }}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3 min-w-0">
+                <div
+                  className="flex items-center justify-center shrink-0"
+                  style={{
+                    width: "40px",
+                    height: "40px",
+                    borderRadius: "8px",
+                    backgroundColor: "rgba(37, 99, 235, 0.1)",
+                  }}
+                >
+                  <File style={{ width: "20px", height: "20px", color: "rgba(37, 99, 235, 1)" }} />
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  {mcuDocument.presignedUrl && (
-                    <Button
-                      variant="outline"
-                      asChild
-                    >
-                      <a href={mcuDocument.presignedUrl} target="_blank" rel="noopener noreferrer">
-                        <Eye />
-                        View
-                      </a>
-                    </Button>
-                  )}
-                  {mcuStatus === "pending" && mode === "edit" && (
-                    <Button
-                      variant="outline"
-                      className="text-destructive hover:text-destructive"
-                      onClick={handleMcuDocumentDelete}
-                      disabled={isDeletingMcuDoc}
-                    >
-                      {isDeletingMcuDoc ? (
-                        <Loader2 className="animate-spin" />
-                      ) : (
-                        <Trash2 />
-                      )}
-                      Delete
-                    </Button>
-                  )}
+                <div className="min-w-0">
+                  <p
+                    className="truncate"
+                    style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--hsd-ui-color-gray-900)", margin: 0 }}
+                  >
+                    {mcuDocument.name || "MCU Document"}
+                  </p>
+                  <p style={{ fontSize: "0.75rem", color: "var(--hsd-ui-color-gray-500)", margin: "2px 0 0" }}>
+                    Uploaded successfully
+                  </p>
                 </div>
               </div>
+              <div className="flex items-center gap-2 shrink-0">
+                {mcuDocument.presignedUrl && (
+                  <Button variant="outline" asChild style={btnSecondary}>
+                    <a href={mcuDocument.presignedUrl} target="_blank" rel="noopener noreferrer">
+                      <Eye style={{ width: "16px", height: "16px", marginRight: "6px" }} />
+                      View
+                    </a>
+                  </Button>
+                )}
+                {mcuStatus === "pending" && mode === "edit" && (
+                  <Button
+                    variant="outline"
+                    onClick={handleMcuDocumentDelete}
+                    disabled={isDeletingMcuDoc}
+                    style={btnDanger}
+                  >
+                    {isDeletingMcuDoc ? (
+                      <Loader2 className="animate-spin" style={{ width: "16px", height: "16px", marginRight: "6px" }} />
+                    ) : (
+                      <Trash2 style={{ width: "16px", height: "16px", marginRight: "6px" }} />
+                    )}
+                    Delete
+                  </Button>
+                )}
+              </div>
             </div>
-          ) : mode === "edit" ? (
-            <button
-              type="button"
-              onClick={() => mcuFileInputRef.current?.click()}
-              disabled={isUploadingMcu || mcuStatus !== "pending"}
-              className={cn(
-                "w-full rounded-lg border-2 border-dashed p-8 text-center transition-colors",
-                mcuStatus === "pending"
-                  ? "border-muted-foreground/25 hover:border-blue-500/50 hover:bg-blue-500/5 cursor-pointer"
-                  : "border-muted-foreground/15 opacity-60 cursor-not-allowed"
-              )}
-            >
-              {isUploadingMcu ? (
-                <div className="flex flex-col items-center gap-2">
-                  <Loader2 className="h-8 w-8 text-blue-500 animate-spin" />
-                  <p className="text-sm font-medium">Uploading document...</p>
+          </div>
+        ) : mode === "edit" ? (
+          <button
+            type="button"
+            onClick={() => mcuFileInputRef.current?.click()}
+            disabled={isUploadingMcu || mcuStatus !== "pending"}
+            style={{
+              width: "100%",
+              borderRadius: "8px",
+              border: "2px dashed rgba(120, 134, 127, 0.25)",
+              padding: "32px",
+              textAlign: "center",
+              backgroundColor: "transparent",
+              cursor: mcuStatus === "pending" ? "pointer" : "not-allowed",
+              opacity: mcuStatus === "pending" ? 1 : 0.6,
+              transition: "border-color 0.2s",
+            }}
+          >
+            {isUploadingMcu ? (
+              <div className="flex flex-col items-center gap-2">
+                <Loader2
+                  className="animate-spin"
+                  style={{ width: "32px", height: "32px", color: "var(--hsd-ui-background-color-primary)" }}
+                />
+                <p style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--hsd-ui-color-gray-700)", margin: 0 }}>
+                  Uploading document...
+                </p>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-2">
+                <div
+                  className="flex items-center justify-center"
+                  style={{
+                    width: "48px",
+                    height: "48px",
+                    borderRadius: "50%",
+                    backgroundColor: "rgba(37, 99, 235, 0.1)",
+                  }}
+                >
+                  <Upload style={{ width: "24px", height: "24px", color: "rgba(37, 99, 235, 1)" }} />
                 </div>
-              ) : (
-                <div className="flex flex-col items-center gap-2">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-500/10">
-                    <Upload className="h-6 w-6 text-blue-500" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium">Click to upload MCU document</p>
-                    <p className="text-xs text-muted-foreground mt-1">PDF, JPEG, or PNG up to 10MB</p>
-                  </div>
+                <div>
+                  <p style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--hsd-ui-color-gray-700)", margin: 0 }}>
+                    Click to upload MCU document
+                  </p>
+                  <p style={{ fontSize: "0.75rem", color: "var(--hsd-ui-color-gray-500)", margin: "4px 0 0" }}>
+                    PDF, JPEG, or PNG up to 10MB
+                  </p>
                 </div>
-              )}
-            </button>
-          ) : (
-            <div className="rounded-lg border bg-secondary/20 p-4 text-center">
-              <p className="text-sm text-muted-foreground">No document uploaded yet.</p>
-            </div>
-          )}
-        </div>
-      </section>
+              </div>
+            )}
+          </button>
+        ) : (
+          <div
+            style={{
+              borderRadius: "8px",
+              border: "1px solid rgba(120, 134, 127, 0.2)",
+              backgroundColor: "var(--hsd-ui-color-gray-50)",
+              padding: "16px",
+              textAlign: "center",
+            }}
+          >
+            <p style={{ fontSize: "0.875rem", color: "var(--hsd-ui-color-gray-500)", margin: 0 }}>
+              No document uploaded yet.
+            </p>
+          </div>
+        )}
+      </SectionCard>
 
       {/* Notes / Description */}
-      <section className="rounded-2xl border bg-card">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
-          <h2 className="text-base font-semibold text-foreground">Notes / Description</h2>
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
-            <FileText className="h-4 w-4 text-muted-foreground" />
-          </div>
-        </div>
-        <div className="px-6 py-5">
-          <Textarea
-            id="mcu-notes"
-            placeholder="Add notes for Medical Check-Up..."
-            value={mcuNotes}
-            onChange={(e) => setMcuNotes(e.target.value)}
-            disabled={mcuStatus !== "pending" || mode === "view"}
-            className="min-h-32"
-          />
-        </div>
-      </section>
+      <SectionCard title="Notes / Description" icon={FileText}>
+        <Textarea
+          id="mcu-notes"
+          placeholder="Add notes for Medical Check-Up..."
+          value={mcuNotes}
+          onChange={(e) => setMcuNotes(e.target.value)}
+          disabled={mcuStatus !== "pending" || mode === "view"}
+          className="min-h-32"
+        />
+      </SectionCard>
 
       {/* Action Bar - Only show if pending and edit mode */}
       {mcuIsPending && mode === "edit" && (
         <div className="flex items-center justify-between pt-2">
-          <p className="text-xs text-muted-foreground">
+          <p style={{ fontSize: "0.75rem", color: "var(--hsd-ui-color-gray-500)", margin: 0 }}>
             Upload the MCU document and set the result to continue.
           </p>
           <div className="flex items-center gap-2">
             <Button
-              className="bg-emerald-600 hover:bg-emerald-700"
               disabled={isSubmitting}
-              onClick={() => setConfirmDialog({
-                open: true,
-                action: "PASSED",
-              })}
+              onClick={() => setConfirmDialog({ open: true, action: "PASSED" })}
+              style={btnSuccess}
             >
               {isSubmitting ? (
-                <Loader2 className="animate-spin" />
+                <Loader2 className="animate-spin" style={{ width: "16px", height: "16px", marginRight: "6px" }} />
               ) : (
-                <CheckCircle2 />
+                <CheckCircle2 style={{ width: "16px", height: "16px", marginRight: "6px" }} />
               )}
               Pass
             </Button>
             <Button
-              variant="destructive"
               disabled={isSubmitting}
-              onClick={() => setConfirmDialog({
-                open: true,
-                action: "FAILED",
-              })}
+              onClick={() => setConfirmDialog({ open: true, action: "FAILED" })}
+              style={btnDanger}
             >
               {isSubmitting ? (
-                <Loader2 className="animate-spin" />
+                <Loader2 className="animate-spin" style={{ width: "16px", height: "16px", marginRight: "6px" }} />
               ) : (
-                <XCircle />
+                <XCircle style={{ width: "16px", height: "16px", marginRight: "6px" }} />
               )}
               Fail
             </Button>
@@ -545,48 +763,52 @@ function McuTabInner({
 
       {/* Assessment Failed Notice */}
       {progress?.anyFailed && (
-        <section className="rounded-2xl border bg-card">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
-            <h2 className="text-base font-semibold text-foreground">Assessment Status</h2>
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
-              <XCircle className="h-4 w-4 text-muted-foreground" />
+        <SectionCard title="Assessment Status" icon={XCircle}>
+          <div
+            className="flex items-center gap-3"
+            style={{
+              borderRadius: "8px",
+              backgroundColor: "rgba(250, 55, 70, 0.04)",
+              border: "1px solid rgba(250, 55, 70, 0.25)",
+              padding: "12px 16px",
+            }}
+          >
+            <XCircle style={{ width: "20px", height: "20px", color: "rgba(250, 55, 70, 1)", flexShrink: 0 }} />
+            <div>
+              <p style={{ fontSize: "0.875rem", fontWeight: 500, color: "rgba(250, 55, 70, 1)", margin: 0 }}>
+                Assessment Failed
+              </p>
+              <p style={{ fontSize: "0.75rem", color: "var(--hsd-ui-color-gray-500)", margin: "2px 0 0" }}>
+                This candidate has failed one of the assessment stages and cannot proceed further.
+              </p>
             </div>
           </div>
-          <div className="px-6 py-5">
-            <div className="flex items-center gap-3 rounded-lg bg-red-50 dark:bg-destructive/10 border border-red-200 dark:border-destructive/20 px-4 py-3">
-              <XCircle className="h-5 w-5 text-destructive shrink-0" />
-              <div>
-                <p className="text-sm font-medium text-destructive">Assessment Failed</p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  This candidate has failed one of the assessment stages and cannot proceed further.
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
+        </SectionCard>
       )}
 
       {/* All Passed Notice */}
       {progress?.allPassed && (
-        <section className="rounded-2xl border bg-card">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
-            <h2 className="text-base font-semibold text-foreground">Assessment Status</h2>
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
-              <PartyPopper className="h-4 w-4 text-muted-foreground" />
+        <SectionCard title="Assessment Status" icon={PartyPopper}>
+          <div
+            className="flex items-center gap-3"
+            style={{
+              borderRadius: "8px",
+              backgroundColor: "rgba(0, 168, 120, 0.06)",
+              border: "1px solid rgba(0, 168, 120, 0.25)",
+              padding: "12px 16px",
+            }}
+          >
+            <PartyPopper style={{ width: "20px", height: "20px", color: "rgba(0, 168, 120, 1)", flexShrink: 0 }} />
+            <div>
+              <p style={{ fontSize: "0.875rem", fontWeight: 500, color: "rgba(0, 168, 120, 1)", margin: 0 }}>
+                All Assessments Passed!
+              </p>
+              <p style={{ fontSize: "0.75rem", color: "var(--hsd-ui-color-gray-500)", margin: "2px 0 0" }}>
+                This candidate has passed all assessment stages and is ready for onboarding.
+              </p>
             </div>
           </div>
-          <div className="px-6 py-5">
-            <div className="flex items-center gap-3 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 px-4 py-3">
-              <PartyPopper className="h-5 w-5 text-emerald-600 shrink-0" />
-              <div>
-                <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">All Assessments Passed!</p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  This candidate has passed all assessment stages and is ready for onboarding.
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
+        </SectionCard>
       )}
 
       {/* Confirmation Dialog */}
@@ -612,7 +834,9 @@ function McuTabInner({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isSubmitting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isSubmitting} style={btnSecondary}>
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 if (confirmDialog) {
@@ -620,18 +844,14 @@ function McuTabInner({
                 }
               }}
               disabled={isSubmitting}
-              className={cn(
-                confirmDialog?.action === "PASSED"
-                  ? "bg-emerald-600 hover:bg-emerald-700"
-                  : "bg-destructive hover:bg-destructive/90"
-              )}
+              style={confirmDialog?.action === "PASSED" ? btnSuccess : btnDanger}
             >
               {isSubmitting ? (
-                <Loader2 className="animate-spin" />
+                <Loader2 className="animate-spin" style={{ width: "16px", height: "16px", marginRight: "6px" }} />
               ) : confirmDialog?.action === "PASSED" ? (
-                <CheckCircle2 />
+                <CheckCircle2 style={{ width: "16px", height: "16px", marginRight: "6px" }} />
               ) : (
-                <XCircle />
+                <XCircle style={{ width: "16px", height: "16px", marginRight: "6px" }} />
               )}
               Confirm
             </AlertDialogAction>
@@ -651,8 +871,16 @@ function McuTabInner({
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                <Stethoscope className="h-4 w-4 text-blue-600" />
+              <div
+                className="flex items-center justify-center"
+                style={{
+                  width: "32px",
+                  height: "32px",
+                  borderRadius: "8px",
+                  backgroundColor: "rgba(37, 99, 235, 0.1)",
+                }}
+              >
+                <Stethoscope style={{ width: "16px", height: "16px", color: "rgba(37, 99, 235, 1)" }} />
               </div>
               Schedule Medical Check-Up
             </DialogTitle>
@@ -676,6 +904,15 @@ function McuTabInner({
                     onChange={(e) => setMcuDate(e.target.value)}
                     min={new Date().toISOString().slice(0, 10)}
                     className="h-11 text-sm font-medium tabular-nums"
+                    style={{
+                      height: "38px",
+                      borderRadius: "4px",
+                      border: "1px solid rgba(120, 134, 127, 0.2)",
+                      fontFamily: "'Poppins', sans-serif",
+                      fontWeight: 400,
+                      color: "#232933",
+                      padding: "0 12px",
+                    }}
                   />
                 </div>
                 <div className="space-y-1.5">
@@ -689,6 +926,15 @@ function McuTabInner({
                     value={mcuTime}
                     onChange={(e) => setMcuTime(e.target.value)}
                     className="h-11 text-sm font-medium tabular-nums"
+                    style={{
+                      height: "38px",
+                      borderRadius: "4px",
+                      border: "1px solid rgba(120, 134, 127, 0.2)",
+                      fontFamily: "'Poppins', sans-serif",
+                      fontWeight: 400,
+                      color: "#232933",
+                      padding: "0 12px",
+                    }}
                   />
                 </div>
               </div>
@@ -713,17 +959,19 @@ function McuTabInner({
               variant="outline"
               onClick={() => setShowScheduleMcuDialog(false)}
               disabled={isSchedulingMcu}
+              style={btnSecondary}
             >
               Cancel
             </Button>
             <Button
               onClick={handleScheduleMcu}
               disabled={isSchedulingMcu || !mcuDate || !mcuTime || !mcuLocation.trim()}
+              style={btnPrimary}
             >
               {isSchedulingMcu ? (
-                <Loader2 className="animate-spin" />
+                <Loader2 className="animate-spin" style={{ width: "16px", height: "16px", marginRight: "6px" }} />
               ) : (
-                <Stethoscope />
+                <Stethoscope style={{ width: "16px", height: "16px", marginRight: "6px" }} />
               )}
               {isSchedulingMcu ? "Scheduling..." : "Schedule MCU"}
             </Button>

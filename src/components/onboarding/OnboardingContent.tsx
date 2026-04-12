@@ -353,9 +353,11 @@ export function OnboardingContent({ candidateId, mode, onRefresh }: OnboardingCo
   // ==================== Derived State ====================
 
   const isOnboardingAccepted = onboarding?.onboardingAcceptedAt != null;
-  const isReadOnly = mode === "view" || isOnboardingAccepted;
+  const isOnboardingSent = onboarding?.onboardingSentAt != null;
+  const isReadOnly = mode === "view" || isOnboardingAccepted || isOnboardingSent;
 
   const canSendOnboarding = onboarding &&
+    !isOnboardingSent &&
     joinDate &&
     onboarding.facilities.length > 0 &&
     onboarding.programs.length > 0;
@@ -1025,7 +1027,7 @@ export function OnboardingContent({ candidateId, mode, onRefresh }: OnboardingCo
             >
               Work Location / Placement
             </Label>
-            {mode === "view" || isOnboardingAccepted ? (
+            {isReadOnly ? (
               <Input
                 id="jobPlacement"
                 value={formatJobPlacement(jobPlacement)}
@@ -1053,9 +1055,9 @@ export function OnboardingContent({ candidateId, mode, onRefresh }: OnboardingCo
               type="date"
               value={joinDate}
               onChange={(e) => setJoinDate(e.target.value)}
-              disabled={mode === "view" || isOnboardingAccepted}
+              disabled={isReadOnly}
               style={
-                mode === "view" || isOnboardingAccepted
+                isReadOnly
                   ? { backgroundColor: "var(--hsd-ui-color-gray-50)" }
                   : undefined
               }
@@ -1150,6 +1152,45 @@ export function OnboardingContent({ candidateId, mode, onRefresh }: OnboardingCo
                   }}
                 >
                   Candidate has accepted the onboarding offer
+                </p>
+              </div>
+            </div>
+          ) : isOnboardingSent ? (
+            <div
+              className="flex flex-col items-center text-center gap-3"
+              style={{
+                marginTop: "20px",
+                borderRadius: "8px",
+                backgroundColor: "rgba(59, 130, 246, 0.04)",
+                border: "1px solid rgba(59, 130, 246, 0.2)",
+                padding: "24px",
+              }}
+            >
+              <div
+                className="flex h-12 w-12 items-center justify-center rounded-full"
+                style={{ backgroundColor: "rgba(59, 130, 246, 0.1)" }}
+              >
+                <Send style={{ width: "20px", height: "20px", color: "rgba(59, 130, 246, 1)" }} />
+              </div>
+              <div>
+                <p
+                  style={{
+                    fontSize: "0.875rem",
+                    fontWeight: 600,
+                    color: "var(--hsd-ui-color-gray-900)",
+                    margin: 0,
+                  }}
+                >
+                  Onboarding Sent
+                </p>
+                <p
+                  style={{
+                    fontSize: "0.75rem",
+                    color: "var(--hsd-ui-color-gray-500)",
+                    margin: "4px 0 0",
+                  }}
+                >
+                  Onboarding details have been sent. Waiting for candidate to accept.
                 </p>
               </div>
             </div>
@@ -1342,7 +1383,7 @@ export function OnboardingContent({ candidateId, mode, onRefresh }: OnboardingCo
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--hsd-ui-color-gray-700)" }}>
-                    Date
+                    Date *
                   </Label>
                   <Input
                     type="date"
@@ -1399,7 +1440,7 @@ export function OnboardingContent({ candidateId, mode, onRefresh }: OnboardingCo
               </Button>
               <Button
                 onClick={handleSaveProgram}
-                disabled={!programForm.program || programForm.pics.length === 0}
+                disabled={!programForm.program || !programForm.date || programForm.pics.length === 0}
                 style={btnPrimary}
               >
                 {programDialog.mode === "add" ? "Add" : "Save"}

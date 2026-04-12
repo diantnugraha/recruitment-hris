@@ -95,6 +95,17 @@ const btnSecondary = {
   borderColor: "rgba(120,134,127,0.2)",
 } as const;
 
+const btnTertiary = {
+  backgroundColor: "var(--hsd-ui-color-navy-100)",
+  borderColor: "var(--hsd-ui-color-navy-100)",
+  color: "#fff",
+  borderRadius: "4px",
+  height: "38px",
+  padding: "0 16px",
+  fontSize: "0.875rem",
+  fontWeight: 500,
+} as const;
+
 const btnDanger = {
   backgroundColor: "rgba(250, 55, 70, 1)",
   borderColor: "rgba(250, 55, 70, 1)",
@@ -123,16 +134,28 @@ function DetailItem({ label, value }: { label: string; value: string }) {
       >
         {label}
       </p>
-      <p
-        style={{
-          fontSize: "0.875rem",
-          fontWeight: 500,
-          color: value ? "var(--hsd-ui-color-gray-900)" : "var(--hsd-ui-color-gray-400)",
-          margin: "2px 0 0",
-        }}
-      >
-        {value || "No Data"}
-      </p>
+      {value ? (
+        <p
+          style={{
+            fontSize: "0.875rem",
+            fontWeight: 500,
+            color: "var(--hsd-ui-color-gray-900)",
+            margin: "2px 0 0",
+          }}
+          dangerouslySetInnerHTML={{ __html: value }}
+        />
+      ) : (
+        <p
+          style={{
+            fontSize: "0.875rem",
+            fontWeight: 500,
+            color: "var(--hsd-ui-color-gray-400)",
+            margin: "2px 0 0",
+          }}
+        >
+          No Data
+        </p>
+      )}
     </div>
   );
 }
@@ -410,17 +433,9 @@ export default function EmployeeRequestDetailPage() {
     }
   };
 
-  const handleDownloadPdf = async () => {
+  const handleDownloadPdf = () => {
     if (!request) return;
-
-    setIsProcessing(true);
-    try {
-      await employeeRequestService.downloadPdf(id);
-    } catch (err) {
-      showToast.error("Failed to download PDF");
-    } finally {
-      setIsProcessing(false);
-    }
+    employeeRequestService.downloadPdf(id);
   };
 
   const openActionDialog = (type: typeof actionType) => {
@@ -599,7 +614,7 @@ export default function EmployeeRequestDetailPage() {
               {/* HR actions: approved */}
               {request.status === "approved" && canPerformAction([ROLES.HR_MANAGER]) && (
                 <>
-                  <Button variant="outline" onClick={handleDownloadPdf} disabled={isProcessing} style={btnSecondary}>
+                  <Button variant="ghost" onClick={handleDownloadPdf} disabled={isProcessing} style={btnPrimary}>
                     <Download style={{ width: "16px", height: "16px", marginRight: "6px" }} />
                     Download PDF
                   </Button>
@@ -624,7 +639,7 @@ export default function EmployeeRequestDetailPage() {
 
               {/* Download PDF for completed/in_recruitment */}
               {["in_recruitment", "completed"].includes(request.status) && (
-                <Button variant="outline" onClick={handleDownloadPdf} disabled={isProcessing} style={btnSecondary}>
+                <Button variant="ghost" onClick={handleDownloadPdf} disabled={isProcessing} style={btnPrimary}>
                   <Download style={{ width: "16px", height: "16px", marginRight: "6px" }} />
                   Download PDF
                 </Button>
@@ -813,9 +828,8 @@ export default function EmployeeRequestDetailPage() {
                       color: "var(--hsd-ui-color-gray-600)",
                       margin: "4px 0 0",
                     }}
-                  >
-                    {request.jobTitle?.name}
-                  </p>
+                    dangerouslySetInnerHTML={{ __html: request.jobTitle?.name || "" }}
+                  />
 
                   {/* Badges */}
                   <div className="flex items-center gap-2 mt-2 flex-wrap">
@@ -884,18 +898,30 @@ export default function EmployeeRequestDetailPage() {
               >
                 Purpose / Justification
               </p>
-              <p
-                style={{
-                  fontSize: "0.875rem",
-                  fontWeight: 500,
-                  color: request.purpose ? "var(--hsd-ui-color-gray-700)" : "var(--hsd-ui-color-gray-400)",
-                  margin: "4px 0 0",
-                  whiteSpace: "pre-wrap",
-                  fontStyle: request.purpose ? "normal" : "italic",
-                }}
-              >
-                {request.purpose || "No Data"}
-              </p>
+              {request.purpose ? (
+                <div
+                  style={{
+                    fontSize: "0.875rem",
+                    fontWeight: 500,
+                    color: "var(--hsd-ui-color-gray-700)",
+                    margin: "4px 0 0",
+                    whiteSpace: "pre-wrap",
+                  }}
+                  dangerouslySetInnerHTML={{ __html: request.purpose }}
+                />
+              ) : (
+                <p
+                  style={{
+                    fontSize: "0.875rem",
+                    fontWeight: 500,
+                    color: "var(--hsd-ui-color-gray-400)",
+                    margin: "4px 0 0",
+                    fontStyle: "italic",
+                  }}
+                >
+                  No Data
+                </p>
+              )}
             </div>
           </SectionCard>
 
