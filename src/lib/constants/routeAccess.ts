@@ -9,7 +9,19 @@ const ALL_ACTIVE_ROLES: RoleId[] = [
   ROLES.EMPLOYEE,
 ];
 
+// Every authenticated user can access their own profile
+const ALL_ROLES: RoleId[] = [
+  ...ALL_ACTIVE_ROLES,
+  ROLES.HUMAN_RESOURCES,
+  ROLES.AUDITOR,
+  ROLES.FINANCE,
+  ROLES.CANDIDATES,
+];
+
 export const ROUTE_ACCESS: Record<string, RoleId[]> = {
+  // Profile - accessible to all authenticated users
+  '/profile': ALL_ROLES,
+
   // Master data - accessible to HUMAN_RESOURCES + all active roles
   '/dashboard':                [...ALL_ACTIVE_ROLES, ROLES.HUMAN_RESOURCES],
   '/organization/obs':         [...ALL_ACTIVE_ROLES, ROLES.HUMAN_RESOURCES],
