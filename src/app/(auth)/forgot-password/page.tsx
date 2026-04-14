@@ -25,7 +25,13 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center bg-[#f5f5f7] px-4">
+    <div
+      className="relative flex min-h-screen items-center justify-center px-4"
+      style={{
+        backgroundColor: "var(--hsd-ui-color-gray-100)",
+        fontFamily: "Poppins, sans-serif",
+      }}
+    >
       {/* Geometric background pattern */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden bg-gradient-to-br from-[#f0f0f0] to-[#e8e8e8]">
         <svg
@@ -60,8 +66,15 @@ export default function ForgotPasswordPage() {
       </div>
 
       <div className="relative w-full max-w-md">
-        {/* Card */}
-        <div className="rounded-2xl bg-white p-8 shadow-sm shadow-black/[0.04] ring-1 ring-black/[0.06]">
+        {/* Card — TUV: 8px radius, 1px gray border, white bg */}
+        <div
+          className="bg-white p-8"
+          style={{
+            borderRadius: "8px",
+            border: "1px solid rgba(120, 134, 127, 0.2)",
+            boxShadow: "0px 4px 35px 0px rgba(112, 144, 176, 0.25)",
+          }}
+        >
           {/* Logo & Header */}
           <div className="mb-8 text-center">
             <Image
@@ -72,8 +85,22 @@ export default function ForgotPasswordPage() {
               className="mx-auto mb-4"
               priority
             />
-            <h1 className="text-lg font-semibold text-foreground">Reset Password</h1>
-            <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">
+            <h1
+              className="text-lg"
+              style={{
+                color: "var(--hsd-ui-color-gray-900)",
+                fontWeight: 500,
+              }}
+            >
+              Reset Password
+            </h1>
+            <p
+              className="mt-2 text-[13px] leading-relaxed"
+              style={{
+                color: "var(--hsd-ui-color-gray-500)",
+                fontWeight: 300,
+              }}
+            >
               {isSubmitted
                 ? "Check your email for reset instructions."
                 : "Enter your email address and we'll send you a link to reset your password."
@@ -85,20 +112,53 @@ export default function ForgotPasswordPage() {
             /* Success State */
             <div className="space-y-5">
               <div className="flex flex-col items-center gap-4 py-4">
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
-                  <CheckCircle className="h-8 w-8 text-green-600" />
+                <div
+                  className="flex h-16 w-16 items-center justify-center rounded-full"
+                  style={{ backgroundColor: "var(--hsd-ui-color-green-50)" }}
+                >
+                  <CheckCircle
+                    className="h-8 w-8"
+                    style={{ color: "var(--hsd-ui-color-green-600)" }}
+                  />
                 </div>
                 <div className="text-center">
-                  <p className="text-sm font-medium text-foreground">Email Sent!</p>
-                  <p className="mt-1 text-[13px] text-muted-foreground">
-                    We've sent a password reset link to<br />
-                    <span className="font-medium text-foreground">{email}</span>
+                  <p
+                    className="text-sm"
+                    style={{
+                      color: "var(--hsd-ui-color-gray-900)",
+                      fontWeight: 400,
+                    }}
+                  >
+                    Email Sent!
+                  </p>
+                  <p
+                    className="mt-1 text-[13px]"
+                    style={{
+                      color: "var(--hsd-ui-color-gray-500)",
+                      fontWeight: 300,
+                    }}
+                  >
+                    We&apos;ve sent a password reset link to<br />
+                    <span style={{ fontWeight: 400, color: "var(--hsd-ui-color-gray-900)" }}>
+                      {email}
+                    </span>
                   </p>
                 </div>
               </div>
 
               <Link href="/login">
-                <Button variant="outline" size="lg" className="w-full">
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  style={{
+                    height: "40px",
+                    borderRadius: "4px",
+                    fontSize: "0.875rem",
+                    fontWeight: 400,
+                    color: "var(--hsd-ui-color-gray-900)",
+                    borderColor: "rgba(120, 134, 127, 0.2)",
+                  }}
+                >
                   <ArrowLeft />
                   Back to Sign In
                 </Button>
@@ -108,22 +168,48 @@ export default function ForgotPasswordPage() {
             /* Form */
             <form onSubmit={handleSubmit} className="space-y-5">
               <div className="space-y-1.5">
-                <Label htmlFor="email" className="text-sm font-medium">Email</Label>
+                <Label
+                  htmlFor="email"
+                  className="text-sm"
+                  style={{
+                    color: "var(--hsd-ui-color-gray-900)",
+                    fontWeight: 400,
+                  }}
+                >
+                  Email
+                </Label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Mail
+                    className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2"
+                    style={{ color: "var(--hsd-ui-color-gray-500)" }}
+                  />
                   <Input
                     id="email"
                     type="email"
                     placeholder="name@company.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="h-11 pl-10"
+                    className="pl-10"
                     required
                   />
                 </div>
               </div>
 
-              <Button type="submit" size="lg" className="w-full" disabled={isLoading}>
+              {/* TUV Primary Button */}
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={isLoading}
+                style={{
+                  backgroundColor: "var(--hsd-ui-color-navy-500)",
+                  color: "var(--hsd-ui-color-gray-50)",
+                  borderColor: "var(--hsd-ui-color-navy-500)",
+                  height: "40px",
+                  borderRadius: "4px",
+                  fontSize: "0.875rem",
+                  fontWeight: 400,
+                }}
+              >
                 {isLoading ? (
                   <>
                     <Loader2 className="animate-spin" />
@@ -137,7 +223,11 @@ export default function ForgotPasswordPage() {
               <div className="text-center">
                 <Link
                   href="/login"
-                  className="inline-flex items-center text-sm text-primary hover:text-primary/80 transition-colors"
+                  className="inline-flex items-center text-sm transition-colors"
+                  style={{
+                    color: "var(--hsd-ui-color-navy-500)",
+                    fontWeight: 300,
+                  }}
                 >
                   <ArrowLeft className="mr-1 h-4 w-4" />
                   Back to Sign In
@@ -148,7 +238,10 @@ export default function ForgotPasswordPage() {
         </div>
 
         {/* Footer */}
-        <p className="mt-8 text-center text-xs text-muted-foreground">
+        <p
+          className="mt-8 text-center text-xs"
+          style={{ color: "var(--hsd-ui-color-gray-500)", fontWeight: 300 }}
+        >
           &copy; {new Date().getFullYear()} PT TÜV Nord Indonesia. All rights reserved.
         </p>
       </div>

@@ -15,12 +15,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 
 import { useAppStore } from "@/stores/app-store";
 import { useAuthStore } from "@/stores/auth-store";
@@ -37,6 +31,26 @@ export function Header(_props: HeaderProps) {
   const { toggleSidebarCollapse } = useAppStore();
   const { user, logout, isLoading } = useAuthStore();
   const [showLogoutDialog, setShowLogoutDialog] = React.useState(false);
+  const [showLogoutMenu, setShowLogoutMenu] = React.useState(false);
+  const logoutMenuRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (!showLogoutMenu) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (logoutMenuRef.current && !logoutMenuRef.current.contains(e.target as Node)) {
+        setShowLogoutMenu(false);
+      }
+    };
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setShowLogoutMenu(false);
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEsc);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEsc);
+    };
+  }, [showLogoutMenu]);
 
   const handleSignOut = async () => {
     await logout();
@@ -175,51 +189,57 @@ export function Header(_props: HeaderProps) {
             </div>
           </Link>
 
-          {/* Chevron → Dropdown with Logout */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                className="flex cursor-pointer items-center justify-center border-0 bg-transparent outline-none transition-opacity hover:opacity-70"
+          {/* Chevron → Logout menu */}
+          <div ref={logoutMenuRef} className="relative">
+            <button
+              onClick={() => setShowLogoutMenu((prev) => !prev)}
+              className="flex cursor-pointer items-center justify-center border-0 bg-transparent outline-none transition-opacity hover:opacity-70"
+              style={{
+                width: "32px",
+                height: "32px",
+                marginLeft: "4px",
+              }}
+            >
+              <ChevronDown
                 style={{
-                  width: "32px",
-                  height: "32px",
-                  marginLeft: "4px",
+                  width: "20px",
+                  height: "20px",
+                  color: "rgba(120, 134, 127, 1)",
                 }}
+              />
+            </button>
+            {showLogoutMenu && (
+              <div
+                className="absolute right-0 z-[60] min-w-[140px] rounded-md border bg-white p-1 shadow-lg"
+                style={{ top: "calc(100% + 4px)" }}
               >
-                <ChevronDown
-                  style={{
-                    width: "20px",
-                    height: "20px",
-                    color: "rgba(120, 134, 127, 1)",
+                <button
+                  onClick={() => {
+                    setShowLogoutMenu(false);
+                    setShowLogoutDialog(true);
                   }}
-                />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" sideOffset={8} className="min-w-[160px]">
-              <DropdownMenuItem
-                onClick={() => setShowLogoutDialog(true)}
-                className="cursor-pointer"
-              >
-                <LogOut
-                  className="mr-2"
-                  style={{
-                    width: "16px",
-                    height: "16px",
-                    color: "var(--hsd-ui-color-red-600)",
-                  }}
-                />
-                <span
-                  style={{
-                    fontSize: "0.875rem",
-                    fontWeight: 600,
-                    color: "var(--hsd-ui-color-red-600)",
-                  }}
+                  className="flex w-full cursor-pointer items-center gap-2 rounded-sm border-0 bg-transparent px-2 py-1.5 text-sm transition-colors hover:bg-accent"
                 >
-                  Logout
-                </span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                  <LogOut
+                    style={{
+                      width: "16px",
+                      height: "16px",
+                      color: "var(--hsd-ui-color-red-600)",
+                    }}
+                  />
+                  <span
+                    style={{
+                      fontSize: "0.875rem",
+                      fontWeight: 600,
+                      color: "var(--hsd-ui-color-red-600)",
+                    }}
+                  >
+                    Logout
+                  </span>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Logout Confirmation Dialog */}

@@ -46,7 +46,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen" style={{ fontFamily: "Poppins, sans-serif" }}>
       {/* Left Panel — Brand & Illustration */}
       <div className="relative hidden w-[52%] overflow-hidden bg-[#0a1628] lg:flex lg:flex-col lg:justify-between">
         {/* Subtle grid pattern */}
@@ -183,11 +183,8 @@ export default function LoginPage() {
 
       {/* Right Panel — Login Form */}
       <div className="relative flex flex-1 flex-col items-center justify-center bg-white px-6 py-12 sm:px-12 lg:px-16 xl:px-24">
-        {/* Subtle background texture */}
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_70%_20%,rgba(225,231,244,0.4)_0%,transparent_60%)]" />
-
         <div className="relative w-full max-w-[400px]">
-          {/* Mobile logo — shown only on small screens */}
+          {/* Mobile logo */}
           <div className="mb-8 text-center lg:hidden">
             <Image
               src="/images/tuv-nord-logo.png"
@@ -201,10 +198,22 @@ export default function LoginPage() {
 
           {/* Header */}
           <div className="mb-8">
-            <h2 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
+            <h2
+              className="text-xl tracking-tight sm:text-2xl"
+              style={{
+                color: "var(--hsd-ui-color-gray-900)",
+                fontWeight: 500,
+              }}
+            >
               Welcome back
             </h2>
-            <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">
+            <p
+              className="mt-2 text-[13px] leading-relaxed"
+              style={{
+                color: "var(--hsd-ui-color-gray-500)",
+                fontWeight: 300,
+              }}
+            >
               Sign in to access the HRIS dashboard and manage your workforce.
             </p>
           </div>
@@ -216,15 +225,29 @@ export default function LoginPage() {
                 error && !isLoading ? "max-h-16 opacity-100" : "max-h-0 opacity-0"
               }`}
             >
-              <div className="flex items-center gap-2 rounded-lg bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
+              <div
+                className="flex items-center gap-2 rounded px-3 py-2.5 text-sm"
+                style={{
+                  backgroundColor: "var(--hsd-ui-color-red-50)",
+                  color: "var(--hsd-ui-color-red-600)",
+                  border: "1px solid var(--hsd-ui-color-red-200)",
+                }}
+              >
                 <AlertCircle className="h-4 w-4 shrink-0" />
-                <span>{error}</span>
+                <span style={{ fontWeight: 400 }}>{error}</span>
               </div>
             </div>
 
             {/* Email */}
             <div className="space-y-1.5">
-              <Label htmlFor="email" className="text-sm font-medium">
+              <Label
+                htmlFor="email"
+                className="text-sm"
+                style={{
+                  color: "var(--hsd-ui-color-gray-900)",
+                  fontWeight: 400,
+                }}
+              >
                 Email
               </Label>
               <Input
@@ -233,7 +256,6 @@ export default function LoginPage() {
                 placeholder="name@company.com"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="h-11"
                 required
                 autoComplete="email"
               />
@@ -241,7 +263,14 @@ export default function LoginPage() {
 
             {/* Password */}
             <div className="space-y-1.5">
-              <Label htmlFor="password" className="text-sm font-medium">
+              <Label
+                htmlFor="password"
+                className="text-sm"
+                style={{
+                  color: "var(--hsd-ui-color-gray-900)",
+                  fontWeight: 400,
+                }}
+              >
                 Password
               </Label>
               <div className="relative">
@@ -251,25 +280,37 @@ export default function LoginPage() {
                   placeholder="Enter your password"
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="h-11 pr-10"
+                  className="pr-10"
                   required
                   autoComplete="current-password"
                 />
-                <Button
+                <button
                   type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  className="absolute right-1 top-1/2 -translate-y-1/2 text-muted-foreground hover:bg-transparent"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 transition-colors hover:bg-black/5"
                   onClick={() => setShowPassword(!showPassword)}
                   aria-label={showPassword ? "Hide password" : "Show password"}
+                  style={{ color: "var(--hsd-ui-color-gray-500)" }}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </Button>
+                </button>
               </div>
             </div>
 
-            {/* Submit */}
-            <Button type="submit" size="lg" className="w-full" disabled={isLoading}>
+            {/* Submit — TUV Primary Button */}
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={isLoading}
+              style={{
+                backgroundColor: "var(--hsd-ui-color-navy-500)",
+                color: "var(--hsd-ui-color-gray-50)",
+                borderColor: "var(--hsd-ui-color-navy-500)",
+                height: "40px",
+                borderRadius: "4px",
+                fontSize: "0.875rem",
+                fontWeight: 400,
+              }}
+            >
               {isLoading ? (
                 <>
                   <Loader2 className="animate-spin" />
@@ -283,7 +324,11 @@ export default function LoginPage() {
             <div className="text-center">
               <Link
                 href="/forgot-password"
-                className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                className="text-sm transition-colors"
+                style={{
+                  color: "var(--hsd-ui-color-navy-500)",
+                  fontWeight: 300,
+                }}
               >
                 Forgot password?
               </Link>
@@ -292,7 +337,10 @@ export default function LoginPage() {
         </div>
 
         {/* Mobile footer */}
-        <p className="mt-12 text-center text-xs text-muted-foreground lg:hidden">
+        <p
+          className="mt-12 text-center text-xs lg:hidden"
+          style={{ color: "var(--hsd-ui-color-gray-500)", fontWeight: 300 }}
+        >
           &copy; {new Date().getFullYear()} PT TÜV Nord Indonesia. All rights reserved.
         </p>
       </div>
