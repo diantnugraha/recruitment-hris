@@ -1,11 +1,36 @@
 import { post, get, put } from "@/lib/axios";
 import type { ApiResponse } from "@/types";
-import type { CandidateWithRelations } from "./candidate.service";
 
 // --- Types ---
 
+export interface CandidatePortalProfile {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  status: string;
+  source: string | null;
+  currentCompany: string | null;
+  currentPosition: string | null;
+  expectedSalary: number | null;
+  noticePeriod: string | null;
+  resumeUrl: string | null;
+  linkedinUrl: string | null;
+  portfolioUrl: string | null;
+  notes: string | null;
+  appliedDate: string;
+  jobTitleId: string | null;
+  departmentId: string | null;
+  verified: boolean;
+  createdAt: string;
+  updatedAt: string;
+  jobTitle?: { id: number; name: string } | null;
+  department?: { id: number; name: string; code: string } | null;
+}
+
 export interface CandidateAuthResponse {
-  candidate: CandidateWithRelations;
+  candidate: CandidatePortalProfile;
   token: string;
 }
 
@@ -56,15 +81,15 @@ interface ApiCandidate {
 
 // --- Mapping ---
 
-function mapCandidate(api: ApiCandidate): CandidateWithRelations {
+function mapCandidate(api: ApiCandidate): CandidatePortalProfile {
   return {
     id: String(api.id),
     firstName: api.first_name,
     lastName: api.last_name,
     email: api.email,
     phone: api.phone || "",
-    status: api.status as CandidateWithRelations["status"],
-    source: api.source as CandidateWithRelations["source"],
+    status: api.status,
+    source: api.source,
     currentCompany: api.current_company,
     currentPosition: api.current_position,
     expectedSalary: api.expected_salary,
@@ -137,7 +162,7 @@ export const candidateAuthService = {
     }
   },
 
-  async getProfile(): Promise<ApiResponse<CandidateWithRelations>> {
+  async getProfile(): Promise<ApiResponse<CandidatePortalProfile>> {
     try {
       const response = await get<unknown>("/v1/candidate-auth/profile");
       const res = response as { success?: boolean; data?: ApiCandidate };
@@ -154,7 +179,7 @@ export const candidateAuthService = {
 
   async updateProfile(
     data: CandidateProfileUpdateRequest
-  ): Promise<ApiResponse<CandidateWithRelations>> {
+  ): Promise<ApiResponse<CandidatePortalProfile>> {
     try {
       // Convert camelCase to snake_case for API
       const apiData: Record<string, unknown> = {};

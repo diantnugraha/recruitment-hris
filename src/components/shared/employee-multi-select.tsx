@@ -48,7 +48,7 @@ export function EmployeeMultiSelect({
   const [search, setSearch] = React.useState("");
   const [options, setOptions] = React.useState<EmployeeOption[]>([]);
   const [isLoading, setIsLoading] = React.useState(false);
-  const debounceRef = React.useRef<ReturnType<typeof setTimeout>>();
+  const debounceRef = React.useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   // Fetch employees on search change
   const handleSearch = React.useCallback(

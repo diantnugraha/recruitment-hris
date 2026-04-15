@@ -96,6 +96,17 @@ export interface AssessmentScoringData {
   assessed_at: string | null;
 }
 
+export interface Assessment {
+  id: string;
+  type: string;
+  status: string;
+  result: string;
+  conductedDate: string;
+  feedback: string;
+  rating: number;
+  notes: string;
+}
+
 export interface CandidateAssessment {
   id: number;
   interview1Status: string;
@@ -115,6 +126,7 @@ export interface CandidateWithRelations extends Candidate {
   jobTitle?: { id: number; name: string } | null;
   employeeRequest?: { id: number; code: string; jobPlacement?: string; sla?: SlaInfo | null } | null;
   onboardingAcceptedAt?: string | null;
+  onboardingSentAt?: string | null;
 }
 
 export interface Facility {
@@ -844,6 +856,63 @@ export const candidateService = {
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } } };
       return { success: false, message: err.response?.data?.message || "Failed to remove assessor" };
+    }
+  },
+
+  async createAssessment(
+    candidateId: string,
+    data: {
+      type: string;
+      scheduled_date: string;
+      location?: string;
+      notes?: string;
+    }
+  ): Promise<ApiResponse<Assessment>> {
+    try {
+      const response = await post<unknown, typeof data>(
+        `/v1/candidate/${candidateId}/assessment/schedule`,
+        data
+      );
+      const res = response as { success?: boolean; data?: Assessment; message?: string };
+
+      if (res.success && res.data) {
+        return { success: true, data: res.data };
+      }
+
+      return { success: false, message: res.message || "Unexpected response format" };
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      return { success: false, message: err.response?.data?.message || "Failed to create assessment" };
+    }
+  },
+
+  async updateAssessment(
+    candidateId: string,
+    assessmentId: string,
+    data: {
+      result: string;
+      conducted_date: string;
+      status: string;
+      feedback?: string;
+      rating?: number;
+      notes?: string;
+    }
+  ): Promise<ApiResponse<Assessment>> {
+    try {
+      const response = await put<unknown, typeof data>(
+        `/v1/candidate/${candidateId}/assessment/${assessmentId}`,
+        data
+      );
+      const res = response as { success?: boolean; data?: Assessment; message?: string };
+
+      if (res.success && res.data) {
+        return { success: true, data: res.data };
+      }
+
+      return { success: false, message: res.message || "Unexpected response format" };
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      return { success: false, message: err.response?.data?.message || "Failed to update assessment" };
     }
   },
 

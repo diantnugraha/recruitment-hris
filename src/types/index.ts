@@ -120,8 +120,11 @@ export interface EmployeeWithRelations extends Employee {
 export interface Organization {
   id: string;
   name: string;
+  code?: string;
   cluster?: string;
   description?: string;
+  parentId?: string;
+  level?: number;
   createdAt: string;
   updatedAt: string;
 }
